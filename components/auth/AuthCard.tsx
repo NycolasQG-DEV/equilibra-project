@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { animate } from "animejs";
 import { supabase } from "@/lib/supabase";
 import { UserRole } from "@/types/database";
 import { ROLE_ROUTES } from "@/lib/constants";
@@ -166,7 +167,7 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
           style={{ width: "200%", transform: mode === "signup" ? "translateX(0%)" : "translateX(-50%)" }}
         >
           {/* ─── Signup ─── */}
-          <div className="space-y-4 px-10 py-8" style={{ width: "50%" }}>
+          <div className="space-y-4 px-6 py-8 sm:px-10 sm:py-10" style={{ width: "50%" }}>
             {/* Google */}
             <button
               onClick={handleGoogle}
@@ -217,7 +218,7 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
               </div>
 
               {showRazao && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                <AnimatedWrapper delay={0}>
                   <Field 
                     label="Razão Social / Nome Fantasia" 
                     placeholder="Auto-preenchido pelo CNPJ" 
@@ -226,11 +227,11 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
                     onChange={setSignupCompanyName} 
                     disabled={cnpjSearching}
                   />
-                </div>
+                </AnimatedWrapper>
               )}
               
               {showPersonName && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                <AnimatedWrapper delay={100}>
                   <Field 
                     label="Nome Completo" 
                     placeholder="Nome do responsável pela conta" 
@@ -238,28 +239,30 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
                     value={signupPersonName} 
                     onChange={setSignupPersonName} 
                   />
-                </div>
+                </AnimatedWrapper>
               )}
               
               {showEmail && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                <AnimatedWrapper delay={100}>
                   <Field label="E-mail Corporativo" placeholder="nome@empresa.com.br" type="email" value={signupEmail} onChange={setSignupEmail} />
-                </div>
+                </AnimatedWrapper>
               )}
               
               {showPassword && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-4">
-                  <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
-                  {signupError && <Msg type="error" text={signupError} />}
-                  {signupSuccess && <Msg type="success" text={signupSuccess} />}
-                  <Btn onClick={handleSignup} loading={signupLoading} label="Criar Conta" loadingLabel="Criando conta..." />
-                </div>
+                <AnimatedWrapper delay={100}>
+                  <div className="space-y-4">
+                    <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
+                    {signupError && <Msg type="error" text={signupError} />}
+                    {signupSuccess && <Msg type="success" text={signupSuccess} />}
+                    <Btn onClick={handleSignup} loading={signupLoading} label="Criar Conta" loadingLabel="Criando conta..." />
+                  </div>
+                </AnimatedWrapper>
               )}
             </div>
           </div>
 
           {/* ─── Login ─── */}
-          <div className="space-y-4 px-10 py-8" style={{ width: "50%" }}>
+          <div className="space-y-4 px-6 py-8 sm:px-10 sm:py-10" style={{ width: "50%" }}>
             {/* Google */}
             <button
               onClick={handleGoogle}
@@ -338,4 +341,23 @@ function Btn({ onClick, loading, label, loadingLabel }: {
       {loading ? loadingLabel : label}
     </button>
   );
+}
+
+/* ─── Componente Animado via Anime.js ─── */
+function AnimatedWrapper({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const elRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (elRef.current) {
+      animate(elRef.current, {
+        y: [-20, 0],
+        opacity: [0, 1],
+        duration: 800,
+        ease: "outElastic(1, .8)",
+        delay: delay,
+      });
+    }
+  }, [delay]);
+
+  return <div ref={elRef} className="opacity-0">{children}</div>;
 }
