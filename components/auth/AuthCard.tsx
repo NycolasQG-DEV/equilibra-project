@@ -14,13 +14,17 @@ interface AuthCardProps {
 export function AuthCard({ mode, onModeChange }: AuthCardProps) {
   const router = useRouter();
 
+  const [signupCnpj, setSignupCnpj] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupCnpj, setSignupCnpj] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState("");
+
+  // Estados extras para o CNPJ Profissional
+  const [cnpjSearching, setCnpjSearching] = useState(false);
+  const [cnpjError, setCnpjError] = useState("");
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -41,6 +45,30 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
     if (error) {
       setLoginError(error.message);
       setGoogleLoading(false);
+    }
+  };
+
+  /* ─── Busca Automática de CNPJ (BrasilAPI) ─── */
+  const fetchCnpjData = async (cnpjNumber: string) => {
+    const cleanCnpj = cnpjNumber.replace(/\D/g, "");
+    if (cleanCnpj.length !== 14) return;
+    
+    setCnpjSearching(true);
+    setCnpjError("");
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`);
+      if (!res.ok) throw new Error("CNPJ inválido ou não encontrado.");
+      const data = await res.json();
+      
+      // Auto-preencher o nome da empresa
+      const companyName = data.nome_fantasia || data.razao_social || "";
+      setSignupName(companyName);
+      setSignupError(""); // limpa erros antigos
+    } catch (err: any) {
+      setCnpjError(err.message || "Erro ao buscar CNPJ.");
+      setSignupName("");
+    } finally {
+      setCnpjSearching(false);
     }
   };
 
@@ -154,17 +182,40 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
               <div className="h-px flex-1 bg-purple-100" />
             </div>
 
-            <Field label="Nome da Empresa" placeholder="Razão Social ou Nome Fantasia" type="text" value={signupName} onChange={setSignupName} />
-            <Field label="CNPJ" placeholder="00.000.000/0000-00" type="text" value={signupCnpj} onChange={(v) => {
-              // Simples formatação de CNPJ
-              let val = v.replace(/\D/g, "");
-              if (val.length > 14) val = val.slice(0, 14);
-              val = val.replace(/^(\d{2})(\d)/, "$1.$2");
-              val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-              val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
-              val = val.replace(/(\d{4})(\d)/, "$1-$2");
-              setSignupCnpj(val);
-            }} />
+            <div className="space-y-1">
+              <Field 
+                label="CNPJ da Empresa" 
+                placeholder="00.000.000/0000-00" 
+                type="text" 
+                value={signupCnpj} 
+                onChange={(v) => {
+                  let val = v.replace(/\D/g, "");
+                  if (val.length > 14) val = val.slice(0, 14);
+                  val = val.replace(/^(\d{2})(\d)/, "$1.$2");
+                  val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+                  val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
+                  val = val.replace(/(\d{4})(\d)/, "$1-$2");
+                  setSignupCnpj(val);
+                  
+                  if (val.replace(/\D/g, "").length === 14) {
+                    fetchCnpjData(val);
+                  } else {
+                    setCnpjError("");
+                  }
+                }} 
+              />
+              {cnpjSearching && <p className="text-[10px] font-medium text-purple-600 animate-pulse">Buscando dados na Receita Federal...</p>}
+              {cnpjError && <p className="text-[10px] font-medium text-red-500">{cnpjError}</p>}
+            </div>
+
+            <Field 
+              label="Razão Social / Nome Fantasia" 
+              placeholder="Auto-preenchido pelo CNPJ" 
+              type="text" 
+              value={signupName} 
+              onChange={setSignupName} 
+              disabled={cnpjSearching}
+            />
             <Field label="E-mail" placeholder="nome@empresa.com.br" type="email" value={signupEmail} onChange={setSignupEmail} />
             <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
             {signupError && <Msg type="error" text={signupError} />}
@@ -215,16 +266,18 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
 }
 
 /* ─── Helpers ─── */
-function Field({ label, placeholder, type, value, onChange, onEnter }: {
+function Field({ label, placeholder, type, value, onChange, onEnter, disabled }: {
   label: string; placeholder: string; type: string; value: string;
-  onChange: (v: string) => void; onEnter?: () => void;
+  onChange: (v: string) => void; onEnter?: () => void; disabled?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-bold uppercase tracking-wider text-[#4a4550]">{label}</label>
       <input
-        className="w-full rounded-xl border border-[#ccc3d2] px-4 py-3 outline-none transition-all focus:border-[#6b538c] focus:ring-2 focus:ring-[#dabdfe]"
-        placeholder={placeholder} type={type} value={value}
+        className={`w-full rounded-xl border px-4 py-3 outline-none transition-all focus:ring-2 ${
+          disabled ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed" : "border-[#ccc3d2] focus:border-[#6b538c] focus:ring-[#dabdfe]"
+        }`}
+        placeholder={placeholder} type={type} value={value} disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") onEnter?.(); }}
       />
