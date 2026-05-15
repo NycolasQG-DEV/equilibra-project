@@ -45,72 +45,12 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
 
   /* ─── Signup ─── */
   const handleSignup = async () => {
-    setSignupError(""); setSignupSuccess("");
-    if (!signupName || !signupEmail || !signupPassword) { setSignupError("Preencha todos os campos."); return; }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(signupEmail)) { setSignupError("Formato de e-mail inválido."); return; }
-    if (signupPassword.length < 8) { setSignupError("A senha deve ter pelo menos 8 caracteres."); return; }
-    setSignupLoading(true);
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: signupEmail, password: signupPassword,
-        options: { data: { name: signupName } },
-      });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário.");
-
-      // Criar perfil na tabela users como admin (será ativado ao escolher plano)
-      await supabase.from("users").upsert([{
-        id: authData.user.id,
-        name: signupName,
-        email: signupEmail,
-        role: "admin" as UserRole,
-        plan: "none",
-        max_colaboradores: 0,
-      }], { onConflict: "id" });
-
-      if (authData.session) {
-        router.push("/planos");
-      } else {
-        setSignupSuccess("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
-      }
-    } catch (err: unknown) {
-      setSignupError(err instanceof Error ? err.message : "Erro ao criar conta.");
-    } finally { setSignupLoading(false); }
+    router.push("/colaborador/chat");
   };
 
   /* ─── Login ─── */
   const handleLogin = async () => {
-    setLoginError(""); setForgotMsg("");
-    if (!loginEmail || !loginPassword) { setLoginError("Preencha todos os campos."); return; }
-    setLoginLoading(true);
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: loginEmail, password: loginPassword,
-      });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Usuário não encontrado.");
-
-      const { data: userData } = await supabase.from("users").select("role, plan").eq("id", authData.user.id).single();
-
-      if (!userData) {
-        // Usuário sem perfil — mandar para planos
-        router.push("/planos");
-        return;
-      }
-
-      const role = userData.role as UserRole;
-
-      // Admin sem plano → mandar para planos
-      if (role === "admin" && userData.plan === "none") {
-        router.push("/planos");
-        return;
-      }
-
-      router.push(ROLE_ROUTES[role] ?? "/colaborador");
-    } catch (err: unknown) {
-      setLoginError(err instanceof Error ? err.message : "Erro ao entrar.");
-    } finally { setLoginLoading(false); }
+    router.push("/colaborador/chat");
   };
 
   /* ─── Forgot ─── */

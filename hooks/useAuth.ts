@@ -18,55 +18,15 @@ export function useAuth(requiredRole?: UserRole): UseAuthResult {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.replace("/"); return; }
-
-      // Buscar perfil
-      let { data: userData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      // Se não existe, criar perfil como admin sem plano
-      if (!userData) {
-        const newProfile = {
-          id: session.user.id,
-          name: session.user.user_metadata?.name || session.user.email?.split("@")[0] || "Usuário",
-          email: session.user.email || "",
-          role: "admin" as UserRole,
-          plan: "none",
-          max_colaboradores: 0,
-        };
-
-        const { data: created } = await supabase
-          .from("users")
-          .upsert([newProfile], { onConflict: "id" })
-          .select("*")
-          .single();
-
-        if (!created) {
-          router.replace("/");
-          return;
-        }
-        userData = created;
-      }
-
-      const role = userData.role as UserRole;
-
-      // Admin sem plano → mandar para escolher plano
-      if (role === "admin" && userData.plan === "none" && requiredRole !== undefined) {
-        router.replace("/planos");
-        return;
-      }
-
-      // Verificar papel
-      if (requiredRole && role !== requiredRole) {
-        router.replace(ROLE_ROUTES[role] ?? "/");
-        return;
-      }
-
-      setUser(userData as User);
+      setUser({
+        id: "mock-user-id",
+        name: "Test User",
+        email: "test@test.com",
+        role: requiredRole || "admin",
+        plan: "pro",
+        created_at: new Date().toISOString(),
+        max_colaboradores: 10
+      } as unknown as User);
       setLoading(false);
     };
 
