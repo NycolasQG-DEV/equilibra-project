@@ -16,6 +16,7 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
 
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [signupCnpj, setSignupCnpj] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
@@ -45,7 +46,39 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
 
   /* ─── Signup ─── */
   const handleSignup = async () => {
-    router.push("/colaborador/chat");
+    setSignupError(""); setSignupSuccess("");
+    if (!signupName || !signupEmail || !signupCnpj || !signupPassword) { setSignupError("Preencha todos os campos."); return; }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(signupEmail)) { setSignupError("Formato de e-mail inválido."); return; }
+    if (signupPassword.length < 8) { setSignupError("A senha deve ter pelo menos 8 caracteres."); return; }
+    setSignupLoading(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: signupEmail, password: signupPassword,
+        options: { data: { name: signupName } },
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Erro ao criar usuário.");
+
+      // Criar perfil na tabela users como admin
+      await supabase.from("users").upsert([{
+        id: authData.user.id,
+        name: signupName,
+        email: signupEmail,
+        cnpj: signupCnpj,
+        role: "admin" as UserRole,
+        plan: "none",
+        max_colaboradores: 0,
+      }], { onConflict: "id" });
+
+      if (authData.session) {
+        router.push("/planos");
+      } else {
+        setSignupSuccess("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
+      }
+    } catch (err: unknown) {
+      setSignupError(err instanceof Error ? err.message : "Erro ao criar conta.");
+    } finally { setSignupLoading(false); }
   };
 
   /* ─── Login ─── */
@@ -121,7 +154,17 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
               <div className="h-px flex-1 bg-purple-100" />
             </div>
 
-            <Field label="Nome" placeholder="Seu nome completo" type="text" value={signupName} onChange={setSignupName} />
+            <Field label="Nome da Empresa" placeholder="Razão Social ou Nome Fantasia" type="text" value={signupName} onChange={setSignupName} />
+            <Field label="CNPJ" placeholder="00.000.000/0000-00" type="text" value={signupCnpj} onChange={(v) => {
+              // Simples formatação de CNPJ
+              let val = v.replace(/\D/g, "");
+              if (val.length > 14) val = val.slice(0, 14);
+              val = val.replace(/^(\d{2})(\d)/, "$1.$2");
+              val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+              val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
+              val = val.replace(/(\d{4})(\d)/, "$1-$2");
+              setSignupCnpj(val);
+            }} />
             <Field label="E-mail" placeholder="nome@empresa.com.br" type="email" value={signupEmail} onChange={setSignupEmail} />
             <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
             {signupError && <Msg type="error" text={signupError} />}

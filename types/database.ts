@@ -5,6 +5,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  cnpj?: string;
   phone?: string;
   role: UserRole;
   plan: PlanType;
