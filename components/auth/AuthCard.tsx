@@ -136,6 +136,12 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
     onModeChange(next);
   };
 
+  /* ─── Lógica de Revelação Progressiva ─── */
+  const showRazao = signupCnpj.replace(/\D/g, "").length === 14 && !cnpjSearching && !cnpjError;
+  const showPersonName = showRazao && signupCompanyName.trim().length > 0;
+  const showEmail = showPersonName && signupPersonName.trim().length > 0;
+  const showPassword = showEmail && signupEmail.includes("@") && signupEmail.includes(".");
+
   return (
     <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-purple-200 bg-white shadow-2xl">
       {/* Tabs */}
@@ -183,54 +189,73 @@ export function AuthCard({ mode, onModeChange }: AuthCardProps) {
               <div className="h-px flex-1 bg-purple-100" />
             </div>
 
-            <div className="space-y-1">
-              <Field
-                label="CNPJ da Empresa"
-                placeholder="00.000.000/0000-00"
-                type="text"
-                value={signupCnpj}
-                onChange={(v) => {
-                  let val = v.replace(/\D/g, "");
-                  if (val.length > 14) val = val.slice(0, 14);
-                  val = val.replace(/^(\d{2})(\d)/, "$1.$2");
-                  val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-                  val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
-                  val = val.replace(/(\d{4})(\d)/, "$1-$2");
-                  setSignupCnpj(val);
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Field 
+                  label="CNPJ da Empresa" 
+                  placeholder="00.000.000/0000-00" 
+                  type="text" 
+                  value={signupCnpj} 
+                  onChange={(v) => {
+                    let val = v.replace(/\D/g, "");
+                    if (val.length > 14) val = val.slice(0, 14);
+                    val = val.replace(/^(\d{2})(\d)/, "$1.$2");
+                    val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+                    val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
+                    val = val.replace(/(\d{4})(\d)/, "$1-$2");
+                    setSignupCnpj(val);
+                    
+                    if (val.replace(/\D/g, "").length === 14) {
+                      fetchCnpjData(val);
+                    } else {
+                      setCnpjError("");
+                    }
+                  }} 
+                />
+                {cnpjSearching && <p className="text-[10px] font-medium text-purple-600 animate-pulse">Buscando dados na Receita Federal...</p>}
+                {cnpjError && <p className="text-[10px] font-medium text-red-500">{cnpjError}</p>}
+              </div>
 
-                  if (val.replace(/\D/g, "").length === 14) {
-                    fetchCnpjData(val);
-                  } else {
-                    setCnpjError("");
-                  }
-                }}
-              />
-              {cnpjSearching && <p className="text-[10px] font-medium text-purple-600 animate-pulse">Buscando dados na Receita Federal...</p>}
-              {cnpjError && <p className="text-[10px] font-medium text-red-500">{cnpjError}</p>}
+              {showRazao && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                  <Field 
+                    label="Razão Social / Nome Fantasia" 
+                    placeholder="Auto-preenchido pelo CNPJ" 
+                    type="text" 
+                    value={signupCompanyName} 
+                    onChange={setSignupCompanyName} 
+                    disabled={cnpjSearching}
+                  />
+                </div>
+              )}
+              
+              {showPersonName && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                  <Field 
+                    label="Nome Completo" 
+                    placeholder="Nome do responsável pela conta" 
+                    type="text" 
+                    value={signupPersonName} 
+                    onChange={setSignupPersonName} 
+                  />
+                </div>
+              )}
+              
+              {showEmail && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                  <Field label="E-mail Corporativo" placeholder="nome@empresa.com.br" type="email" value={signupEmail} onChange={setSignupEmail} />
+                </div>
+              )}
+              
+              {showPassword && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-4">
+                  <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
+                  {signupError && <Msg type="error" text={signupError} />}
+                  {signupSuccess && <Msg type="success" text={signupSuccess} />}
+                  <Btn onClick={handleSignup} loading={signupLoading} label="Criar Conta" loadingLabel="Criando conta..." />
+                </div>
+              )}
             </div>
-
-            <Field
-              label="Razão Social / Nome Fantasia"
-              placeholder="Auto-preenchido pelo CNPJ"
-              type="text"
-              value={signupCompanyName}
-              onChange={setSignupCompanyName}
-              disabled={cnpjSearching}
-            />
-            
-            <Field 
-              label="Seu Nome Completo" 
-              placeholder="Nome do responsável pela conta" 
-              type="text" 
-              value={signupPersonName} 
-              onChange={setSignupPersonName} 
-            />
-            
-            <Field label="E-mail Corporativo" placeholder="nome@empresa.com.br" type="email" value={signupEmail} onChange={setSignupEmail} />
-            <Field label="Senha" placeholder="Mínimo 8 caracteres" type="password" value={signupPassword} onChange={setSignupPassword} onEnter={handleSignup} />
-            {signupError && <Msg type="error" text={signupError} />}
-            {signupSuccess && <Msg type="success" text={signupSuccess} />}
-            <Btn onClick={handleSignup} loading={signupLoading} label="Criar Conta" loadingLabel="Criando conta..." />
           </div>
 
           {/* ─── Login ─── */}
