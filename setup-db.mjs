@@ -133,10 +133,11 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(use
     console.log("\n✅ Todas as tabelas existem! O sistema deve funcionar normalmente.");
   }
 
-  console.log("\n🟡 ATUALIZAR TABELA USERS (CNPJ):");
-  console.log("   Como alteramos o cadastro para B2B, você precisa adicionar a coluna CNPJ na tabela users.");
+  console.log("\n🟡 ATUALIZAR TABELA USERS (CNPJ E NOME DA EMPRESA):");
+  console.log("   Como alteramos o cadastro para B2B, você precisa adicionar as colunas CNPJ e COMPANY_NAME na tabela users.");
   console.log("   Execute o seguinte SQL no SQL Editor:");
   console.log("   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS cnpj text;");
+  console.log("   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS company_name text;");
 
 
   console.log("\n🔒 CONFIGURAR RLS (Row Level Security):");

@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   cnpj?: string;
+  company_name?: string;
   phone?: string;
   role: UserRole;
   plan: PlanType;
