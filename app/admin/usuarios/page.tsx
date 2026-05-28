@@ -247,8 +247,10 @@ function DeleteConfirmModal({ adminId, target, onClose, onDeleted }: {
 
 /* ─── Página principal ─── */
 export default function AdminUsuariosPage() {
+  console.log("🖥️ [AdminUsuariosPage] Renderizando componente...");
   const router = useRouter();
   const { user, loading } = useAuth("admin");
+  console.log("🖥️ [AdminUsuariosPage] useAuth retornado. loading:", loading, "user:", user);
 
   const [users, setUsers] = useState<User[]>([]);
   const [filtered, setFiltered] = useState<User[]>([]);

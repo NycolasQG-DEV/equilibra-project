@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { AuthCard } from "@/components/auth/AuthCard";
 
 export default function HomePage() {
-  const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+  const [authMode, setAuthMode] = useState<"signup" | "login">("login");
   const lenisRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
 

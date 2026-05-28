@@ -12,11 +12,23 @@ export default function ChatPage() {
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      setUserId(session.user.id);
+      if (session) {
+        setUserId(session.user.id);
+      }
     };
     init();
+
+    // Se o script já foi carregado anteriormente (navegação cliente do Next.js), inicializa na hora
+    if (typeof window !== "undefined" && typeof (window as any).initSaasChatbot === "function") {
+      (window as any).initSaasChatbot("equilibra", "http://localhost:4000");
+    }
   }, []);
+
+  const handleScriptLoad = () => {
+    if (typeof window !== "undefined" && typeof (window as any).initSaasChatbot === "function") {
+      (window as any).initSaasChatbot("equilibra", "http://localhost:4000");
+    }
+  };
 
   const handleLogout = async () => { 
     await supabase.auth.signOut(); 
@@ -26,7 +38,12 @@ export default function ChatPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#0d0a17] via-[#12101f] to-[#0d0a17]" data-saas-container>
       {/* Script do Widget Headless */}
-      <Script src="http://localhost:4000/widget.js" data-skill="equilibra" strategy="afterInteractive" />
+      <Script 
+        src="http://localhost:4000/widget.js" 
+        data-skill="equilibra" 
+        strategy="afterInteractive" 
+        onLoad={handleScriptLoad}
+      />
 
       <header className="flex items-center justify-between border-b border-purple-500/10 bg-[#0d0a17]/80 px-6 py-3.5 backdrop-blur-md">
         <div className="flex items-center gap-3">

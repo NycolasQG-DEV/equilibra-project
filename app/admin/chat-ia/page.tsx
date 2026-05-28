@@ -4,19 +4,11 @@ import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { authenticatedFetch } from "@/lib/api-client";
 
 interface Message { id: string; role: "user" | "ai"; text: string; time: string; }
 
-const AI_RESPONSES = [
-  "Com base nos dados das pesquisas, posso ajudar a interpretar os indicadores de risco psicossocial. O que gostaria de entender melhor?",
-  "A NR-1 exige que empresas identifiquem e mitiguem riscos psicossociais. Posso explicar como cada indicador se relaciona com a norma.",
-  "Analisando os dados disponíveis, recomendo focar nos setores com maior concentração de risco alto. Deseja que eu detalhe?",
-  "O score médio indica o nível geral de estresse organizacional. Valores acima de 16 (de 24) sugerem necessidade de intervenção.",
-  "Para conformidade NR-1, o ideal é manter a taxa de risco alto abaixo de 30% e a taxa de resposta acima de 70%.",
-  "Posso explicar a diferença entre os níveis de risco e quais ações são recomendadas para cada faixa.",
-  "Os dados sugerem que pesquisas regulares (mensais ou trimestrais) são essenciais para acompanhar a evolução dos indicadores.",
-  "A LGPD garante que os dados individuais são protegidos. Os relatórios mostram apenas indicadores agregados, sem identificar colaboradores.",
-];
+
 
 function getTime() { return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 
@@ -68,18 +60,54 @@ export default function AdminChatPage() {
     const text = input.trim();
     if (!text || typing) return;
     const userMsg: Message = { id: Date.now().toString(), role: "user", text, time: getTime() };
+    
+    // Save history point
+    const currentMessages = [...messages];
+    
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     persist("user", text);
 
     setTyping(true);
-    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1500));
-    setTyping(false);
 
-    const aiText = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
-    const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "ai", text: aiText, time: getTime() };
-    setMessages((prev) => [...prev, aiMsg]);
-    persist("ai", aiText);
+    try {
+      const response = await authenticatedFetch("/api/admin/chat-ia", {
+        method: "POST",
+        body: JSON.stringify({
+          adminId: user?.id,
+          messages: [...currentMessages, userMsg].map(m => ({
+            role: m.role,
+            content: m.text
+          }))
+        })
+      });
+
+      if (!response.ok) throw new Error("Erro na API da IA");
+
+      const data = await response.json();
+      const aiResponseText = data.text || "Desculpe, ocorreu um problema ao processar sua solicitação.";
+      
+      const parts = aiResponseText.split("[SPLIT]").map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+      
+      setTyping(false);
+
+      for (let i = 0; i < parts.length; i++) {
+        const partText = parts[i];
+        
+        setTyping(true);
+        await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
+        setTyping(false);
+        
+        const aiMsg: Message = { id: `${Date.now()}-${i}`, role: "ai", text: partText, time: getTime() };
+        setMessages((prev) => [...prev, aiMsg]);
+        await persist("ai", partText);
+      }
+    } catch (err) {
+      console.error("Chat IA error:", err);
+      setTyping(false);
+      const errMsg: Message = { id: Date.now().toString(), role: "ai", text: "Ocorreu um erro de conexão. Tente novamente em instantes.", time: getTime() };
+      setMessages((prev) => [...prev, errMsg]);
+    }
   };
 
   if (loading) return <LoadingSpinner message="Verificando acesso..." />;
@@ -101,13 +129,7 @@ export default function AdminChatPage() {
         </div>
       </header>
 
-      {/* Future AI banner */}
-      <div className="mx-8 mt-4 flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3">
-        <span className="material-symbols-outlined text-blue-600">info</span>
-        <p className="text-xs text-blue-700">
-          <strong>Em breve:</strong> a IA responderá com base nos dados reais das suas pesquisas, oferecendo análises detalhadas e recomendações personalizadas.
-        </p>
-      </div>
+
 
       <div className="flex-1 overflow-y-auto px-8 py-6" style={{ maxHeight: "calc(100vh - 240px)" }}>
         <div className="mx-auto max-w-3xl space-y-4">
