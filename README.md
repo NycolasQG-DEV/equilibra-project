@@ -34,10 +34,10 @@ Interface de acolhimento sem atritos, termos claros de anonimato e consentimento
 
 ---
 
-### 5. Entrevista Conversacional com Voz Neural e Conclusão Segura
-Diálogo empático com voz neural ultra-realista em Português Brasileiro (Microsoft Edge Neural TTS), widgets dinâmicos (cartões binários, escolha contextual e escala 0-10 com animações motion) e confirmação imediata de envio anônimo.
+### 5. Entrevista Conversacional Investigativa com Voz Neural
+Interface de diálogo dinâmico da IA com digitação em tempo real sincronizada à voz neural brasileira (Microsoft Edge Neural TTS), transições ágeis, acolhimento empático e protocolo de aprofundamento investigativo (convite prévio para justificativa).
 
-![Conclusão da Pesquisa](public/docs/05_survey_completed.png)
+![Entrevista Conversacional com IA](public/docs/05_survey_completed.png)
 
 ---
 
