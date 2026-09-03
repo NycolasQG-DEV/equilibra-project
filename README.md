@@ -14,7 +14,7 @@
 ---
 
 <div align="center">
-  <img src="public/docs/01_landing_page.png" alt="Equilibra SaaS Platform" width="800" />
+  <img src="public/docs/01_landing_page.png" alt="Equilibra SaaS Platform" width="680" />
 </div>
 
 ---
@@ -31,56 +31,47 @@ The platform operates using a **high-performance modern full-stack architecture*
 
 ## Visual Demonstration & System Walkthrough
 
-### 1. Landing Page & Unified Auth
-Modern entry point with instant cookie-based session verification, smooth scroll, and dark-mode aesthetics.
-
-<div align="center">
-  <img src="public/docs/01_landing_page.png" alt="Landing Page" width="750" />
-</div>
-
----
-
-### 2. Admin Dashboard (Risk Management & Real-Time KPIs)
+### 1. Admin Dashboard (Risk Management & Real-Time KPIs)
 Centralized overview of company risk levels, sector compliance, completion rates, and quick action cards.
 
 <div align="center">
-  <img src="public/docs/02_admin_dashboard.png" alt="Admin Dashboard" width="750" />
+  <img src="public/docs/02_admin_dashboard.png" alt="Admin Dashboard" width="600" />
 </div>
 
 ---
 
-### 3. Surveys & Batch Link Generator
+### 2. Surveys & Batch Link Generator
 Instant creation of survey campaigns organized by sector and job role, generating single-use anonymous links with live status tracking.
 
 <div align="center">
-  <img src="public/docs/03_admin_surveys.png" alt="Surveys Management" width="750" />
+  <img src="public/docs/03_admin_surveys.png" alt="Surveys Management" width="600" />
 </div>
 
 ---
 
-### 4. Employee Onboarding (LGPD & Confidentiality)
+### 3. Employee Onboarding (LGPD & Confidentiality)
 Frictionless onboarding ensuring worker privacy, anonymous participation, and formal consent under LGPD (Law nº 13.709/2018).
 
 <div align="center">
-  <img src="public/docs/04_survey_onboarding.png" alt="Employee Onboarding" width="750" />
+  <img src="public/docs/04_survey_onboarding.png" alt="Employee Onboarding" width="600" />
 </div>
 
 ---
 
-### 5. Adaptive AI Conversational Interview
+### 4. Adaptive AI Conversational Interview
 Empathetic, voice-synchronized interview with real-time typewriter effects, snappy transitions (0.5s post-audio), and automated discovery protocols for reported workplace distress.
 
 <div align="center">
-  <img src="public/docs/05_survey_completed.png" alt="Conversational Interview" width="750" />
+  <img src="public/docs/05_survey_completed.png" alt="Conversational Interview" width="600" />
 </div>
 
 ---
 
-### 6. Official Pericial Technical Report & 5W2H Action Plan
+### 5. Official Pericial Technical Report & 5W2H Action Plan
 Automated clinical diagnosis across the 7 ISTAS21-BR dimensions, probability × severity risk matrix, actionable 5W2H plans, and narrative text formatted for labor inspection audits.
 
 <div align="center">
-  <img src="public/docs/06_admin_protocol.png" alt="Technical Report Protocol" width="750" />
+  <img src="public/docs/06_admin_protocol.png" alt="Technical Report Protocol" width="600" />
 </div>
 
 ---
@@ -128,8 +119,8 @@ Review environment keys in `.env`:
 * `GROQ_API_KEY = "gsk_your_groq_api_key_here"`
 * `GROQ_MODEL = "qwen/qwen3.8-27b"`
 
-### 4. Database Setup & Auto-Seeding
-Run the initialization script to automatically create the database, tables, relational indexes, and the default demo administrator:
+### 4. Database Setup & Initialization
+Run the database migration script to automatically create the database, tables, and relational indexes:
 
 ```bash
 node setup-db.mjs
@@ -142,15 +133,7 @@ With everything configured, start the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Demo Credentials
-
-| Role               | Email                      | Password     | Plan         |
-|--------------------|----------------------------|--------------|--------------|
-| `Administrator`    | `teste.teste@teste.teste`  | `testeteste` | Professional |
+Open [http://localhost:3000](http://localhost:3000) in your browser. Register a new administrative account on the landing page to get started.
 
 ---
 
