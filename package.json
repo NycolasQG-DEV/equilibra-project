@@ -1,0 +1,43 @@
+{
+  "name": "equilibra-web-saas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma Equilibra SaaS - Gestão de Bem-Estar e NR-1",
+  "license": "ISC",
+  "author": "langolabs-team",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "animejs": "^4.4.1",
+    "bcryptjs": "^3.0.3",
+    "groq-sdk": "^1.6.0",
+    "jsonwebtoken": "^9.0.3",
+    "mercadopago": "^2.12.0",
+    "msedge-tts": "^2.0.7",
+    "mysql2": "^3.24.2",
+    "next": "^16.2.4",
+    "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.9.1",
+    "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "^16.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3"
+  }
+}

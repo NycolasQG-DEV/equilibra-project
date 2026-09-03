@@ -1,0 +1,48 @@
+{
+  "id": "ses_cb30bf15",
+  "createdAt": "2026-08-21T19:41:50.128Z",
+  "status": "in_progress",
+  "profile": {
+    "workerName": "SAFASF",
+    "workerRole": "SDAGASD",
+    "sector": "Outro Setor Operacional",
+    "shift": "2º Turno (Tarde)",
+    "companyTime": "Mais de 5 anos",
+    "anonymous": true,
+    "linkId": "lnk_f044817b"
+  },
+  "lgpdConsent": {
+    "consentGiven": true,
+    "consentTimestamp": "2026-08-21T19:41:50.128Z",
+    "legalBasis": "LGPD Art. 7º, II (Obrigação Legal SST) e Art. 11, II, \"f\" (Tutela da Saúde) c/c Art. 13 (Pseudonimização)",
+    "purpose": "Avaliação preventiva de riscos psicossociais para o PGR/GRO (NR-01 item 1.5.3.3)",
+    "rightsChannel": "Art. 18 da LGPD disponível no menu de direitos do titular"
+  },
+  "history": [],
+  "currentStepData": {
+    "bot_statement": "Olá! Sou a EquilibraAI. Vamos conversar sobre como é a sua rotina no setor.",
+    "next_question": "Nas últimas duas semanas, você se sentiu frequentemente pressionado para cumprir metas ou prazos difíceis no setor de Outro Setor Operacional?",
+    "ui_widget": "binary_cards",
+    "widget_options": {
+      "card_left": {
+        "label": "Sim",
+        "icon": "fa-check"
+      },
+      "card_right": {
+        "label": "Não",
+        "icon": "fa-xmark"
+      }
+    },
+    "dimension_target": "demandas_psicologicas",
+    "psychological_assessment": {
+      "openness_score": 4,
+      "fear_of_retaliation": 1,
+      "fatigue_level": 2,
+      "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+      "hidden_risk_flags": []
+    },
+    "ai_realtime_observation": "Etapa 1: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+    "is_interview_complete": false
+  },
+  "updatedAt": "2026-08-21T19:41:50.358Z"
+}

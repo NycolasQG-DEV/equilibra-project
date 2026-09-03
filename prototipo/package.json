@@ -1,0 +1,20 @@
+{
+  "name": "equilibra-nr1-ia",
+  "version": "1.0.0",
+  "description": "Sistema Imersivo de Coleta NR-1 com IA Adaptativa e Comportamental (Groq)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["nr1", "gro", "pgr", "ia", "groq", "psicologia-organizacional", "seguranca-do-trabalho"],
+  "author": "Equilibra SST",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "groq-sdk": "^0.15.0"
+  }
+}

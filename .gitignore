@@ -1,0 +1,37 @@
+# ── Dependências & Builds ──
+node_modules/
+.next/
+dist/
+out/
+build/
+*.tsbuildinfo
+package.zip
+
+# ── Variáveis de Ambiente e Segredos (NUNCA commit) ──
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+
+# ── Logs & Debuggers ──
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# ── IDEs & Editores Locais ──
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Arquivos Temporários de Desenvolvimento ──
+scratch/
+.system_generated/
+coverage/

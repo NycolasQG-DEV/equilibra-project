@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equilibra SST — Painel de Gestão</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="dashboard-body">
+<div class="dash-shell">
+
+  <!-- ─── BARRA LATERAL ─── -->
+  <aside class="dash-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div>
+        <div class="brand-name">EquilibraSST</div>
+        <div class="brand-tagline">Gestão de Riscos</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button id="tab-overview"    class="sidebar-item active">
+        <i class="fa-solid fa-chart-pie"></i><span>Visão Geral</span>
+      </button>
+      <button id="tab-links"       class="sidebar-item">
+        <i class="fa-solid fa-link"></i><span>Links</span>
+        <span id="badge-total-links" class="sidebar-badge">0</span>
+      </button>
+      <button id="tab-individual"  class="sidebar-item">
+        <i class="fa-solid fa-users-line"></i><span>Diagnósticos</span>
+        <span id="badge-total-diagnostics" class="sidebar-badge">0</span>
+      </button>
+      <button id="tab-plans"       class="sidebar-item">
+        <i class="fa-solid fa-list-check"></i><span>Planos 5W2H</span>
+      </button>
+      <button id="tab-governance"  class="sidebar-item">
+        <i class="fa-solid fa-lock"></i><span>Auditoria</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span id="ai-status-dot" class="status-dot online"></span>
+      <span class="sidebar-footer-label">IA Conectada</span>
+    </div>
+  </aside>
+
+  <!-- ─── CONTEÚDO PRINCIPAL ─── -->
+  <div class="dash-main">
+
+    <!-- Topbar -->
+    <header class="dash-topbar">
+      <div class="topbar-left">
+        <h1 id="page-title" class="topbar-title">Visão Geral</h1>
+        <span id="active-filter-pill" class="filter-pill" style="display:none;">
+          <i class="fa-solid fa-filter"></i>
+          <span id="active-filter-text"></span>
+          <button id="btn-clear-filter" class="pill-clear-btn"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+      </div>
+      <div class="topbar-right">
+        <select id="global-sector-filter" class="topbar-select" title="Filtrar por setor">
+          <option value="all">Todos os Setores</option>
+          <option>Usinagem &amp; Torneamento</option>
+          <option>Linha de Montagem</option>
+          <option>Pintura &amp; Acabamento</option>
+          <option>Logística &amp; Expedição</option>
+          <option>Caldeiraria &amp; Solda</option>
+          <option>Manutenção Mecânica/Elétrica</option>
+          <option>Injeção Plástica / Prensas</option>
+          <option>Outro Setor Operacional</option>
+        </select>
+        <button id="btn-refresh-data" class="topbar-icon-btn" title="Atualizar">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button id="btn-top-open-modal-link" class="btn-primary-sm">
+          <i class="fa-solid fa-plus"></i> Novo Link
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── PÁGINA: VISÃO GERAL ─── -->
+    <main id="view-overview" class="page active">
+
+      <!-- KPIs em linha -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-icon blue"><i class="fa-solid fa-clipboard-user"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-number" id="kpi-total-sessions">0</div>
+            <div class="kpi-label">Avaliações</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon" id="kpi-risk-icon"><i class="fa-solid fa-gauge-high"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-number" id="kpi-risk-score">—</div>
+            <div class="kpi-label">Risco Médio</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon amber"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-number kpi-text-sm" id="kpi-critical-dim">—</div>
+            <div class="kpi-label">Maior Foco</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon cyan"><i class="fa-solid fa-link"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-number" id="kpi-active-links">0</div>
+            <div class="kpi-label">Links Ativos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimensões -->
+      <section class="content-card">
+        <div class="card-header">
+          <h2 class="card-title">Fatores de Risco por Dimensão</h2>
+          <div class="legend-row">
+            <span class="legend-dot-item green">Controlado</span>
+            <span class="legend-dot-item amber">Atenção</span>
+            <span class="legend-dot-item rose">Crítico</span>
+          </div>
+        </div>
+        <div id="dimensions-chart-grid" class="dimensions-grid"></div>
+      </section>
+
+      <!-- Focos + Setores -->
+      <div class="two-col">
+        <section class="content-card">
+          <h2 class="card-title">Principais Focos</h2>
+          <div id="overview-focus-alerts-list" class="focus-list"></div>
+        </section>
+        <section class="content-card">
+          <h2 class="card-title">Participação por Setor</h2>
+          <div id="overview-sector-breakdown" class="sector-list"></div>
+        </section>
+      </div>
+    </main>
+
+    <!-- ─── PÁGINA: LINKS ─── -->
+    <main id="view-links" class="page">
+      <div class="page-header-bar">
+        <div>
+          <h2 class="card-title">Links de Pesquisa</h2>
+          <p class="card-desc">Cada link fecha automaticamente após o uso. Compartilhe o link com o colaborador.</p>
+        </div>
+        <button id="btn-open-create-link-modal" class="btn-primary-sm">
+          <i class="fa-solid fa-plus"></i> Criar Link
+        </button>
+      </div>
+      <div id="survey-links-container" class="links-grid"></div>
+    </main>
+
+    <!-- ─── PÁGINA: DIAGNÓSTICOS ─── -->
+    <main id="view-individual" class="page">
+      <div class="split-view">
+        <aside class="split-sidebar">
+          <div class="split-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="input-search-worker" class="search-input" placeholder="Buscar por código ou setor...">
+          </div>
+          <div class="split-sidebar-meta">
+            <span id="individual-list-count" class="meta-count">0 registros</span>
+            <span class="privacy-tag"><i class="fa-solid fa-lock"></i> Sigilo ativo</span>
+          </div>
+          <div id="individual-cards-container" class="worker-list"></div>
+        </aside>
+        <section id="individual-detail-container" class="split-detail">
+          <div class="detail-empty">
+            <i class="fa-solid fa-id-card-clip"></i>
+            <p>Selecione um colaborador para ver o diagnóstico</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- ─── PÁGINA: PLANOS 5W2H ─── -->
+    <main id="view-plans" class="page">
+      <div class="page-header-bar">
+        <div>
+          <h2 class="card-title">Plano de Ação Preventivo</h2>
+          <p class="card-desc">Medidas recomendadas com hierarquia de controle de riscos.</p>
+        </div>
+        <button id="btn-print-action-plan" class="btn-secondary-sm">
+          <i class="fa-solid fa-print"></i> Imprimir
+        </button>
+      </div>
+      <section class="content-card">
+        <div class="table-wrap">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>O Quê</th><th>Por Quê</th><th>Onde</th>
+                <th>Quem</th><th>Quando</th><th>Como</th>
+              </tr>
+            </thead>
+            <tbody id="collective-5w2h-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- ─── PÁGINA: AUDITORIA ─── -->
+    <main id="view-governance" class="page">
+      <div class="page-header-bar">
+        <div>
+          <h2 class="card-title">Registro de Auditoria</h2>
+          <p class="card-desc">Histórico de acessos e ações realizadas no sistema.</p>
+        </div>
+        <button id="btn-refresh-audit-logs" class="btn-secondary-sm">
+          <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+        </button>
+      </div>
+      <section class="content-card">
+        <div class="table-wrap">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Data</th><th>Ação</th><th>Responsável</th><th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="audit-logs-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+  </div><!-- /.dash-main -->
+</div><!-- /.dash-shell -->
+
+<!-- MODAL: CRIAR LINK -->
+<div id="modal-create-link" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 class="modal-title">Novo Link de Pesquisa</h3>
+      <button id="btn-close-create-link-modal" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-create-link" class="modal-body">
+      <div class="form-field">
+        <label class="form-label">Nome da campanha</label>
+        <input id="input-link-title" class="form-input" placeholder="Ex: Avaliação Turno Manhã — Usinagem" required>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Setor alvo</label>
+        <select id="select-link-sector" class="form-input">
+          <option value="all">Todos os setores (trabalhador escolhe)</option>
+          <option>Usinagem &amp; Torneamento</option>
+          <option>Linha de Montagem</option>
+          <option>Pintura &amp; Acabamento</option>
+          <option>Logística &amp; Expedição</option>
+          <option>Caldeiraria &amp; Solda</option>
+          <option>Manutenção Mecânica/Elétrica</option>
+          <option>Injeção Plástica / Prensas</option>
+          <option>Outro Setor Operacional</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Responsável</label>
+          <input id="input-link-admin-name" class="form-input" placeholder="Gestor SESMT" value="Gestor SESMT">
+        </div>
+        <div class="form-field">
+          <label class="form-label">E-mail (opcional)</label>
+          <input id="input-link-admin-email" class="form-input" type="email" placeholder="sesmt@empresa.com">
+        </div>
+      </div>
+      <div class="modal-info">
+        <i class="fa-solid fa-shield-check"></i>
+        <span>O link fecha automaticamente após ser respondido.</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btn-cancel-create-link" class="btn-secondary-sm">Cancelar</button>
+        <button type="submit" class="btn-primary-sm"><i class="fa-solid fa-bolt"></i> Gerar Link</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

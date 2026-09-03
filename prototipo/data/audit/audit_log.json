@@ -1,0 +1,152 @@
+[
+  {
+    "id": "log_1787829453744_4rbw",
+    "timestamp": "2026-08-27T11:17:33.744Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787341337307_m6py",
+    "timestamp": "2026-08-21T19:42:17.307Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787341310370_7z2g",
+    "timestamp": "2026-08-21T19:41:50.370Z",
+    "action": "SESSION_INITIATED",
+    "targetId": "ses_cb30bf15",
+    "performedBy": "EMPREGADO_CADASTRADO",
+    "legalBasis": "LGPD Art. 7º, II (Obrigação Legal SST) e Art. 11, II, \"f\" (Tutela da Saúde) c/c Art. 13 (Pseudonimização)",
+    "sector": "Outro Setor Operacional",
+    "details": "Coleta de dados iniciada e validada via link de uso único: \"asfasfasfasf\" (ID: lnk_f044817b)."
+  },
+  {
+    "id": "log_1787341144606_xv89",
+    "timestamp": "2026-08-21T19:39:04.606Z",
+    "action": "ADMIN_VIEW_SESSION_DETAIL",
+    "targetId": "ses_fe887986",
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.3.2 (Inventário de Riscos)",
+    "sector": "Usinagem & Torneamento",
+    "details": "Visualização individual de sessão detalhada (ID: ses_fe887986)."
+  },
+  {
+    "id": "log_1787341048921_ebhx",
+    "timestamp": "2026-08-21T19:37:28.921Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339914082_ig7g",
+    "timestamp": "2026-08-21T19:18:34.082Z",
+    "action": "SESSION_INITIATED",
+    "targetId": "ses_fe887986",
+    "performedBy": "EMPREGADO_CADASTRADO",
+    "legalBasis": "LGPD Art. 7º, II (Obrigação Legal SST) e Art. 11, II, \"f\" (Tutela da Saúde) c/c Art. 13 (Pseudonimização)",
+    "sector": "Usinagem & Torneamento",
+    "details": "Coleta de dados iniciada e validada via link de uso único: \"asfasfasfasf\" (ID: lnk_f044817b)."
+  },
+  {
+    "id": "log_1787339874465_mjjt",
+    "timestamp": "2026-08-21T19:17:54.465Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339874434_21sp",
+    "timestamp": "2026-08-21T19:17:54.434Z",
+    "action": "SURVEY_LINK_CREATED",
+    "targetId": "lnk_f044817b",
+    "performedBy": "Gestor SESMT / CIPA",
+    "legalBasis": "LGPD Art. 7, II / NR-01 Item 1.5.3.3",
+    "sector": "all",
+    "details": "Novo link de pesquisa gerado: \"asfasfasfasf\" (ID: lnk_f044817b)."
+  },
+  {
+    "id": "log_1787339861601_iwig",
+    "timestamp": "2026-08-21T19:17:41.601Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339852201_zw6b",
+    "timestamp": "2026-08-21T19:17:32.201Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339834404_a5fw",
+    "timestamp": "2026-08-21T19:17:14.404Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339834369_eykf",
+    "timestamp": "2026-08-21T19:17:14.369Z",
+    "action": "SURVEY_LINK_PAUSED",
+    "targetId": "lnk_usinagem",
+    "performedBy": "SISTEMA_AUTONOMO",
+    "legalBasis": "LGPD Art. 7, II / NR-01 Item 1.5.3.3",
+    "sector": "Todos",
+    "details": "Status do link \"Avaliação Psicossocial • Usinagem & Torneamento\" alterado para PAUSADO."
+  },
+  {
+    "id": "log_1787339823522_341c",
+    "timestamp": "2026-08-21T19:17:03.522Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339761850_20dh",
+    "timestamp": "2026-08-21T19:16:01.850Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  },
+  {
+    "id": "log_1787339420920_2vyl",
+    "timestamp": "2026-08-21T19:10:20.920Z",
+    "action": "ADMIN_LIST_REPORTS",
+    "targetId": null,
+    "performedBy": "GESTOR_SESMT_CIPA",
+    "legalBasis": "NR-01 Item 1.5.7.1 (Documentação do PGR)",
+    "sector": "Todos",
+    "details": "Listagem consolidada de 0 relatórios técnicos acessada."
+  }
+]

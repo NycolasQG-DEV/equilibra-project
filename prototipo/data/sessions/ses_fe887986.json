@@ -1,0 +1,132 @@
+{
+  "id": "ses_fe887986",
+  "createdAt": "2026-08-21T19:18:33.811Z",
+  "status": "in_progress",
+  "profile": {
+    "workerName": "Fernandinho Pereira",
+    "workerRole": "fcnbfn",
+    "sector": "Usinagem & Torneamento",
+    "shift": "1º Turno (Manhã)",
+    "companyTime": "Menos de 6 meses",
+    "anonymous": true,
+    "linkId": "lnk_f044817b"
+  },
+  "lgpdConsent": {
+    "consentGiven": true,
+    "consentTimestamp": "2026-08-21T19:18:33.811Z",
+    "legalBasis": "LGPD Art. 7º, II (Obrigação Legal SST) e Art. 11, II, \"f\" (Tutela da Saúde) c/c Art. 13 (Pseudonimização)",
+    "purpose": "Avaliação preventiva de riscos psicossociais para o PGR/GRO (NR-01 item 1.5.3.3)",
+    "rightsChannel": "Art. 18 da LGPD disponível no menu de direitos do titular"
+  },
+  "history": [
+    {
+      "stepNumber": 1,
+      "question": "Nas últimas duas semanas, você se sentiu frequentemente pressionado para cumprir metas ou prazos difíceis no setor de Usinagem & Torneamento?",
+      "botStatement": "Olá! Sou a EquilibraAI. Vamos conversar sobre como é a sua rotina no setor.",
+      "userAnswer": "Não",
+      "widgetType": "binary_cards",
+      "dimensionTarget": "demandas_psicologicas",
+      "psychologicalAssessment": {
+        "openness_score": 4,
+        "fear_of_retaliation": 1,
+        "fatigue_level": 2,
+        "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+        "hidden_risk_flags": []
+      },
+      "aiObservation": "Etapa 1: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+      "timestamp": "2026-08-21T19:19:10.784Z",
+      "durationMs": 36681
+    },
+    {
+      "stepNumber": 2,
+      "question": "Em uma escala de 0 a 10, como você avalia a quantidade e a qualidade das pausas para descanso durante o seu turno?",
+      "botStatement": "Compreendo a importância de termos momentos adequados de recuperação física e mental.",
+      "userAnswer": "Nota 2 de 10 (0 - Muito Ruim / Insuficiente a 10 - Excelente / Adequado)",
+      "widgetType": "slider_0_10",
+      "dimensionTarget": "trabalho_ativo_competencias",
+      "psychologicalAssessment": {
+        "openness_score": 4,
+        "fear_of_retaliation": 1,
+        "fatigue_level": 2,
+        "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+        "hidden_risk_flags": []
+      },
+      "aiObservation": "Etapa 2: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+      "timestamp": "2026-08-21T19:19:47.088Z",
+      "durationMs": 36152
+    },
+    {
+      "stepNumber": 3,
+      "question": "Nos últimos dias, como você tem percebido o tratamento e as atitudes da sua liderança direta?",
+      "botStatement": "Entendo perfeitamente o impacto desse ritmo no seu dia a dia.",
+      "userAnswer": "Outro: yh",
+      "widgetType": "choice_chips",
+      "dimensionTarget": "apoio_social_lideranca",
+      "psychologicalAssessment": {
+        "openness_score": 4,
+        "fear_of_retaliation": 1,
+        "fatigue_level": 2,
+        "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+        "hidden_risk_flags": []
+      },
+      "aiObservation": "Etapa 3: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+      "timestamp": "2026-08-21T19:20:08.369Z",
+      "durationMs": 21111
+    },
+    {
+      "stepNumber": 4,
+      "question": "Como a rotina de trabalho tem impactado o seu descanso e o convívio com a sua família quando chega em casa?",
+      "botStatement": "A qualidade do suporte da liderança é fundamental para um ambiente de trabalho saudável.",
+      "userAnswer": "🙂 Adequado (Nível 4/5)",
+      "widgetType": "emoji_scale",
+      "dimensionTarget": "dupla_presenca_familia",
+      "psychologicalAssessment": {
+        "openness_score": 4,
+        "fear_of_retaliation": 1,
+        "fatigue_level": 2,
+        "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+        "hidden_risk_flags": []
+      },
+      "aiObservation": "Etapa 4: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+      "timestamp": "2026-08-21T19:20:25.367Z",
+      "durationMs": 16893
+    },
+    {
+      "stepNumber": 5,
+      "question": "Nas últimas semanas, você presenciou ou sofreu alguma situação de assédio moral ou sexual no ambiente de trabalho?",
+      "botStatement": "Manter o equilíbrio entre o trabalho e a vida pessoal é essencial para a saúde.",
+      "userAnswer": "Não",
+      "widgetType": "binary_cards",
+      "dimensionTarget": "assedio_moral_sexual",
+      "psychologicalAssessment": {
+        "openness_score": 4,
+        "fear_of_retaliation": 1,
+        "fatigue_level": 2,
+        "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+        "hidden_risk_flags": []
+      },
+      "aiObservation": "Etapa 5: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+      "timestamp": "2026-08-21T19:20:41.764Z",
+      "durationMs": 16230
+    }
+  ],
+  "currentStepData": {
+    "bot_statement": "Agradeço imensamente por todas as informações compartilhadas com tanta franqueza.",
+    "next_question": "Para finalizar, que recomendação ou sugestão principal você daria para o RH e a diretoria melhorarem o bem-estar no seu setor?",
+    "ui_widget": "text_input",
+    "widget_options": {
+      "placeholder": "Escreva sua opinião com suas próprias palavras (ou use o microfone para falar)..."
+    },
+    "dimension_target": "compensacao_reconhecimento",
+    "psychological_assessment": {
+      "openness_score": 4,
+      "fear_of_retaliation": 1,
+      "fatigue_level": 2,
+      "subtext_detected": "Comunicação assertiva e colaborativa observada nas entrelinhas.",
+      "hidden_risk_flags": []
+    },
+    "ai_realtime_observation": "Etapa 6: Elicitação diagnóstica ISTAS21-BR conduzida com foco nos parâmetros normativos da NR-01.",
+    "is_interview_complete": true
+  },
+  "updatedAt": "2026-08-21T19:20:41.914Z"
+}
