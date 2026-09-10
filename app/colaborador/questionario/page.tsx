@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SurveyQuestion } from "@/types/database";
 import { authenticatedFetch } from "@/lib/api-client";
@@ -27,7 +27,7 @@ function getRiskLevel(score: number, total: number) {
   return { level: "Alto", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: "error", desc: "Indicadores sugerem estresse elevado. Recomendamos buscar apoio profissional." };
 }
 
-export default function QuestionarioPage() {
+function QuestionarioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const surveyId = searchParams.get("survey_id");
@@ -178,5 +178,19 @@ export default function QuestionarioPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function QuestionarioPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex flex-1 items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-[#3d1a6e]" />
+        </main>
+      }
+    >
+      <QuestionarioContent />
+    </Suspense>
   );
 }
