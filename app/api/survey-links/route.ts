@@ -1,108 +1,101 @@
-import { NextRequest, NextResponse } from "next/server";
-import { 
-  listSurveyLinks, 
-  saveSurveyLink, 
-  listSessions, 
-  listReports, 
-  logAuditAccess 
-} from "@/lib/ai/storage-mysql";
+﻿import { NextRequest } from "next/server";
+import { randomBytes } from "crypto";
+import {
+  admin,
+  body,
+  failure,
+  json,
+  HttpError,
+  textField,
+  rate,
+} from "@/lib/security";
+import { getPool, query } from "@/lib/db";
+import { PROTOCOL_VERSION } from "@/lib/ai/protocol";
 
-export async function GET(request: NextRequest) {
+export async function GET(r: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const adminId = searchParams.get("adminId") || undefined;
-
-    const [links, sessions, reports] = await Promise.all([
-      listSurveyLinks(adminId),
-      listSessions(),
-      listReports()
-    ]);
-
-    const linksWithStats = links.map((link) => {
-      const linkSessions = sessions.filter((s) => s.profile?.linkId === link.id || s.linkId === link.id);
-      const linkReports = reports.filter((r) => r.profile?.linkId === link.id || r.linkId === link.id);
-      return {
-        ...link,
-        totalSessions: linkSessions.length,
-        completedReports: linkReports.length,
-        lastResponseAt: linkSessions[0]?.createdAt || link.createdAt,
-      };
-    });
-
-    return NextResponse.json(linksWithStats);
-  } catch (err: any) {
-    console.error("Erro ao listar links de pesquisa:", err);
-    return NextResponse.json(
-      { error: "Erro ao listar links de pesquisa." },
-      { status: 500 }
+    const a = await admin(r);
+    const rows = await query(
+      `SELECT l.id, l.title, l.sector, l.role, l.batch_id, l.active, l.used, l.created_at,
+              b.title AS batch_title, b.sector AS batch_sector, b.color AS batch_color,
+              b.closed_at AS batch_closed
+       FROM survey_links l
+       LEFT JOIN management_batches b ON b.id = l.batch_id
+       WHERE l.admin_id = ?
+       ORDER BY l.created_at DESC`,
+      [a.userId],
     );
+    return json(
+      rows.map((l) => ({
+        id: l.id,
+        title: l.title,
+        sector: l.sector,
+        role: l.role,
+        batchId: l.batch_id,
+        batchTitle: l.batch_title,
+        batchSector: l.batch_sector,
+        batchColor: l.batch_color || "#6366f1",
+        active: !!l.active,
+        used: !!l.used,
+        createdAt: l.created_at,
+        batchClosed: !!l.batch_closed,
+      })),
+    );
+  } catch (e) {
+    return failure(e);
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(r: NextRequest) {
   try {
-    const body = await request.json();
-    const { title, sector, role, quantity, adminName, adminEmail, adminId } = body;
+    const a = await admin(r),
+      b = await body(r);
+    await rate("links:" + a.userId, 10, 3600);
+    const title = textField(b.title, 3, 120, "Titulo"),
+      sector = textField(b.sector || "Geral", 2, 100, "Setor"),
+      context = textField(b.context, 30, 4000, "Contexto");
+    const qty = Number(b.quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 200)
+      throw new HttpError(400, "Quantidade deve estar entre 1 e 200.");
+    const rawColor = typeof b.color === "string" ? b.color.trim() : "#6366f1";
+    const color = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : "#6366f1";
 
-    if (!title || !String(title).trim()) {
-      return NextResponse.json(
-        { error: "Título do link / campanha é obrigatório." },
-        { status: 400 }
+    const batchId = "bat_" + randomBytes(18).toString("base64url"),
+      c = await getPool().getConnection();
+    try {
+      await c.beginTransaction();
+      const [users]: any = await c.execute(
+        "SELECT max_colaboradores FROM users WHERE id=? FOR UPDATE",
+        [a.userId],
       );
+      const [counts]: any = await c.execute(
+        'SELECT COUNT(*) count FROM survey_links WHERE admin_id=? AND created_at>=DATE_FORMAT(NOW(), "%Y-%m-01")',
+        [a.userId],
+      );
+      if (Number(counts[0].count) + qty > Number(users[0].max_colaboradores))
+        throw new HttpError(403, "A quantidade excede a cota mensal de links do plano.");
+      await c.execute(
+        "INSERT INTO management_batches(id,admin_id,title,sector,context,protocol_version,color) VALUES (?,?,?,?,?,?,?)",
+        [batchId, a.userId, title, sector, context, PROTOCOL_VERSION, color],
+      );
+      const links = [];
+      for (let i = 0; i < qty; i++) {
+        const id = "lnk_" + randomBytes(24).toString("base64url");
+        await c.execute(
+          "INSERT INTO survey_links(id,title,sector,admin_id,batch_id) VALUES (?,?,?,?,?)",
+          [id, title, sector, a.userId, batchId],
+        );
+        links.push({ id, title, sector, batchId, batchColor: color, active: true, used: false });
+      }
+      await c.commit();
+      return json({ success: true, batchId, links, count: qty });
+    } catch (e) {
+      await c.rollback();
+      throw e;
+    } finally {
+      c.release();
     }
-
-    const qty = Math.max(1, Math.min(parseInt(quantity, 10) || 1, 200));
-    const batchId = qty > 1 ? `batch_${Math.random().toString(36).substring(2, 10)}` : null;
-    const cleanSector = sector || "all";
-    const cleanRole = role?.trim() || null;
-    const cleanAdminName = adminName?.trim() || "Gestor do Setor";
-    const cleanAdminEmail = adminEmail?.trim() || "";
-
-    const createdLinks = [];
-
-    for (let i = 0; i < qty; i++) {
-      const linkId = `lnk_${Math.random().toString(36).substring(2, 10)}`;
-      const linkTitle = qty > 1 
-        ? `${String(title).trim()} • #${i + 1}${cleanRole ? ` (${cleanRole})` : ""}`
-        : String(title).trim();
-
-      const newLink = {
-        id: linkId,
-        title: linkTitle,
-        sector: cleanSector,
-        role: cleanRole,
-        adminId: adminId || null,
-        adminName: cleanAdminName,
-        adminEmail: cleanAdminEmail,
-        batchId,
-        active: true,
-        used: false,
-      };
-
-      const saved = await saveSurveyLink(newLink);
-      createdLinks.push(saved);
-    }
-
-    await logAuditAccess({
-      action: qty > 1 ? "SURVEY_LINKS_BATCH_CREATED" : "SURVEY_LINK_CREATED",
-      targetId: batchId || createdLinks[0].id,
-      performedBy: cleanAdminName,
-      sector: cleanSector,
-      details: `${qty} link(s) de pesquisa gerado(s) para o setor "${cleanSector}"${cleanRole ? ` e cargo "${cleanRole}"` : ""}. Total: ${qty}.`,
-    });
-
-    return NextResponse.json({
-      success: true,
-      count: createdLinks.length,
-      batchId,
-      link: createdLinks[0],
-      links: createdLinks,
-    });
-  } catch (err: any) {
-    console.error("Erro ao criar link(s) de pesquisa:", err);
-    return NextResponse.json(
-      { error: "Erro ao criar link(s) de pesquisa." },
-      { status: 500 }
-    );
+  } catch (e) {
+    return failure(e);
   }
 }

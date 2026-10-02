@@ -1,61 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSurveyLink } from "@/lib/ai/storage-mysql";
-
+import { NextRequest } from "next/server";
+import { queryOne, initDatabase } from "@/lib/db";
+import { failure, json } from "@/lib/security";
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  r: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    const link = await getSurveyLink(id);
-
-    if (!link) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: "Link de pesquisa inexistente ou incorreto. Solicite o link oficial ao gestor da empresa.",
-        },
-        { status: 404 }
-      );
-    }
-
-    if (link.used === true) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: "Este link de pesquisa já foi utilizado e concluído. Cada link gerado pelo gestor é de uso único.",
-        },
-        { status: 403 }
-      );
-    }
-
-    if (link.active === false) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: "Este link de pesquisa foi pausado ou desativado pelo administrador do sistema.",
-        },
-        { status: 403 }
-      );
-    }
-
-    return NextResponse.json({
-      valid: true,
-      link: {
-        id: link.id,
-        title: link.title,
-        sector: link.sector,
-        role: link.role || null,
-        adminName: link.adminName,
-        createdAt: link.createdAt,
-        active: link.active,
-        used: Boolean(link.used),
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { valid: false, error: "Erro ao verificar link no servidor." },
-      { status: 500 }
+    await initDatabase();
+    const l = await queryOne(
+      "SELECT l.id,l.title,l.sector,l.active,l.used,b.closed_at FROM survey_links l JOIN management_batches b ON b.id=l.batch_id WHERE l.id=?",
+      [(await params).id],
     );
+    if (!l || !l.active || l.used || l.closed_at)
+      return json(
+        { error: "Link indisponível. Solicite uma campanha nova ao gestor." },
+        404,
+      );
+    return json({
+      valid: true,
+      link: { id: l.id, title: l.title, sector: l.sector },
+      privacyContact: process.env.PRIVACY_CONTACT || null,
+    });
+  } catch (e) {
+    return failure(e);
   }
 }

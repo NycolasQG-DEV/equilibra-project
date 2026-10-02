@@ -15,9 +15,16 @@ interface SurveyLinkData {
 }
 
 interface StepData {
+  step_id: string;
   bot_statement: string;
   next_question: string;
-  ui_widget: "binary_cards" | "text_input" | "slider_0_10" | "stars_rating" | "choice_chips" | "emoji_scale";
+  ui_widget:
+    | "binary_cards"
+    | "text_input"
+    | "slider_0_10"
+    | "stars_rating"
+    | "choice_chips"
+    | "emoji_scale";
   widget_options?: {
     placeholder?: string;
     min_label?: string;
@@ -46,14 +53,19 @@ export default function ColaboradorPageWrapper() {
 
 function ColaboradorContent() {
   const searchParams = useSearchParams();
-  const linkParam = searchParams.get("link") || searchParams.get("linkId") || searchParams.get("campaign");
+  const linkParam =
+    searchParams.get("link") ||
+    searchParams.get("linkId") ||
+    searchParams.get("campaign");
 
   const [loading, setLoading] = useState(true);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkData, setLinkData] = useState<SurveyLinkData | null>(null);
 
   // App View State: "invalid_link" | "onboarding" | "interview" | "completed"
-  const [view, setView] = useState<"invalid_link" | "onboarding" | "interview" | "completed">("onboarding");
+  const [view, setView] = useState<
+    "invalid_link" | "onboarding" | "interview" | "completed"
+  >("onboarding");
 
   // Onboarding Wizard Form
   const [workerName, setWorkerName] = useState("");
@@ -62,14 +74,17 @@ function ColaboradorContent() {
   const [sector, setSector] = useState("Produção Geral");
   const [shift, setShift] = useState("1º Turno (Manhã)");
   const [companyTime, setCompanyTime] = useState("6 meses a 2 anos");
-  const [lgpdConsent, setLgpdConsent] = useState(true);
+  const [lgpdConsent, setLgpdConsent] = useState(false);
+  const [voiceConsent, setVoiceConsent] = useState(false);
+  const [readyToFinish, setReadyToFinish] = useState(false);
+  const submittingRef = useRef(false);
 
   // Interview state
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<StepData | null>(null);
   const [stepNumber, setStepNumber] = useState(1);
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
+  const [isTtsEnabled, setIsTtsEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Sequential Dialog State
@@ -101,7 +116,7 @@ function ColaboradorContent() {
     async function verify() {
       if (!linkParam) {
         setLinkError(
-          "Nenhum link de pesquisa foi informado na URL. O acesso a esta avaliação exige um link exclusivo e ativo gerado pelo Administrador / SESMT da sua empresa."
+          "Nenhum link de pesquisa foi informado na URL. O acesso a esta avaliação exige um link exclusivo e ativo gerado pelo Administrador / SESMT da sua empresa.",
         );
         setView("invalid_link");
         setLoading(false);
@@ -109,16 +124,33 @@ function ColaboradorContent() {
       }
 
       try {
-        const res = await fetch(`/api/survey-links/verify/${encodeURIComponent(linkParam)}`);
+        const saved = localStorage.getItem("eq_session_" + linkParam);
+        if (saved) {
+          const response = await fetch("/api/sessions/" + saved);
+          if (response.ok) {
+            const session = await response.json();
+            setSessionId(session.id);
+            setCurrentStep(session.currentStepData);
+            setReadyToFinish(session.status === "ready_for_report");
+            setView(session.status === "completed" ? "completed" : "interview");
+            setStepNumber((session.history?.length || 0) + 1);
+            return;
+          }
+        }
+        const res = await fetch(
+          `/api/survey-links/verify/${encodeURIComponent(linkParam)}`,
+        );
         const data = await res.json();
 
         if (!res.ok || !data.valid) {
           setLinkError(
-            data.error || "Link de pesquisa inválido, expirado ou pausado pelo gestor da empresa."
+            data.error ||
+              "Link de pesquisa inválido, expirado ou pausado pelo gestor da empresa.",
           );
           setView("invalid_link");
         } else {
           setLinkData(data.link);
+          setDpoInfo({ email: data.privacyContact });
           if (data.link.sector && data.link.sector !== "all") {
             setSector(data.link.sector);
           }
@@ -128,7 +160,9 @@ function ColaboradorContent() {
           setView("onboarding");
         }
       } catch (err) {
-        setLinkError("Erro de comunicação com o servidor ao validar o link de pesquisa.");
+        setLinkError(
+          "Erro de comunicação com o servidor ao validar o link de pesquisa.",
+        );
         setView("invalid_link");
       } finally {
         setLoading(false);
@@ -157,7 +191,7 @@ function ColaboradorContent() {
             currentTranscript += event.results[i][0].transcript;
           }
           if (currentTranscript.trim()) {
-            setTextAnswer(currentTranscript);
+            setTextAnswer(currentTranscript.slice(0, 2000));
           }
         };
 
@@ -193,17 +227,31 @@ function ColaboradorContent() {
   }
 
   function getBestPtVoice(): SpeechSynthesisVoice | null {
-    if (typeof window !== "undefined" || !("speechSynthesis" in window)) {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const voices = window.speechSynthesis.getVoices() || [];
       if (voices.length === 0) return null;
 
       const ptBrVoices = voices.filter(
-        (v) => v.lang && (v.lang === "pt-BR" || v.lang === "pt_BR" || v.lang.toLowerCase().replace("_", "-").includes("pt-br"))
+        (v) =>
+          v.lang &&
+          (v.lang === "pt-BR" ||
+            v.lang === "pt_BR" ||
+            v.lang.toLowerCase().replace("_", "-").includes("pt-br")),
       );
 
       const femaleKeywords = [
-        "francisca", "thalita", "maria", "leticia", "luciana", "yeda", "fernanda",
-        "google português do brasil", "female", "mulher", "natural", "neural"
+        "francisca",
+        "thalita",
+        "maria",
+        "leticia",
+        "luciana",
+        "yeda",
+        "fernanda",
+        "google português do brasil",
+        "female",
+        "mulher",
+        "natural",
+        "neural",
       ];
 
       for (const kw of femaleKeywords) {
@@ -212,7 +260,9 @@ function ColaboradorContent() {
       }
 
       if (ptBrVoices.length > 0) return ptBrVoices[0];
-      const anyPt = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
+      const anyPt = voices.find(
+        (v) => v.lang && v.lang.toLowerCase().startsWith("pt"),
+      );
       return anyPt || null;
     }
     return null;
@@ -233,7 +283,8 @@ function ColaboradorContent() {
   function playAudioChime(type: "pop" | "select" | "success" | "appear") {
     if (typeof window === "undefined") return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       if (ctx.state === "suspended") ctx.resume();
@@ -285,9 +336,13 @@ function ColaboradorContent() {
   }
 
   // ─── Sincronia Fluida: Microsoft Edge Neural Voice AI (Voz Feminina Natural e Clara) com Fallback Nativo ───
-  async function speakAndTypeSentence(text: string, token: number, isTts: boolean): Promise<boolean> {
+  async function speakAndTypeSentence(
+    text: string,
+    token: number,
+    isTts: boolean,
+  ): Promise<boolean> {
     if (token !== currentTokenRef.current) return false;
-    
+
     setIsFadingOut(false);
     setActiveDisplayText("");
     setIsTypingActive(false);
@@ -315,7 +370,10 @@ function ColaboradorContent() {
             activeAudioRef.current.pause();
             activeAudioRef.current = null;
           }
-          if ("speechSynthesis" in window && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+          if (
+            "speechSynthesis" in window &&
+            (window.speechSynthesis.speaking || window.speechSynthesis.pending)
+          ) {
             window.speechSynthesis.cancel();
           }
 
@@ -323,7 +381,7 @@ function ColaboradorContent() {
           const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: naturalText }),
+            body: JSON.stringify({ text: naturalText, sessionId }),
           });
 
           if (res.ok) {
@@ -425,7 +483,10 @@ function ColaboradorContent() {
             }, 260);
 
             keepAliveInterval = setInterval(() => {
-              if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
+              if (
+                "speechSynthesis" in window &&
+                window.speechSynthesis.speaking
+              ) {
                 window.speechSynthesis.pause();
                 window.speechSynthesis.resume();
               }
@@ -433,7 +494,8 @@ function ColaboradorContent() {
 
             try {
               window.speechSynthesis.speak(utterance);
-              if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+              if (window.speechSynthesis.paused)
+                window.speechSynthesis.resume();
             } catch {
               handleStart();
               handleEnd();
@@ -462,8 +524,10 @@ function ColaboradorContent() {
       return false;
     }
 
-    // 2. DIGITAÇÃO FLUIDA (-20% de velocidade: 52ms base)
+    // A escrita progressiva faz parte da conversa, inclusive sem narração.
     const baseSpeed = 52;
+    setIsAiTyping(false);
+    setIsTypingActive(true);
     let currentStr = "";
 
     for (let i = 0; i < text.length; i++) {
@@ -492,7 +556,8 @@ function ColaboradorContent() {
       if (delay < 28) delay = 28;
 
       if ([".", "!", "?"].includes(char)) {
-        delay = nextChar !== "." && nextChar !== "!" && nextChar !== "?" ? 280 : 120;
+        delay =
+          nextChar !== "." && nextChar !== "!" && nextChar !== "?" ? 280 : 120;
       } else if ([",", ";", ":", "—", "-"].includes(char)) {
         delay = 170;
       } else if (char === " " && [",", ".", "!", "?", ";"].includes(prevChar)) {
@@ -514,7 +579,10 @@ function ColaboradorContent() {
   }
 
   // ─── Transição de Apagamento Quase Instantâneo (120ms) ───
-  async function fadeOutCurrentText(token: number, durationMs: number = 120): Promise<boolean> {
+  async function fadeOutCurrentText(
+    token: number,
+    durationMs: number = 120,
+  ): Promise<boolean> {
     if (token !== currentTokenRef.current) return false;
     setIsFadingOut(true);
     await sleep(durationMs);
@@ -538,7 +606,10 @@ function ColaboradorContent() {
       if (!currentStep) return;
 
       const statement = (currentStep.bot_statement || "").trim();
-      const hasStatement = statement.length > 0 && statement.toLowerCase() !== "null" && statement.toLowerCase() !== "undefined";
+      const hasStatement =
+        statement.length > 0 &&
+        statement.toLowerCase() !== "null" &&
+        statement.toLowerCase() !== "undefined";
 
       // 1. Apresentação do diálogo / comentário (se houver e for relevante)
       if (hasStatement) {
@@ -549,7 +620,11 @@ function ColaboradorContent() {
           const sentence = sentences[i];
 
           // Fala e digita em sincronia
-          const finished = await speakAndTypeSentence(sentence, myToken, isTtsEnabled);
+          const finished = await speakAndTypeSentence(
+            sentence,
+            myToken,
+            isTtsEnabled,
+          );
           if (!finished || myToken !== currentTokenRef.current) return;
 
           // 🛑 TEMPO DE TRANSIÇÃO ÁGIL: Entre 400ms e 600ms (média 500ms) após o áudio terminar
@@ -566,8 +641,13 @@ function ColaboradorContent() {
 
       // 2. Apresentação da pergunta principal (direta e fluida)
       setIsQuestionPhase(true);
-      const questionText = currentStep.next_question || "Como você avalia este ponto?";
-      const finishedQuestion = await speakAndTypeSentence(questionText, myToken, isTtsEnabled);
+      const questionText =
+        currentStep.next_question || "Como você avalia este ponto?";
+      const finishedQuestion = await speakAndTypeSentence(
+        questionText,
+        myToken,
+        isTtsEnabled,
+      );
       if (!finishedQuestion || myToken !== currentTokenRef.current) return;
 
       // 3. Libera os widgets interativos com transição rápida
@@ -593,7 +673,9 @@ function ColaboradorContent() {
   // ─── 4. Iniciar Sessão ───
   const handleStartSession = async () => {
     if (!lgpdConsent) {
-      alert("É necessário aceitar os termos de consentimento e sigilo para iniciar a avaliação.");
+      alert(
+        "É necessário aceitar os termos de consentimento e sigilo para iniciar a avaliação.",
+      );
       return;
     }
 
@@ -603,11 +685,7 @@ function ColaboradorContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          workerName: "Colaborador Anônimo",
-          workerRole,
-          sector,
-          shift,
-          companyTime,
+          voiceConsent,
           consentGiven: lgpdConsent,
           linkId: linkParam,
         }),
@@ -619,6 +697,7 @@ function ColaboradorContent() {
         return;
       }
 
+      localStorage.setItem("eq_session_" + linkParam, data.sessionId);
       setSessionId(data.sessionId);
       setCurrentStep(data.session.currentStepData);
       setStepNumber(1);
@@ -631,8 +710,13 @@ function ColaboradorContent() {
   };
 
   // ─── 5. Enviar Resposta e Avançar com IA com Animação de Saída ───
-  const handleSubmitAnswer = async (answerValue: string, widgetUsed: string) => {
-    if (!answerValue || !sessionId) return;
+  const handleSubmitAnswer = async (
+    answerValue: string,
+    widgetUsed: string,
+  ) => {
+    if (!answerValue || !sessionId || submittingRef.current) return;
+    submittingRef.current = true;
+    recognitionRef.current?.stop();
 
     // 🛑 Animação de Saída Fluida dos Elementos do Quiz
     setIsWidgetExiting(true);
@@ -650,6 +734,7 @@ function ColaboradorContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          stepId: currentStep?.step_id,
           userAnswer: answerValue,
           widgetType: widgetUsed,
         }),
@@ -659,18 +744,25 @@ function ColaboradorContent() {
       if (!res.ok) {
         alert(data.error || "Erro ao registrar resposta.");
         setIsAiTyping(false);
+        setShowWidgets(true);
         return;
       }
 
       if (data.isCompleted) {
+        setReadyToFinish(true);
         await handleFinishSession(sessionId);
       } else {
         setCurrentStep(data.nextStep);
         setStepNumber((prev) => prev + 1);
       }
     } catch (err) {
-      alert("Erro ao enviar resposta à IA.");
+      setShowWidgets(true);
+      setTextAnswer(answerValue);
+      alert(
+        "Não foi possível confirmar o envio. Recarregue para recuperar a pergunta salva.",
+      );
     } finally {
+      submittingRef.current = false;
       setIsAiTyping(false);
     }
   };
@@ -683,18 +775,18 @@ function ColaboradorContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        console.error("Erro ao gerar relatório:", data.error);
+        alert(data.error || "Não foi possível concluir. Tente novamente.");
+        return;
       }
       setView("completed");
     } catch (err) {
-      console.error("Erro ao concluir sessão:", err);
-      setView("completed");
+      alert("Não foi possível confirmar a conclusão. Tente novamente.");
     }
   };
 
   // ─── 7. Toggle Gravação de Voz ───
   const toggleVoiceRecording = () => {
-    if (!recognitionRef.current) return;
+    if (!voiceConsent || !recognitionRef.current) return;
     if (isRecording) {
       recognitionRef.current.stop();
       setIsRecording(false);
@@ -713,7 +805,9 @@ function ColaboradorContent() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d0a17] text-white font-['Montserrat',sans-serif]">
         <div className="h-14 w-14 animate-spin rounded-full border-4 border-purple-900 border-t-purple-400" />
-        <p className="mt-5 text-lg font-semibold text-purple-200">Validando link de pesquisa...</p>
+        <p className="mt-5 text-lg font-semibold text-purple-200">
+          Validando link de pesquisa...
+        </p>
       </div>
     );
   }
@@ -721,7 +815,7 @@ function ColaboradorContent() {
   // ─── Render: Link Inválido ou Ausente ───
   if (view === "invalid_link") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0d0a17] via-[#160e29] to-[#0d0a17] p-6 flex flex-col items-center justify-center font-['Montserrat',sans-serif] text-white">
+      <div className="min-h-screen overflow-x-clip bg-gradient-to-b from-[#0d0a17] via-[#160e29] to-[#0d0a17] p-6 flex flex-col items-center justify-center font-['Montserrat',sans-serif] text-white">
         <div className="w-full max-w-xl rounded-3xl border border-purple-500/20 bg-[#160e29]/90 p-10 text-center shadow-2xl backdrop-blur-2xl">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/15 text-red-400 text-3xl">
             <i className="fa-solid fa-link-slash"></i>
@@ -730,13 +824,16 @@ function ColaboradorContent() {
             Link de Pesquisa Necessário
           </h1>
           <p className="text-base text-purple-200/80 mb-8 leading-relaxed">
-            {linkError || "Para responder à avaliação do seu setor, utilize o link exclusivo fornecido pelo RH ou gestor da sua equipe."}
+            {linkError ||
+              "Para responder à avaliação do seu setor, utilize o link exclusivo fornecido pelo RH ou gestor da sua equipe."}
           </p>
           <div className="rounded-2xl border border-purple-500/20 bg-purple-950/40 p-5 text-left text-sm leading-relaxed text-purple-200/90">
             <strong className="text-white flex items-center gap-2 mb-1.5 text-base">
-              <i className="fa-solid fa-circle-info text-purple-400"></i> Como participar:
+              <i className="fa-solid fa-circle-info text-purple-400"></i> Como
+              participar:
             </strong>
-            Solicite o link de acesso ao supervisor ou responsável de segurança da sua área.
+            Solicite o link de acesso ao supervisor ou responsável de segurança
+            da sua área.
           </div>
         </div>
       </div>
@@ -746,9 +843,8 @@ function ColaboradorContent() {
   // ─── Render: Onboarding (Design Limpo, Humano, Elegante e Sem Poluição Visual) ───
   if (view === "onboarding") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0d0a17] via-[#140e26] to-[#0d0a17] py-6 px-4 text-white flex flex-col items-center justify-center font-['Montserrat',sans-serif]">
+      <div className="min-h-screen overflow-x-clip bg-gradient-to-b from-[#0d0a17] via-[#140e26] to-[#0d0a17] py-6 px-4 text-white flex flex-col items-center justify-center font-['Montserrat',sans-serif]">
         <div className="w-full max-w-xl">
-          
           {/* Header Superior: Apenas controle de áudio discreto à direita */}
           <header className="flex items-center justify-end mb-4 px-1">
             <button
@@ -761,76 +857,74 @@ function ColaboradorContent() {
               }`}
               title="Áudio da pesquisa ativado/desativado"
             >
-              <i className={`fa-solid ${isTtsEnabled ? "fa-volume-high" : "fa-volume-xmark"} text-xs`}></i>
+              <i
+                className={`fa-solid ${isTtsEnabled ? "fa-volume-high" : "fa-volume-xmark"} text-xs`}
+              ></i>
             </button>
           </header>
 
           {/* Card Principal: Clean, Direto, Sóbrio e Profissional */}
           <main className="relative rounded-xl border border-purple-500/20 bg-[#160e29]/95 p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
-            
             {/* Título & Propósito */}
             <div className="mb-5">
               <h1 className="text-xl font-bold text-white mb-1.5 tracking-tight">
                 Avaliação de Rotina e Bem-Estar
               </h1>
               <p className="text-xs sm:text-sm text-purple-200/70 leading-relaxed">
-                Suas respostas são 100% confidenciais e ajudam a construir um ambiente de trabalho mais seguro e equilibrado.
+                Converse sobre as condições do seu trabalho. O gestor recebe
+                indicadores coletivos e não tem acesso à conversa individual
+                nesta interface.
               </p>
             </div>
 
             {/* Dados do Setor & Cargo */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="rounded-lg border border-purple-500/15 bg-purple-950/30 p-3">
-                <span className="text-[11px] font-medium text-purple-300/60 block mb-0.5">Setor</span>
+                <span className="text-[11px] font-medium text-purple-300/60 block mb-0.5">
+                  Setor
+                </span>
                 <span className="text-sm font-semibold text-white truncate block">
                   {sector === "all" ? "Geral da Empresa" : sector}
                 </span>
               </div>
 
               <div className="rounded-lg border border-purple-500/15 bg-purple-950/30 p-3">
-                <span className="text-[11px] font-medium text-purple-300/60 block mb-0.5">Cargo</span>
+                <span className="text-[11px] font-medium text-purple-300/60 block mb-0.5">
+                  Referência das respostas
+                </span>
                 <span className="text-sm font-semibold text-white truncate block">
-                  {workerRole || "Operacional"}
+                  Últimas duas semanas
                 </span>
               </div>
             </div>
 
-            {/* Turno e Tempo de Empresa */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-              <div>
-                <label className="block text-xs font-medium text-purple-200/80 mb-1.5">
-                  Seu Turno
-                </label>
-                <select
-                  value={shift}
-                  onChange={(e) => setShift(e.target.value)}
-                  className="w-full rounded-lg border border-purple-500/20 bg-[#120b22] px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none transition-colors"
-                >
-                  <option value="1º Turno (Manhã)">1º Turno (Manhã)</option>
-                  <option value="2º Turno (Tarde)">2º Turno (Tarde)</option>
-                  <option value="3º Turno (Noturno)">3º Turno (Noturno)</option>
-                  <option value="Comercial / Geral">Comercial / Geral</option>
-                  <option value="Escala 12x36">Escala 12x36</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-purple-200/80 mb-1.5">
-                  Tempo na Empresa
-                </label>
-                <select
-                  value={companyTime}
-                  onChange={(e) => setCompanyTime(e.target.value)}
-                  className="w-full rounded-lg border border-purple-500/20 bg-[#120b22] px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none transition-colors"
-                >
-                  <option value="Menos de 6 meses">Menos de 6 meses</option>
-                  <option value="6 meses a 2 anos">6 meses a 2 anos</option>
-                  <option value="2 a 5 anos">2 a 5 anos</option>
-                  <option value="Mais de 5 anos">Mais de 5 anos</option>
-                </select>
-              </div>
+            <div className="space-y-3 mb-5 rounded-lg border border-purple-500/15 bg-purple-950/25 p-3 text-xs leading-relaxed text-purple-200/80">
+              <p>
+                Sete temas sobre as últimas duas semanas. Comentários são
+                opcionais e você pode pular perguntas. Não inclua nomes ou
+                diagnósticos.
+              </p>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={voiceConsent}
+                  onChange={(e) => setVoiceConsent(e.target.checked)}
+                  className="mt-1 accent-purple-500"
+                />
+                Permitir ditado opcional. O navegador pode enviar áudio ao
+                fornecedor para transcrição; você revisa antes de enviar.
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={isTtsEnabled}
+                  onChange={(e) => setIsTtsEnabled(e.target.checked)}
+                  className="mt-1 accent-purple-500"
+                />
+                Ouvir as perguntas. A narração pode usar um serviço de voz
+                externo.
+              </label>
             </div>
-
             {/* Consentimento & Termos */}
             <div className="mb-5 flex items-start gap-3 rounded-lg border border-purple-500/15 bg-purple-950/25 p-3">
               <input
@@ -846,8 +940,11 @@ function ColaboradorContent() {
                 }}
                 className="mt-0.5 h-4 w-4 rounded border-purple-400 bg-purple-950 text-purple-600 focus:ring-0 cursor-pointer accent-purple-600"
               />
-              <label htmlFor="privacy-consent-check" className="text-xs text-purple-200/80 cursor-pointer leading-relaxed">
-                Concordo com a participação anônima e os{" "}
+              <label
+                htmlFor="privacy-consent-check"
+                className="text-xs text-purple-200/80 cursor-pointer leading-relaxed"
+              >
+                Quero participar da pesquisa e li os{" "}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -888,7 +985,9 @@ function ColaboradorContent() {
               <div className="flex items-center justify-between border-b border-purple-500/20 pb-3.5">
                 <div className="flex items-center gap-2">
                   <i className="fa-solid fa-shield-halved text-purple-400"></i>
-                  <h3 className="font-bold text-white text-base">Termos de Privacidade e Proteção de Dados</h3>
+                  <h3 className="font-bold text-white text-base">
+                    Termos de Privacidade e Proteção de Dados
+                  </h3>
                 </div>
                 <button
                   type="button"
@@ -901,30 +1000,52 @@ function ColaboradorContent() {
 
               <div className="mt-4 space-y-3.5 text-xs sm:text-sm leading-relaxed text-purple-200/90">
                 <div className="rounded-xl bg-purple-950/40 p-3.5 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1">1. Fundamentação Legal e Finalidade</p>
+                  <p className="font-semibold text-white mb-1">
+                    1. Finalidade da pesquisa
+                  </p>
                   <p>
-                    Esta avaliação é realizada estritamente para fins de gestão de riscos ocupacionais e ergonomia psicossocial, atendendo às diretrizes da <strong>Norma Regulamentadora nº 1 (NR-01 - GRO/PGR)</strong> do Ministério do Trabalho e Emprego.
+                    As respostas serão armazenadas para analisar condições de
+                    trabalho e orientar melhorias. Este instrumento próprio de
+                    percepção apoia a gestão de riscos e não certifica
+                    conformidade com a NR-1.
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-purple-950/40 p-3.5 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1">2. Conformidade com a LGPD (Lei nº 13.709/2018)</p>
+                  <p className="font-semibold text-white mb-1">
+                    2. Como os dados são usados
+                  </p>
                   <p>
-                    O tratamento dos dados apoia-se no <strong>Art. 7º, inciso II</strong> (cumprimento de obrigação legal e regulatória) e no <strong>Art. 11, inciso II, alínea "f"</strong> (tutela da saúde ocupacional).
+                    A IA escolhe perguntas de aprofundamento aprovadas. O
+                    contexto da empresa e sua escolha de frequência podem ser
+                    enviados ao Groq. Comentários livres não são enviados ao
+                    modelo nem disponibilizados ao gestor nesta versão. Consulte
+                    a organização sobre retenção e exercício dos seus direitos.
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-purple-950/40 p-3.5 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1">3. Sigilo e Anonimato Absoluto</p>
+                  <p className="font-semibold text-white mb-1">
+                    3. Privacidade e limites
+                  </p>
                   <p>
-                    Suas respostas são processadas de forma agregada e pseudonimizada pelo motor de inteligência artificial. A diretoria ou chefia imediata <strong>não possui acesso a respostas nominais individuais</strong>.
+                    O gestor recebe agregados após o encerramento, com pelo
+                    menos 10 respostas válidas por tema e proteção de contagens
+                    pequenas. Quem distribuiu o convite pode saber a quem o
+                    enviou: não prometemos anonimato absoluto. Você pode recusar
+                    perguntas.
                   </p>
                 </div>
 
                 <div className="text-[11px] text-purple-300/70 pt-0.5">
                   <strong>Encarregado de Dados (DPO):</strong>{" "}
-                  {dpoInfo?.name || "Comitê de Privacidade • Equilibra SST"} (
-                  <span className="font-mono text-purple-300">{dpoInfo?.email || "dpo.privacidade@equilibra-sst.corp.br"}</span>)
+                  {dpoInfo?.name || "Responsável pela pesquisa na organização"}{" "}
+                  (
+                  <span className="font-mono text-purple-300">
+                    {dpoInfo?.email ||
+                      "Contato ainda não configurado; consulte a organização"}
+                  </span>
+                  )
                 </div>
               </div>
 
@@ -958,9 +1079,8 @@ function ColaboradorContent() {
   // ─── Render: Interview (Tema Roxo, Tamanho Ampliado & Sem Poluição Visual) ───
   if (view === "interview") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0d0a17] via-[#140e26] to-[#0d0a17] py-10 px-4 sm:px-6 text-white flex flex-col items-center justify-center font-['Montserrat',sans-serif]">
+      <div className="min-h-screen overflow-x-clip bg-gradient-to-b from-[#0d0a17] via-[#140e26] to-[#0d0a17] py-10 px-4 sm:px-6 text-white flex flex-col items-center justify-center font-['Montserrat',sans-serif]">
         <div className="w-full max-w-4xl">
-          
           {/* Top Header: Controle de áudio discreto à direita */}
           <header className="flex items-center justify-end mb-6 px-1">
             <button
@@ -970,7 +1090,11 @@ function ColaboradorContent() {
                   activeAudioRef.current.pause();
                   activeAudioRef.current = null;
                 }
-                if (isSpeaking && typeof window !== "undefined" && "speechSynthesis" in window) {
+                if (
+                  isSpeaking &&
+                  typeof window !== "undefined" &&
+                  "speechSynthesis" in window
+                ) {
                   window.speechSynthesis.cancel();
                   setIsSpeaking(false);
                 }
@@ -981,21 +1105,30 @@ function ColaboradorContent() {
                   ? "border-purple-400/40 bg-purple-600/25 text-purple-300 shadow-sm shadow-purple-950/40"
                   : "border-purple-500/20 bg-purple-950/40 text-purple-400/50 hover:text-white"
               }`}
-              title={isTtsEnabled ? "Desativar áudio da assistente" : "Ativar áudio da assistente"}
+              title={
+                isTtsEnabled
+                  ? "Desativar áudio da assistente"
+                  : "Ativar áudio da assistente"
+              }
             >
-              <i className={`fa-solid ${isTtsEnabled ? "fa-volume-high" : "fa-volume-xmark"} text-sm`}></i>
+              <i
+                className={`fa-solid ${isTtsEnabled ? "fa-volume-high" : "fa-volume-xmark"} text-sm`}
+              ></i>
             </button>
           </header>
 
           {/* Cartão Imersivo Roxo */}
-          <main className={`relative rounded-3xl border bg-[#160e29]/95 p-8 sm:p-14 backdrop-blur-2xl transition-all duration-300 ${
-            isSpeaking
-              ? "border-purple-400/80 shadow-[0_0_70px_15px_rgba(168,85,247,0.35),0_0_130px_30px_rgba(126,34,206,0.25)]"
-              : "border-purple-500/20 shadow-2xl"
-          }`}>
-            
+          <main
+            className={`relative rounded-3xl border bg-[#160e29]/95 p-8 sm:p-14 backdrop-blur-2xl transition-all duration-300 ${
+              isSpeaking
+                ? "border-purple-400/80 shadow-[0_0_70px_15px_rgba(168,85,247,0.35),0_0_130px_30px_rgba(126,34,206,0.25)]"
+                : "border-purple-500/20 shadow-2xl"
+            }`}
+          >
             {/* Aura Luminosa Roxa */}
-            <div className={`absolute -inset-[40px] -z-10 pointer-events-none overflow-visible rounded-3xl transition-opacity duration-500 ${isSpeaking ? "opacity-95" : "opacity-35"}`}>
+            <div
+              className={`absolute -inset-[40px] -z-10 pointer-events-none overflow-visible rounded-3xl transition-opacity duration-500 ${isSpeaking ? "opacity-95" : "opacity-35"}`}
+            >
               <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_50%_40%,rgba(168,85,247,0.5)_0%,rgba(126,34,206,0.3)_45%,transparent_75%)] blur-[55px] animate-aura-primary" />
               <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_50%_60%,rgba(147,51,234,0.4)_0%,rgba(88,28,135,0.2)_50%,transparent_80%)] blur-[90px] animate-aura-secondary" />
               <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(ellipse_at_50%_50%,rgba(168,85,247,0.25)_0%,rgba(126,34,206,0.12)_55%,transparent_85%)] blur-[120px]" />
@@ -1008,7 +1141,10 @@ function ColaboradorContent() {
                   <div className={isFadingOut ? "animate-text-fade-out" : ""}>
                     <span>
                       {activeDisplayText.split("").map((ch, idx) => (
-                        <span key={idx} className={ch === " " ? undefined : "char-pop"}>
+                        <span
+                          key={idx}
+                          className={ch === " " ? undefined : "char-pop"}
+                        >
                           {ch}
                         </span>
                       ))}
@@ -1020,16 +1156,34 @@ function ColaboradorContent() {
                 ) : isAiTyping ? (
                   <span className="inline-flex items-center gap-3 py-2 text-purple-300">
                     <span className="flex gap-2">
-                      <span className="h-3 w-3 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="h-3 w-3 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="h-3 w-3 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <span
+                        className="h-3 w-3 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="h-3 w-3 rounded-full bg-purple-400 animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
                     </span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 text-purple-400/40">
-                    <span className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-purple-400/60 animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </span>
                 )}
               </h2>
@@ -1037,8 +1191,9 @@ function ColaboradorContent() {
 
             {/* ─── Widgets Dinâmicos com Animação de Entrada e Saída (Motion) e Sons Nativos ─── */}
             {!isAiTyping && showWidgets && currentStep && (
-              <div className={`mt-8 ${isWidgetExiting ? "motion-exit" : "motion-enter"}`}>
-                
+              <div
+                className={`mt-8 ${isWidgetExiting ? "motion-exit" : "motion-enter"}`}
+              >
                 {/* 1. BINARY_CARDS */}
                 {currentStep.ui_widget === "binary_cards" && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1047,12 +1202,17 @@ function ColaboradorContent() {
                       style={{ animationDelay: "40ms" }}
                       onClick={() => {
                         playAudioChime("select");
-                        handleSubmitAnswer(currentStep.widget_options?.card_left?.label || "Sim", "binary_cards");
+                        handleSubmitAnswer(
+                          currentStep.widget_options?.card_left?.label || "Sim",
+                          "binary_cards",
+                        );
                       }}
                       className="cascade-item-pop group flex flex-col items-center justify-center rounded-xl border border-purple-500/20 bg-purple-950/30 p-7 text-center shadow-lg transition-all hover:scale-[1.01] hover:border-purple-400 hover:bg-purple-900/25 active:scale-95"
                     >
                       <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-purple-600/20 text-purple-300 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                        <i className={`fa-solid ${currentStep.widget_options?.card_left?.icon === "chat" ? "fa-comments" : "fa-check"} text-xl`}></i>
+                        <i
+                          className={`fa-solid ${currentStep.widget_options?.card_left?.icon === "chat" ? "fa-comments" : "fa-check"} text-xl`}
+                        ></i>
                       </div>
                       <span className="mt-3.5 text-lg font-bold text-white">
                         {currentStep.widget_options?.card_left?.label || "Sim"}
@@ -1064,12 +1224,18 @@ function ColaboradorContent() {
                       style={{ animationDelay: "100ms" }}
                       onClick={() => {
                         playAudioChime("select");
-                        handleSubmitAnswer(currentStep.widget_options?.card_right?.label || "Não", "binary_cards");
+                        handleSubmitAnswer(
+                          currentStep.widget_options?.card_right?.label ||
+                            "Não",
+                          "binary_cards",
+                        );
                       }}
                       className="cascade-item-pop group flex flex-col items-center justify-center rounded-xl border border-purple-500/20 bg-purple-950/30 p-7 text-center shadow-lg transition-all hover:scale-[1.01] hover:border-purple-400 hover:bg-purple-900/25 active:scale-95"
                     >
                       <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-purple-600/20 text-purple-300 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                        <i className={`fa-solid ${currentStep.widget_options?.card_right?.icon === "arrow_forward" ? "fa-arrow-right" : "fa-xmark"} text-xl`}></i>
+                        <i
+                          className={`fa-solid ${currentStep.widget_options?.card_right?.icon === "arrow_forward" ? "fa-arrow-right" : "fa-xmark"} text-xl`}
+                        ></i>
                       </div>
                       <span className="mt-3.5 text-lg font-bold text-white">
                         {currentStep.widget_options?.card_right?.label || "Não"}
@@ -1078,122 +1244,62 @@ function ColaboradorContent() {
                   </div>
                 )}
 
-                {/* 2. CHOICE_CHIPS (Opções contextualizadas com centralização proporcional do último item ímpar) */}
+                {/* Escolhas alinhadas; respostas opcionais ficam em uma faixa separada. */}
                 {currentStep.ui_widget === "choice_chips" && (() => {
-                  const choices = currentStep.widget_options?.choices || [
-                    "Não tem impactado",
-                    "Sinto um pouco de cansaço",
-                    "Chego sem energia para a família",
-                    "Impacta muito meu descanso",
-                    "Outro",
-                  ];
-                  const isOddTotal = choices.length % 2 !== 0;
-
-                  return (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {choices.map((choice: string, idx: number) => {
-                          const isLastOdd = isOddTotal && idx === choices.length - 1;
-
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              style={{ animationDelay: `${(idx + 1) * 60}ms` }}
-                              onClick={() => {
-                                playAudioChime("pop");
-                                setSelectedChip(choice);
-                              }}
-                              className={`cascade-item-pop relative rounded-xl border p-4 sm:p-5 text-center text-sm sm:text-base font-semibold transition-all flex items-center justify-center ${
-                                isLastOdd ? "sm:col-span-2 sm:max-w-md sm:mx-auto w-full" : "w-full"
-                              } ${
-                                selectedChip === choice
-                                  ? "border-purple-400 bg-purple-600/30 text-white shadow-lg shadow-purple-950/50"
-                                  : "border-purple-500/20 bg-purple-950/30 text-purple-200 hover:bg-purple-900/25 hover:text-white"
-                              }`}
-                            >
-                              <span className="text-center">{choice}</span>
-                              {selectedChip === choice && (
-                                <i className="fa-solid fa-circle-check text-purple-300 text-base absolute right-4"></i>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <button
-                        type="button"
-                        style={{ animationDelay: "300ms" }}
-                        onClick={() => {
-                          playAudioChime("success");
-                          handleSubmitAnswer(selectedChip, "choice_chips");
-                        }}
-                        disabled={!selectedChip}
-                        className="cascade-item-pop mt-5 flex w-full items-center justify-center gap-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:bg-purple-700 py-4 text-base font-bold text-white shadow-lg shadow-purple-950/60 transition-colors disabled:opacity-40"
-                      >
-                        <span>Enviar Resposta</span>
-                        <i className="fa-solid fa-arrow-right text-sm"></i>
-                      </button>
-                    </div>
-                  );
+                  const choices = currentStep.widget_options?.choices || [];
+                  const secondary = choices.filter(c => ["Não se aplica", "Prefiro não responder"].includes(c));
+                  const primary = choices.filter(c => !secondary.includes(c));
+                  return <div className="survey-answer-panel">
+                    <fieldset className="survey-choice-list">
+                      <legend className="sr-only">{currentStep.next_question}</legend>
+                      {primary.map((choice, index) => <label key={choice} className="survey-choice cascade-item-pop" style={{animationDelay: (index * 55) + "ms"}}>
+                        <input type="radio" name={"choice-" + currentStep.step_id} value={choice} checked={selectedChip === choice} onChange={() => {playAudioChime("pop");setSelectedChip(choice);}} className="sr-only"/>
+                        <span className={"survey-choice-face " + (selectedChip === choice ? "is-selected" : "")}>
+                          <span className="survey-choice-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="survey-choice-label">{choice}</span>
+                          <span className="survey-choice-check" aria-hidden="true"><i className="fa-solid fa-check"/></span>
+                        </span>
+                      </label>)}
+                      {secondary.length > 0 && <div className="survey-secondary-choices">
+                        {secondary.map(choice => <label key={choice} className="survey-secondary-choice">
+                          <input type="radio" name={"choice-" + currentStep.step_id} value={choice} checked={selectedChip === choice} onChange={() => {playAudioChime("pop");setSelectedChip(choice);}} className="sr-only"/>
+                          <span className={selectedChip === choice ? "is-selected" : ""}><span className="survey-small-radio" aria-hidden="true"/>{choice}</span>
+                        </label>)}
+                      </div>}
+                    </fieldset>
+                    <button type="button" onClick={() => {playAudioChime("success");handleSubmitAnswer(selectedChip,"choice_chips");}} disabled={!selectedChip || isAiTyping} className="survey-submit">
+                      <span>Enviar Resposta</span><i aria-hidden="true" className="fa-solid fa-arrow-right"/>
+                    </button>
+                  </div>;
                 })()}
 
-                {/* 3. SLIDER_0_10 (Clean, Direto, Botão de Confirmar surge APÓS seleção) */}
+                {/* Barra contínua com valores inteiros, controle por teclado e confirmação explícita. */}
                 {currentStep.ui_widget === "slider_0_10" && (
-                  <div className="space-y-5 pt-1">
-                    {/* Régua de Botões 0 a 10 com Efeito em Cascata Suave */}
-                    <div className="grid grid-cols-6 sm:grid-cols-11 gap-2">
-                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
-                        const isSelected = sliderValue === num;
-                        return (
-                          <button
-                            key={num}
-                            type="button"
-                            style={{ animationDelay: `${num * 30}ms` }}
-                            onClick={() => {
-                              playAudioChime("pop");
-                              setSliderValue(num);
-                            }}
-                            className={`cascade-item-pop flex h-13 sm:h-15 items-center justify-center rounded-xl text-lg sm:text-xl font-bold transition-all duration-150 ${
-                              isSelected
-                                ? "bg-purple-600 text-white shadow-lg shadow-purple-950/60 border-2 border-purple-300 scale-105"
-                                : "border border-purple-500/20 bg-purple-950/40 text-purple-200 hover:border-purple-400/50 hover:bg-purple-900/30 hover:text-white active:scale-95"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Legenda Minimalista */}
-                    <div className="flex items-center justify-between text-xs font-medium text-purple-300/70 px-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-400/80" />
-                        0 - Insuficiente
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        10 - Excelente
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                      </span>
-                    </div>
-
-                    {/* Botão de Confirmação: Aparece suavemente APENAS após o colaborador selecionar uma nota */}
-                    {sliderValue !== null && (
-                      <div className="motion-enter pt-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            playAudioChime("success");
-                            handleSubmitAnswer(`Nota ${sliderValue}/10`, "slider_0_10");
-                          }}
-                          className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:bg-purple-700 py-4 text-base font-bold text-white shadow-lg shadow-purple-950/60 transition-colors"
-                        >
-                          <span>Confirmar Nota ({sliderValue})</span>
-                          <i className="fa-solid fa-arrow-right text-sm"></i>
-                        </button>
+                  <div className="survey-answer-panel">
+                    <div className="survey-score-card cascade-item-pop">
+                      <div className="survey-score-heading">
+                        <label htmlFor="survey-score">Sua avaliação</label>
+                        <output htmlFor="survey-score" className={"survey-score-value " + (sliderValue !== null ? "has-value" : "")}>
+                          <span key={sliderValue} className="survey-score-digit">{sliderValue === null ? "—" : sliderValue}</span><small>/ 10</small>
+                        </output>
                       </div>
-                    )}
+                      <div className="survey-range-wrap" style={{"--range-progress": ((sliderValue ?? 5) * 10) + "%"} as React.CSSProperties}>
+                        <input id="survey-score" className={"survey-range " + (sliderValue === null ? "is-unset" : "")} type="range" min={0} max={10} step={1} value={sliderValue ?? 5}
+                          aria-label={currentStep.next_question}
+                          aria-valuetext={sliderValue === null ? "Nenhuma nota confirmada. Mova a barra para escolher." : String(sliderValue) + " de 10"}
+                          onChange={e => setSliderValue(Number(e.target.value))}
+                          onPointerUp={e => {setSliderValue(Number(e.currentTarget.value));playAudioChime("pop");}}
+                          onKeyUp={e => {if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].includes(e.key))setSliderValue(Number(e.currentTarget.value));}}/>
+                        <div className="survey-range-ticks">
+                          {Array.from({length:11},(_,n) => <button type="button" key={n} aria-label={"Selecionar nota " + n} aria-pressed={sliderValue === n} className={sliderValue === n ? "is-selected" : ""} onClick={() => {setSliderValue(n);playAudioChime("pop");}}><span aria-hidden="true"/>{n}</button>)}
+                        </div>
+                      </div>
+                      <div className="survey-range-labels"><span>{currentStep.widget_options?.min_label || "0 · Mínimo"}</span><span>{currentStep.widget_options?.max_label || "10 · Máximo"}</span></div>
+                      <p className="survey-range-hint">{sliderValue === null ? "Arraste a barra ou toque em uma nota." : "Você pode ajustar a nota antes de confirmar."}</p>
+                    </div>
+                    <button type="button" disabled={sliderValue === null || isAiTyping} className="survey-submit" onClick={() => {if(sliderValue === null)return;playAudioChime("success");handleSubmitAnswer("Nota " + sliderValue + "/10","slider_0_10");}}>
+                      <span>{sliderValue === null ? "Escolha uma nota" : "Confirmar nota " + sliderValue}</span><i aria-hidden="true" className="fa-solid fa-arrow-right"/>
+                    </button>
                   </div>
                 )}
 
@@ -1201,11 +1307,36 @@ function ColaboradorContent() {
                 {currentStep.ui_widget === "emoji_scale" && (
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
                     {[
-                      { label: "Muito Ruim", score: "1/5", icon: "fa-face-frown-open", color: "text-rose-400" },
-                      { label: "Desconfortável", score: "2/5", icon: "fa-face-frown", color: "text-amber-400" },
-                      { label: "Neutro", score: "3/5", icon: "fa-face-meh", color: "text-yellow-400" },
-                      { label: "Adequado", score: "4/5", icon: "fa-face-smile", color: "text-purple-300" },
-                      { label: "Excelente", score: "5/5", icon: "fa-face-laugh-beam", color: "text-emerald-400" },
+                      {
+                        label: "Muito Ruim",
+                        score: "1/5",
+                        icon: "fa-face-frown-open",
+                        color: "text-rose-400",
+                      },
+                      {
+                        label: "Desconfortável",
+                        score: "2/5",
+                        icon: "fa-face-frown",
+                        color: "text-amber-400",
+                      },
+                      {
+                        label: "Neutro",
+                        score: "3/5",
+                        icon: "fa-face-meh",
+                        color: "text-yellow-400",
+                      },
+                      {
+                        label: "Adequado",
+                        score: "4/5",
+                        icon: "fa-face-smile",
+                        color: "text-purple-300",
+                      },
+                      {
+                        label: "Excelente",
+                        score: "5/5",
+                        icon: "fa-face-laugh-beam",
+                        color: "text-emerald-400",
+                      },
                     ].map((item, idx) => (
                       <button
                         key={idx}
@@ -1213,32 +1344,50 @@ function ColaboradorContent() {
                         style={{ animationDelay: `${(idx + 1) * 50}ms` }}
                         onClick={() => {
                           playAudioChime("select");
-                          handleSubmitAnswer(`${item.label} (${item.score})`, "emoji_scale");
+                          handleSubmitAnswer(
+                            `${item.label} (${item.score})`,
+                            "emoji_scale",
+                          );
                         }}
                         className="cascade-item-pop group flex flex-col items-center justify-center rounded-xl border border-purple-500/20 bg-purple-950/30 p-5 text-center transition-all hover:scale-[1.03] hover:border-purple-400 hover:bg-purple-900/25 active:scale-95"
                       >
-                        <i className={`fa-solid ${item.icon} text-3xl ${item.color} group-hover:scale-105 transition-transform mb-2.5`}></i>
-                        <span className="text-xs sm:text-sm font-semibold text-white">{item.label}</span>
+                        <i
+                          className={`fa-solid ${item.icon} text-3xl ${item.color} group-hover:scale-105 transition-transform mb-2.5`}
+                        ></i>
+                        <span className="text-xs sm:text-sm font-semibold text-white">
+                          {item.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 )}
 
                 {/* 5. TEXT_INPUT (Dissertativo) */}
-                {(currentStep.ui_widget === "text_input" || !currentStep.ui_widget) && (
+                {(currentStep.ui_widget === "text_input" ||
+                  !currentStep.ui_widget) && (
                   <div className="cascade-item-pop space-y-4">
                     <div className="rounded-xl border border-purple-500/20 bg-[#120b22] p-5 focus-within:border-purple-400 shadow-xl">
                       <div className="flex justify-end mb-2">
-                        <span className="text-xs text-purple-300/60 font-medium">{textAnswer.trim().length} caracteres</span>
+                        <span className="text-xs text-purple-300/60 font-medium">
+                          {textAnswer.trim().length} caracteres
+                        </span>
                       </div>
 
                       <textarea
                         rows={4}
-                        placeholder={currentStep.widget_options?.placeholder || "Conte com calma e detalhes sobre o seu dia a dia no setor..."}
+                        maxLength={2000}
+                        placeholder={
+                          currentStep.widget_options?.placeholder ||
+                          "Conte com calma e detalhes sobre o seu dia a dia no setor..."
+                        }
                         value={textAnswer}
                         onChange={(e) => setTextAnswer(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey && textAnswer.trim()) {
+                          if (
+                            e.key === "Enter" &&
+                            !e.shiftKey &&
+                            textAnswer.trim()
+                          ) {
                             e.preventDefault();
                             playAudioChime("success");
                             handleSubmitAnswer(textAnswer.trim(), "text_input");
@@ -1248,7 +1397,7 @@ function ColaboradorContent() {
                       />
 
                       <div className="flex items-center justify-between border-t border-purple-500/15 pt-3.5 mt-3">
-                        {speechSupported ? (
+                        {speechSupported && voiceConsent ? (
                           <button
                             type="button"
                             onClick={toggleVoiceRecording}
@@ -1258,19 +1407,40 @@ function ColaboradorContent() {
                                 : "border-purple-500/25 bg-purple-950/40 text-purple-200 hover:border-purple-400 hover:bg-purple-600/20 hover:text-white"
                             }`}
                           >
-                            <i className={`fa-solid ${isRecording ? "fa-circle-dot" : "fa-microphone"}`}></i>
-                            <span>{isRecording ? "Ouvindo você..." : "Falar resposta"}</span>
+                            <i
+                              className={`fa-solid ${isRecording ? "fa-circle-dot" : "fa-microphone"}`}
+                            ></i>
+                            <span>
+                              {isRecording
+                                ? "Ouvindo você..."
+                                : "Falar resposta"}
+                            </span>
                           </button>
                         ) : (
                           <div />
                         )}
 
                         <span className="text-xs text-purple-300/50 hidden sm:inline">
-                          <kbd className="bg-purple-950 px-2 py-1 rounded text-xs text-purple-200 border border-purple-500/20">Enter</kbd> para enviar
+                          <kbd className="bg-purple-950 px-2 py-1 rounded text-xs text-purple-200 border border-purple-500/20">
+                            Enter
+                          </kbd>{" "}
+                          para enviar
                         </span>
                       </div>
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSubmitAnswer(
+                          "Prefiro não responder",
+                          "text_input",
+                        )
+                      }
+                      className="w-full py-2 text-sm text-purple-300 underline"
+                    >
+                      Pular pergunta
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1288,11 +1458,20 @@ function ColaboradorContent() {
               </div>
             )}
 
+            {readyToFinish && (
+              <button
+                type="button"
+                onClick={() => sessionId && handleFinishSession(sessionId)}
+                className="mt-6 w-full rounded-xl bg-purple-600 p-4 text-white"
+              >
+                Tentar concluir participação
+              </button>
+            )}
             {/* Rodapé de Confidencialidade */}
             <div className="mt-10 flex items-center justify-between border-t border-purple-500/15 pt-5 text-sm text-purple-300/60">
               <span className="flex items-center gap-2">
                 <i className="fa-solid fa-shield-halved text-purple-400"></i>
-                Respostas 100% Confidenciais
+                Resultados coletivos protegidos
               </span>
               <button
                 type="button"
@@ -1312,7 +1491,9 @@ function ColaboradorContent() {
               <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
                 <div className="flex items-center gap-2.5">
                   <i className="fa-solid fa-shield-halved text-purple-400"></i>
-                  <h3 className="font-bold text-white text-lg">Termos de Privacidade e Proteção de Dados</h3>
+                  <h3 className="font-bold text-white text-lg">
+                    Termos de Privacidade e Proteção de Dados
+                  </h3>
                 </div>
                 <button
                   type="button"
@@ -1325,30 +1506,52 @@ function ColaboradorContent() {
 
               <div className="mt-5 space-y-4 text-sm leading-relaxed text-purple-200/90">
                 <div className="rounded-2xl bg-purple-950/40 p-4 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1.5">1. Fundamentação Legal e Finalidade</p>
+                  <p className="font-semibold text-white mb-1.5">
+                    1. Finalidade da pesquisa
+                  </p>
                   <p>
-                    Esta avaliação é realizada estritamente para fins de gestão de riscos ocupacionais e ergonomia psicossocial, atendendo às diretrizes da <strong>Norma Regulamentadora nº 1 (NR-01 - GRO/PGR)</strong> do Ministério do Trabalho e Emprego.
+                    As respostas serão armazenadas para analisar condições de
+                    trabalho e orientar melhorias. Este instrumento próprio de
+                    percepção apoia a gestão de riscos e não certifica
+                    conformidade com a NR-1.
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-purple-950/40 p-4 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1.5">2. Conformidade com a LGPD (Lei nº 13.709/2018)</p>
+                  <p className="font-semibold text-white mb-1.5">
+                    2. Como os dados são usados
+                  </p>
                   <p>
-                    O tratamento dos dados apoia-se no <strong>Art. 7º, inciso II</strong> (cumprimento de obrigação legal e regulatória) e no <strong>Art. 11, inciso II, alínea "f"</strong> (tutela da saúde ocupacional).
+                    A IA escolhe perguntas de aprofundamento aprovadas. O
+                    contexto da empresa e sua escolha de frequência podem ser
+                    enviados ao Groq. Comentários livres não são enviados ao
+                    modelo nem disponibilizados ao gestor nesta versão. Consulte
+                    a organização sobre retenção e exercício dos seus direitos.
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-purple-950/40 p-4 border border-purple-500/20">
-                  <p className="font-semibold text-white mb-1.5">3. Sigilo e Anonimato Absoluto</p>
+                  <p className="font-semibold text-white mb-1.5">
+                    3. Privacidade e limites
+                  </p>
                   <p>
-                    Suas respostas são processadas de forma agregada e pseudonimizada pelo motor de inteligência artificial. A diretoria ou chefia imediata <strong>não possui acesso a respostas nominais individuais</strong>.
+                    O gestor recebe agregados após o encerramento, com pelo
+                    menos 10 respostas válidas por tema e proteção de contagens
+                    pequenas. Quem distribuiu o convite pode saber a quem o
+                    enviou: não prometemos anonimato absoluto. Você pode recusar
+                    perguntas.
                   </p>
                 </div>
 
                 <div className="text-xs text-purple-300/70 pt-1">
                   <strong>Encarregado de Dados (DPO):</strong>{" "}
-                  {dpoInfo?.name || "Comitê de Privacidade • Equilibra SST"} (
-                  <span className="font-mono text-purple-300">{dpoInfo?.email || "dpo.privacidade@equilibra-sst.corp.br"}</span>)
+                  {dpoInfo?.name || "Responsável pela pesquisa na organização"}{" "}
+                  (
+                  <span className="font-mono text-purple-300">
+                    {dpoInfo?.email ||
+                      "Contato ainda não configurado; consulte a organização"}
+                  </span>
+                  )
                 </div>
               </div>
 
@@ -1370,7 +1573,7 @@ function ColaboradorContent() {
 
   // ─── Render: Completed (Tema Roxo & Ampliado) ───
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0d0a17] via-[#160e29] to-[#0d0a17] p-6 flex flex-col items-center justify-center font-['Montserrat',sans-serif] text-white">
+    <div className="min-h-screen overflow-x-clip bg-gradient-to-b from-[#0d0a17] via-[#160e29] to-[#0d0a17] p-6 flex flex-col items-center justify-center font-['Montserrat',sans-serif] text-white">
       <div className="w-full max-w-xl rounded-3xl border border-purple-500/25 bg-[#160e29]/95 p-12 text-center shadow-2xl backdrop-blur-2xl">
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border border-purple-400/40 bg-purple-600/25 text-purple-300 text-4xl shadow-xl shadow-purple-950/70">
           <i className="fa-solid fa-heart-pulse"></i>
@@ -1380,7 +1583,9 @@ function ColaboradorContent() {
           Muito obrigado pela sua participação!
         </h1>
         <p className="text-base sm:text-lg text-purple-200/85 mb-8 leading-relaxed">
-          Suas respostas foram salvas com sucesso de forma 100% anônima e confidencial. Elas nos ajudarão a criar um ambiente de trabalho mais seguro, saudável e acolhedor para você e sua equipe.
+          Sua participação foi registrada. Os resultados coletivos serão
+          disponibilizados após o encerramento da campanha, quando houver grupo
+          suficiente para proteger as respostas.
         </p>
 
         <div className="border-t border-purple-500/20 pt-6">

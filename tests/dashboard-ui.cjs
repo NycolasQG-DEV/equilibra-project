@@ -1,0 +1,77 @@
+const assert = require('node:assert/strict');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+require('./register.cjs');
+const { DIMENSIONS } = require('../lib/ai/protocol.ts');
+async function main() {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    await page.route('**/lenis@*/**', r => r.fulfill({contentType:'application/javascript',body:'window.Lenis=class {constructor(){window.__smooth=true} raf(){} destroy(){window.__smooth=false}}'}));
+    await page.route('**/animejs@*/**', r => r.fulfill({contentType:'application/javascript',body:'window.anime=function(){}'}));
+    const errors = []; page.on('pageerror', e => errors.push(e.message));
+    const user = { id: 'ui-fixture', name: 'Teste visual', role: 'admin', plan: 'enterprise' };
+    await page.addInitScript(user => { localStorage.setItem('equilibra_auth_token', 'fixture'); localStorage.setItem('equilibra_auth_user', JSON.stringify(user)); }, user);
+    await page.route('**/api/auth/me', route => route.fulfill({ json: { user } }));
+    const d = DIMENSIONS[0];
+    await page.route('**/api/product/dashboard', route => route.fulfill({ json: { company: 'Empresa de teste visual', reports: [{ id: 'fixture', title: 'Condições de trabalho', sector: 'Operação', openedAt: '2026-09-01', closedAt: '2026-09-30', invited: 100, completed: 80, released: true, minimum: 5, findings: [{ id: d.id, name: d.name, text: d.question, count: 80, percent: 40, action: d.action }], questions: [{ id: d.id, text: d.question, count: 80 }] }], actions: [] } }));
+    await page.goto((process.env.PRODUCT_TEST_URL || 'http://localhost:3000') + '/admin/painel');
+    await page.getByRole('button', {name:'Apenas Essenciais',exact:true}).click();
+    await page.getByRole('heading', { name: 'Um olhar atento à sua empresa' }).waitFor();
+    await page.getByRole('heading', { name: 'Campanhas recentes' }).waitFor();
+    await page.waitForFunction(() => window.__smooth === true);
+    assert.equal(await page.getByLabel('Rodada em análise').count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Registrar ação' }).count(), 0);
+    await page.getByRole('link', {name:'Resultados',exact:true}).click();
+    await page.getByText('Condições que merecem atenção', { exact: true }).waitFor();
+    await page.getByRole('link', { name: 'Avaliar medida sugerida' }).click();
+    await page.getByRole('button', { name: 'Registrar ação', exact: true }).waitFor();
+    await page.getByRole('link', {name:'Resultados',exact:true}).click();
+    await page.getByRole('button', { name: 'Evolução e previsões', exact: true }).click();
+    await page.getByText(/Histórico insuficiente/).waitFor();
+    await page.getByRole('link', { name: 'Devolutivas', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Copiar devolutiva' }).isDisabled(), true);
+    await page.getByRole('checkbox').check();
+    assert.equal(await page.getByRole('button', { name: 'Copiar devolutiva' }).isEnabled(), true);
+    await page.getByRole('link', { name: 'Visão geral', exact: true }).click();
+    await page.getByRole('heading', { name: 'Campanhas recentes' }).waitFor();
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({ path: 'dashboard-preview.png', fullPage: true, animations: 'disabled' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    await page.setViewportSize({width:1440,height:1000});
+    const questions = DIMENSIONS.map(d=>({id:d.id,type:'likert',text:d.question})).concat([{id:'open',type:'text',text:'O que poderia melhorar nas condições de trabalho?'}]);
+    let saved;
+    await page.route('**/api/product', async route => {
+      const req=route.request(); if(req.method()==='GET')return route.fulfill({json:{organizations:[{id:'org',name:'Empresa de teste visual'}],templates:saved?[saved]:[],runs:[]}});
+      const b=req.postDataJSON(); if(b.action==='draft')return route.fulfill({json:{questions,source:'protocol'}});
+      if(b.action==='template'){saved={id:'template',organization_id:'org',kind:b.kind,title:b.title,description:b.description,questions:b.questions,active:true,invites_per_run:10};return route.fulfill({json:{id:'template'}});}
+      return route.fulfill({status:400,json:{error:'Ação inesperada no teste'}});
+    });
+    await page.goto((process.env.PRODUCT_TEST_URL || 'http://localhost:3000')+'/admin/pesquisas/inteligencia');
+    await page.getByRole('button',{name:'Nova pesquisa',exact:true}).click();
+    await page.getByLabel('Título da pesquisa').fill('Escuta da equipe de operação');
+    await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('eq-draft:ui-fixture')||'{}').title==='Escuta da equipe de operação');
+    await page.reload();
+    await page.getByLabel('Título da pesquisa').waitFor();
+    assert.equal(await page.getByLabel('Título da pesquisa').inputValue(),'Escuta da equipe de operação');
+    await page.getByRole('button',{name:'Continuar',exact:true}).click();
+    await page.getByRole('button',{name:'Pré-visualizar',exact:true}).click();
+    await page.getByText('Espaço para uma resposta opcional…').waitFor();
+    await page.getByRole('button',{name:'Revisar e salvar',exact:true}).click();
+    await page.getByRole('button',{name:'Salvar na biblioteca',exact:true}).click();
+    await page.getByRole('button',{name:'Iniciar campanha',exact:true}).waitFor();
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:'surveys-preview.png',fullPage:true,animations:'disabled'});
+    await page.getByRole('button',{name:'Iniciar campanha',exact:true}).click();
+    await page.getByRole('dialog',{name:'Iniciar campanha'}).waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.getByRole('dialog').count(),0);
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.waitForFunction(() => window.__smooth === false);
+    assert.deepEqual(errors, []);
+    console.log('Dashboard UI: navigation, action review, forecast gating, feedback review and mobile width OK');
+  } finally { await browser.close(); }
+}
+main().catch(e => { console.error(e); process.exitCode = 1; });

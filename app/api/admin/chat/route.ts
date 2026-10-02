@@ -1,53 +1,50 @@
-import { NextRequest, NextResponse } from "next/server";
-import { query, execute, initDatabase } from "@/lib/db";
-import { verifyAuth, isAuthError } from "@/lib/auth-guard";
-import crypto from "crypto";
-
-export async function GET(request: NextRequest) {
+import { NextRequest } from "next/server";
+import { randomUUID } from "crypto";
+import {
+  admin,
+  body,
+  failure,
+  json,
+  HttpError,
+  textField,
+  rate,
+} from "@/lib/security";
+import { query, execute } from "@/lib/db";
+import { dashboard } from "@/lib/management/service";
+import { managerAnswer } from "@/lib/management/insights";
+export async function GET(r: NextRequest) {
   try {
-    await initDatabase();
-    const { searchParams } = new URL(request.url);
-    const adminId = searchParams.get("adminId");
-
-    if (!adminId) {
-      return NextResponse.json({ error: "adminId é obrigatório." }, { status: 400 });
-    }
-
-    const auth = await verifyAuth(request, adminId);
-    if (isAuthError(auth)) return auth;
-
-    const history = await query(
-      "SELECT id, admin_id, role, text, created_at FROM admin_chat_messages WHERE admin_id = $1 ORDER BY created_at ASC LIMIT 100",
-      [adminId]
-    );
-
-    return NextResponse.json({ history });
-  } catch (err: any) {
-    return NextResponse.json({ error: "Erro ao buscar histórico do chat." }, { status: 500 });
+    const a = await admin(r);
+    return json({
+      history: await query(
+        "SELECT id,role,text,created_at FROM admin_chat_messages WHERE admin_id=? ORDER BY created_at ASC LIMIT 100",
+        [a.userId],
+      ),
+    });
+  } catch (e) {
+    return failure(e);
   }
 }
-
-export async function POST(request: NextRequest) {
+export async function POST(r: NextRequest) {
   try {
-    await initDatabase();
-    const body = await request.json();
-    const { adminId, role, text } = body;
-
-    if (!adminId || !role || !text) {
-      return NextResponse.json({ error: "Campos obrigatórios: adminId, role, text" }, { status: 400 });
-    }
-
-    const auth = await verifyAuth(request, adminId);
-    if (isAuthError(auth)) return auth;
-
-    const id = crypto.randomUUID();
+    const a = await admin(r),
+      b = await body(r);
+    if (b.role && b.role !== "user")
+      throw new HttpError(
+        400,
+        "O servidor é responsável pelas respostas da assistente.",
+      );
+    const question = textField(b.text, 2, 1200, "Pergunta");
+    await rate("chat:" + a.userId, 20, 3600);
+    const d = await dashboard(a.userId),
+      result = await managerAnswer(question, d.batches, d.actions),
+      id = randomUUID();
     await execute(
-      "INSERT INTO admin_chat_messages (id, admin_id, role, text, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)",
-      [id, adminId, role, String(text).trim()]
+      "INSERT INTO admin_chat_messages(id,admin_id,role,text) VALUES(?,?,'user',?),(?,?,'ai',?)",
+      [randomUUID(), a.userId, question, id, a.userId, result.text],
     );
-
-    return NextResponse.json({ success: true, id });
-  } catch (err: any) {
-    return NextResponse.json({ error: "Erro ao salvar mensagem do chat." }, { status: 500 });
+    return json({ success: true, id, ...result });
+  } catch (e) {
+    return failure(e);
   }
 }

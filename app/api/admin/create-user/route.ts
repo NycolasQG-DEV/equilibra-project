@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       await execute(
         `INSERT INTO survey_assignments (id, survey_id, user_id, admin_id, status, created_at, updated_at)
          VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON DUPLICATE KEY UPDATE id=id`,
+         ON CONFLICT DO NOTHING`,
         [assignmentId, survey.id, newUserId, adminId]
       );
     }

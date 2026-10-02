@@ -1,142 +1,61 @@
-<h1 align="center">Equilibra AI SaaS | Gestão de Riscos Psicossociais & NR-01</h1>
+# Equilibra — MVP de pesquisas sobre condições de trabalho
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
-  <img src="https://img.shields.io/badge/Groq_AI-F55036?style=for-the-badge&logo=fastapi&logoColor=white" alt="Groq AI" />
-  <img src="https://img.shields.io/badge/Edge_TTS-0078D7?style=for-the-badge&logo=microsoft-edge&logoColor=white" alt="Edge TTS" />
-</p>
+Aplicação Next.js para cada empresa pesquisar as condições de trabalho dos seus próprios funcionários, compartilhar convites individuais e examinar resultados agregados. As respostas abertas são classificadas no servidor e descartadas; o gestor recebe apenas contagens. O questionário e os resultados apoiam a avaliação técnica e **não substituem** a AEP, o inventário de riscos ou o plano de ação do PGR.
 
-> **Official repository for the integrated Psychosocial Risk Assessment, Clinical AI Pericial Diagnosis, and Regulatory Compliance System** of the platform **Equilibra** (Tailored for NR-01, eSocial, and ISTAS21-BR).
+## Fluxo disponível
 
----
+1. O gestor cadastra a própria empresa, uma por conta, e escolhe uma pesquisa sob demanda ou uma base de condições de trabalho.
+2. A IA pode propor um rascunho. O gestor revisa, adiciona, edita ou exclui perguntas antes de salvar. Há alertas e bloqueio para perguntas que solicitam identificação.
+3. O gestor abre uma rodada para um setor e gera convites de uso único. Compartilha os links por web, WhatsApp, SMS ou QR Code. O aplicativo não envia mensagens por conta própria.
+4. Cada participante responde sem criar conta. O servidor guarda apenas respostas de escala e a categoria preliminar dos comentários; descarta o texto livre.
+5. Após encerrar a rodada, o gestor vê agregados apenas quando houver pelo menos cinco respostas válidas. Células pequenas também são ocultadas. O painel sugere pontos para avaliação da equipe de SST e pode ser impresso ou salvo em PDF pelo navegador.
 
-<div align="center">
-  <img src="public/docs/01_landing_page.png" alt="Equilibra SaaS Platform" width="680" />
-</div>
+O caminho principal do gestor é `/admin/painel`, com participação, indicadores, evolução, plano de ação persistente e devolutiva para copiar ou salvar em PDF. A criação de pesquisas fica em `/admin/pesquisas/inteligencia`; a resposta pública usa `/responder/[token]`. Rotas antigas de pesquisa foram preservadas para acesso a dados anteriores, mas não aparecem na navegação principal.
 
----
+A área de pesquisas separa campanhas da biblioteca. A criação usa três etapas (objetivo, perguntas e revisão), com pré-visualização, reordenação e recuperação do rascunho na mesma aba. Modelos podem ser editados, duplicados e arquivados; campanhas iniciadas preservam suas perguntas originais. Cada campanha configura setor e quantidade próprios. Convites podem ser baixados e continuam disponíveis na mesma sessão do navegador. Há busca por título/setor, filtros de status e acesso direto ao resultado da campanha selecionada.
 
-## System Architecture
+O painel considera as 30 rodadas mais recentes. Sugestões de medidas e projeções usam perguntas intactas da base de condições de trabalho; perguntas personalizadas não herdam uma classificação de risco. As ações usam a tabela existente `management_actions`, com o identificador da rodada no campo `batch_id`, e exigem autorização do proprietário da rodada. Execução exige evidência e não significa eficácia comprovada.
 
-The platform operates using a **high-performance modern full-stack architecture**, separating data orchestration, real-time audio synthesis, and pericial clinical intelligence:
+A projeção experimental exige pelo menos 12 rodadas comparáveis, com intervalos regulares. Uma regressão linear das seis últimas medições é testada em janelas temporais anteriores e só aparece se reduzir o erro médio em pelo menos 10% frente a repetir o último valor. A faixa usa o maior erro histórico; não é um intervalo calibrado nem uma previsão clínica. Sem esses requisitos, o painel mostra apenas resultados observados e o motivo da indisponibilidade.
 
-* **The Core & Frontend (Next.js 16 + TypeScript + Tailwind CSS):** Delivers fluid, accessible interfaces with motion micro-animations, server-side auth proxying, and responsive widgets (binary cards, 0-10 rating scales, and contextual choice chips).
-* **The Intelligence & Audio Engine (Groq AI + Edge Neural TTS):** Powers the adaptive conversational interview using low-latency LLMs (`qwen/qwen3.8-27b`) with strict token economics, paired with zero-cost Brazilian Portuguese neural voice streaming (`pt-BR-FranciscaNeural`) across any browser.
-* **The Persistence Layer (MySQL Relational DB + JWT Auth):** Manages relational data integrity, campaign batches, multi-tenant administrative roles, anonymous employee sessions, and audit logs compliant with LGPD.
+## Configuração
 
----
-
-## Visual Demonstration & System Walkthrough
-
-### 1. Admin Dashboard (Risk Management & Real-Time KPIs)
-Centralized overview of company risk levels, sector compliance, completion rates, and quick action cards.
-
-<div align="center">
-  <img src="public/docs/02_admin_dashboard.png" alt="Admin Dashboard" width="600" />
-</div>
-
----
-
-### 2. Surveys & Batch Link Generator
-Instant creation of survey campaigns organized by sector and job role, generating single-use anonymous links with live status tracking.
-
-<div align="center">
-  <img src="public/docs/03_admin_surveys.png" alt="Surveys Management" width="600" />
-</div>
-
----
-
-### 3. Employee Onboarding (LGPD & Confidentiality)
-Frictionless onboarding ensuring worker privacy, anonymous participation, and formal consent under LGPD (Law nº 13.709/2018).
-
-<div align="center">
-  <img src="public/docs/04_survey_onboarding.png" alt="Employee Onboarding" width="600" />
-</div>
-
----
-
-### 4. Adaptive AI Conversational Interview
-Empathetic, voice-synchronized interview with real-time typewriter effects, snappy transitions (0.5s post-audio), and automated discovery protocols for reported workplace distress.
-
-<div align="center">
-  <img src="public/docs/05_survey_completed.png" alt="Conversational Interview" width="600" />
-</div>
-
----
-
-### 5. Official Pericial Technical Report & 5W2H Action Plan
-Automated clinical diagnosis across the 7 ISTAS21-BR dimensions, probability × severity risk matrix, actionable 5W2H plans, and narrative text formatted for labor inspection audits.
-
-<div align="center">
-  <img src="public/docs/06_admin_protocol.png" alt="Technical Report Protocol" width="600" />
-</div>
-
----
-
-## Main Features
-
-* **Real-Time Neural Speech (Zero-Cost):** Universal streaming of Brazilian Portuguese neural voices directly to any browser without expensive third-party voice APIs.
-* **Economical Pericial AI:** Fast, targeted reasoning engine with token capping for responsive survey interactions and comprehensive technical reports.
-* **Strict LGPD Compliance:** End-to-end anonymity, bcrypt password hashing, encrypted JWT sessions, and zero worker identifying markers in clinical risk outputs.
-* **Actionable 5W2H Integration:** Automatic generation of corrective and preventive measures ready for insertion into company PGR/GRO documentation.
-
-<br>
----
-
-## How to Run the Project
-
-### 1. Requirements
-* Node.js 18+ installed
-* MySQL Server 8.0+ running locally (default port `3306`)
-* Groq Cloud API Key ([console.groq.com](https://console.groq.com))
-
-### 2. Installation
-Clone the repository and install all dependencies:
+Requer Node.js 22+, um projeto Supabase com as tabelas de `lib/db/supabase-schema.sql` e `lib/db/product-schema.sql`, e as variáveis de `.env.example`. A chave de serviço do Supabase fica somente no servidor. O acesso por senha da aplicação usa `JWT_SECRET`.
 
 ```bash
-git clone https://github.com/NycolasQG-DEV/equilibra-project.git
-cd equilibra-project
 npm install
-```
-
-### 3. Configuration (`.env`)
-Copy `.env.example` to `.env` and fill in your credentials:
-
-```bash
 cp .env.example .env
-```
-
-Review environment keys in `.env`:
-* `DB_HOST = "localhost"`
-* `DB_PORT = 3306`
-* `DB_USER = "root"`
-* `DB_PASSWORD = ""`
-* `DB_NAME = "equilibradb"`
-* `JWT_SECRET = "your_secure_jwt_secret_key_2026"`
-* `GROQ_API_KEY = "gsk_your_groq_api_key_here"`
-* `GROQ_MODEL = "qwen/qwen3.8-27b"`
-
-### 4. Database Setup & Initialization
-Run the database migration script to automatically create the database, tables, and relational indexes:
-
-```bash
-node setup-db.mjs
-```
-
-### 5. Start Application
-With everything configured, start the development server:
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Register a new administrative account on the landing page to get started.
+No Windows PowerShell, use `Copy-Item .env.example .env` no lugar de `cp` se necessário. A aplicação abre em `http://localhost:3000`.
 
----
+O rascunho com IA usa `GROQ_API_KEY`; sem ela, a aplicação oferece um rascunho base editável. O pagamento de teste usa Checkout Pro do Mercado Pago e só libera o plano após a API retornar um pagamento aprovado.
 
-<div align="center">
-  <i>Developed by Nycolas Queiroz Gimenez (NycolasQG-DEV).</i>
-</div>
+## Verificação
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+Com o servidor local ativo, `npm run test:integration` exercita o fluxo completo no projeto Supabase configurado. Esse teste cria um usuário e pesquisas temporários, testa o limiar de privacidade e remove os registros ao terminar. Não o execute simultaneamente com manutenção do banco.
+
+## Limites atuais
+
+- A criação de rodadas e o compartilhamento de convites são manuais. Não há provedor de WhatsApp/SMS/e-mail nem executor periódico configurado; por isso o MVP não anuncia disparos ou lembretes automáticos.
+- A conta só pode cadastrar sua própria empresa no fluxo atual. A assinatura ainda está vinculada ao usuário administrador no banco; a migração para uma assinatura por empresa e os convites da equipe com permissões estão planejados em `docs/avaliacao-produto-mvp.md`.
+- As categorias dos comentários são sinais por palavras-chave, não uma análise clínica ou um classificador de IA validado. O texto original não é armazenado.
+- O modelo de perguntas precisa de revisão por profissional de SST antes de apoiar documentos do GRO/PGR. O [MTE esclarece](https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/manuais-e-publicacoes/2026/perguntas-e-respostas-gro-pgr-maio-2026/@@download/file) que questionários, isoladamente, não bastam para a gestão dos riscos ocupacionais.
+
+
+### Navegação do espaço da empresa
+
+- `/admin/painel`: prioridades, indicadores operacionais e campanhas recentes.
+- `/admin/pesquisas/inteligencia`: biblioteca, criação, convites e encerramento das coletas.
+- `/admin/resultados`: participação, resultados agregados e evolução comparável.
+- `/admin/acoes`: avaliação das sugestões, responsáveis, prazos e evidências de execução.
+- `/admin/devolutivas`: revisão e exportação da comunicação para os funcionários.
+
+O painel usa a identidade roxa da página pública, Lenis com carregamento protegido e movimento reduzido conforme a preferência do dispositivo. As previsões continuam condicionadas ao histórico e à validação temporal; a navegação não altera os critérios de privacidade.

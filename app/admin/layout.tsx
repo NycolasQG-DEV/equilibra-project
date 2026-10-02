@@ -1,12 +1,18 @@
 "use client";
 
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminMotion } from "@/components/admin/AdminMotion";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex min-h-screen bg-[#F8F6FB]">
+    <div className="eq-app flex min-h-screen">
+      <AdminMotion />
       <AdminSidebar />
-      <div className="flex flex-1 flex-col overflow-auto">
+      <div className="eq-content flex min-w-0 flex-1 flex-col">
         {children}
       </div>
     </div>

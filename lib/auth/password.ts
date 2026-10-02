@@ -12,6 +12,7 @@ export async function hashPassword(password: string): Promise<string> {
 /**
  * Compara uma senha em texto puro com seu hash
  */
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
+export async function comparePassword(password: string, hash: string | null | undefined): Promise<boolean> {
+  if (!hash) return false;
   return bcrypt.compare(password, hash);
 }

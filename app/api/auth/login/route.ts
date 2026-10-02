@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Usuário sem senha definida (ex: colaborador sem acesso direto)
+    if (!user.password_hash) {
+      return NextResponse.json(
+        { error: "E-mail ou senha incorretos." },
+        { status: 401 }
+      );
+    }
+
     const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
       return NextResponse.json(

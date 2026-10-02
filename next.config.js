@@ -1,10 +1,5 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
   reactStrictMode: true,
   allowedDevOrigins: ['10.87.107.27'],
 
@@ -22,11 +17,11 @@ const nextConfig = {
           // Prevent MIME type sniffing attacks
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           // Control referrer information leakage
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
           // Restrict browser features (camera, mic, geolocation, etc.)
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+            value: 'camera=(), microphone=(self), geolocation=(), interest-cohort=()',
           },
           // Force HTTPS (browsers will remember this for 1 year)
           {

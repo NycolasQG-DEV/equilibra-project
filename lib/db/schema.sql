@@ -35,81 +35,153 @@ CREATE TABLE IF NOT EXISTS surveys (
   INDEX idx_surveys_admin_id (admin_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS survey_assignments (
+  id VARCHAR(64) PRIMARY KEY,
+  survey_id VARCHAR(64) NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
+  admin_id VARCHAR(64) NOT NULL,
+  status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
+  completed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_assignments_user (user_id),
+  INDEX idx_assignments_survey (survey_id),
+  INDEX idx_assignments_admin (admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS responses (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  admin_id VARCHAR(64) NULL,
+  survey_id VARCHAR(64) NULL,
+  survey_type VARCHAR(100) NULL,
+  answers JSON NULL,
+  score INT NOT NULL DEFAULT 0,
+  risk_level ENUM('baixo', 'medio', 'alto') NOT NULL DEFAULT 'baixo',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_responses_user (user_id),
+  INDEX idx_responses_admin (admin_id),
+  INDEX idx_responses_survey (survey_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  session_id VARCHAR(64) NOT NULL,
+  role ENUM('user', 'ai') NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_chat_user (user_id),
+  INDEX idx_chat_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_chat_messages (
+  id VARCHAR(64) PRIMARY KEY,
+  admin_id VARCHAR(64) NOT NULL,
+  role ENUM('user', 'ai') NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_admin_chat_admin (admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  plan ENUM('none', 'starter', 'professional', 'enterprise') NOT NULL DEFAULT 'none',
+  status ENUM('active', 'cancelled', 'expired') NOT NULL DEFAULT 'active',
+  price_brl INT NOT NULL DEFAULT 0,
+  payment_method VARCHAR(50) NOT NULL DEFAULT 'pix',
+  card_brand VARCHAR(50) NULL,
+  card_last4 VARCHAR(10) NULL,
+  started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NULL,
+  cancelled_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_subscriptions_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS survey_links (
   id VARCHAR(64) PRIMARY KEY,
-  admin_id VARCHAR(64) NOT NULL,
-  campaign_title VARCHAR(255) NOT NULL,
-  sector VARCHAR(100) NOT NULL DEFAULT 'Geral',
-  cargo VARCHAR(100) NULL,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  title VARCHAR(255) NOT NULL,
+  sector VARCHAR(100) NOT NULL DEFAULT 'all',
+  role VARCHAR(100) NULL,
+  admin_id VARCHAR(64) NULL,
+  admin_name VARCHAR(255) NULL,
+  admin_email VARCHAR(255) NULL,
+  batch_id VARCHAR(64) NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  used BOOLEAN NOT NULL DEFAULT FALSE,
+  closed_at TIMESTAMP NULL,
+  closed_by_session_id VARCHAR(64) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_survey_links_admin_id (admin_id),
-  INDEX idx_survey_links_active (is_active)
+  INDEX idx_survey_links_active (active),
+  INDEX idx_survey_links_batch (batch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS survey_sessions (
+CREATE TABLE IF NOT EXISTS sessions (
   id VARCHAR(64) PRIMARY KEY,
-  survey_link_id VARCHAR(64) NULL,
-  admin_id VARCHAR(64) NOT NULL,
-  respondent_name VARCHAR(255) NOT NULL DEFAULT 'Colaborador Anônimo',
-  respondent_email VARCHAR(255) NULL,
-  respondent_sector VARCHAR(100) NOT NULL DEFAULT 'Geral',
-  respondent_cargo VARCHAR(100) NULL,
-  status ENUM('in_progress', 'completed', 'abandoned') NOT NULL DEFAULT 'in_progress',
-  current_step INT NOT NULL DEFAULT 1,
-  total_steps INT NOT NULL DEFAULT 6,
-  is_voice_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  link_id VARCHAR(64) NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'in_progress',
+  profile JSON NULL,
+  lgpd_consent JSON NULL,
+  history JSON NULL,
+  current_step_data JSON NULL,
+  report_id VARCHAR(64) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   completed_at TIMESTAMP NULL,
-  INDEX idx_sessions_admin_id (admin_id),
-  INDEX idx_sessions_link_id (survey_link_id),
+  INDEX idx_sessions_link_id (link_id),
   INDEX idx_sessions_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS session_answers (
-  id VARCHAR(64) PRIMARY KEY,
-  session_id VARCHAR(64) NOT NULL,
-  step_number INT NOT NULL,
-  dimension VARCHAR(100) NOT NULL,
-  question TEXT NOT NULL,
-  answer TEXT NOT NULL,
-  numeric_score INT NULL,
-  audio_url TEXT NULL,
-  sentiment VARCHAR(50) NULL,
-  risk_level ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'low',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_answers_session_id (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS reports (
   id VARCHAR(64) PRIMARY KEY,
-  session_id VARCHAR(64) NOT NULL UNIQUE,
-  admin_id VARCHAR(64) NOT NULL,
-  protocol VARCHAR(64) NOT NULL UNIQUE,
-  sector VARCHAR(100) NOT NULL DEFAULT 'Geral',
-  cargo VARCHAR(100) NULL,
-  executive_summary TEXT NOT NULL,
-  risk_score INT NOT NULL DEFAULT 0,
-  overall_risk_level ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'low',
-  dimensions_data JSON NOT NULL,
-  action_plan_5w2h JSON NOT NULL,
-  raw_ai_analysis JSON NULL,
+  session_id VARCHAR(64) NOT NULL,
+  link_id VARCHAR(64) NULL,
+  sector VARCHAR(100) NULL,
+  profile JSON NULL,
+  risk_level VARCHAR(50) NULL,
+  confidence_score INT NOT NULL DEFAULT 0,
+  dimensions JSON NULL,
+  action_plan JSON NULL,
+  full_report JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_reports_admin_id (admin_id),
-  INDEX idx_reports_protocol (protocol)
+  INDEX idx_reports_session (session_id),
+  INDEX idx_reports_link (link_id),
+  INDEX idx_reports_sector (sector)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Usuário Padrão de Demonstração (teste.teste@teste.teste / testeteste)
-INSERT INTO users (id, name, email, password_hash, role, plan, max_colaboradores)
-VALUES (
-  'usr_demo_admin_default',
-  'Admin Teste Equilibra',
-  'teste.teste@teste.teste',
-  '$2b$10$Wp8Ro5cVHxv4GRuLBVfou.tHXozBj3JBOvaD2RcGj.UXqxyyEQcKK',
-  'admin',
-  'professional',
-  100
-)
-ON DUPLICATE KEY UPDATE
-  password_hash = '$2b$10$Wp8Ro5cVHxv4GRuLBVfou.tHXozBj3JBOvaD2RcGj.UXqxyyEQcKK',
-  plan = 'professional';
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  action VARCHAR(100) NOT NULL,
+  target_id VARCHAR(64) NULL,
+  performed_by VARCHAR(255) NOT NULL,
+  sector VARCHAR(100) NULL,
+  legal_basis VARCHAR(255) NULL,
+  details TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_logs_action (action),
+  INDEX idx_audit_logs_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS management_batches (
+ id VARCHAR(64) PRIMARY KEY, admin_id VARCHAR(64) NOT NULL, title VARCHAR(255) NOT NULL,
+ sector VARCHAR(100) NOT NULL, context TEXT NOT NULL, protocol_version VARCHAR(100) NOT NULL,
+ color VARCHAR(20) NOT NULL DEFAULT '#6366f1',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, closed_at TIMESTAMP NULL,
+ INDEX idx_batch_owner(admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS management_actions (
+ id VARCHAR(64) PRIMARY KEY, admin_id VARCHAR(64) NOT NULL, batch_id VARCHAR(64) NOT NULL,
+ dimension_id VARCHAR(100) NOT NULL, title VARCHAR(255) NOT NULL, plan JSON NOT NULL,
+ owner VARCHAR(150) NOT NULL, due_date DATE NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'planned',
+ evidence TEXT NULL, completed_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY idx_unique_action(admin_id,batch_id,dimension_id), INDEX idx_action_owner(admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS request_limits (
+ id CHAR(64) PRIMARY KEY, hits INT NOT NULL, expires_at TIMESTAMP NOT NULL,
+ INDEX idx_limit_expiry(expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -101,6 +101,7 @@ export function CookieConsentBanner() {
             boxShadow: "0 20px 45px rgba(0, 0, 0, 0.6), 0 0 20px rgba(2, 132, 199, 0.15)",
           }}
         >
+          <button type="button" aria-label="Recolher aviso de cookies" onClick={() => setVisible(false)} className="absolute right-3 top-2 px-2 text-xl text-slate-300">×</button>
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30">
               <i className="fa-solid fa-cookie-bite text-base"></i>

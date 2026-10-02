@@ -1,26 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { toggleSurveyLinkStatus, logAuditAccess } from "@/lib/ai/storage-mysql";
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+import { NextRequest } from "next/server";
+import { admin, sameOrigin, failure, json, HttpError } from "@/lib/security";
+import { execute } from "@/lib/db";
+export async function POST(
+  r: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    const updated = await toggleSurveyLinkStatus(id);
-    if (!updated) {
-      return NextResponse.json({ error: "Link não encontrado." }, { status: 404 });
-    }
-
-    await logAuditAccess({
-      action: updated.active ? "SURVEY_LINK_ACTIVATED" : "SURVEY_LINK_PAUSED",
-      targetId: updated.id,
-      performedBy: "ADMIN_SST",
-      details: `Status do link "${updated.title}" alterado para ${updated.active ? "ATIVO" : "PAUSADO"}.`,
-    });
-
-    return NextResponse.json({ success: true, link: updated });
-  } catch (err: any) {
-    return NextResponse.json({ error: "Erro ao alterar status do link." }, { status: 500 });
+    const a = await admin(r);
+    sameOrigin(r);
+    const result = await execute(
+      "UPDATE survey_links l JOIN management_batches b ON b.id=l.batch_id SET l.active=NOT l.active WHERE l.id=? AND l.admin_id=? AND l.used=0 AND b.closed_at IS NULL",
+      [(await params).id, a.userId],
+    );
+    if (!result.rowCount) throw new HttpError(404, "Link indisponível.");
+    return json({ success: true });
+  } catch (e) {
+    return failure(e);
   }
 }

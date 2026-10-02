@@ -13,11 +13,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const notificationType = searchParams.get("type") || searchParams.get("topic");
+    if (notificationType && notificationType !== "payment") {
+      return NextResponse.json({ received: true });
+    }
     let paymentId = searchParams.get("data.id") || searchParams.get("id");
 
     if (!paymentId) {
       try {
         const body = await request.json();
+        if (body?.type && body.type !== "payment") {
+          return NextResponse.json({ received: true });
+        }
         paymentId = body?.data?.id || body?.id;
       } catch {
         // Sem body JSON
@@ -27,6 +34,9 @@ export async function POST(request: NextRequest) {
     if (!paymentId) {
       return NextResponse.json({ received: true });
     }
+    if (!/^\d+$/.test(String(paymentId))) {
+      return NextResponse.json({ received: true });
+    }
 
     const client = new MercadoPagoConfig({ accessToken });
     const payment = new Payment(client);
@@ -34,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     if (result.status === "approved" && result.external_reference) {
       const parts = result.external_reference.split(":");
-      if (parts.length === 2) {
+      if (parts.length >= 2 && ["starter", "professional", "enterprise"].includes(parts[1])) {
         const [userId, plan] = parts as [string, PlanType];
         const user = await queryOne<User>("SELECT id, plan FROM users WHERE id = $1", [userId]);
 

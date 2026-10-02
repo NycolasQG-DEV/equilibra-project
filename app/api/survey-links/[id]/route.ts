@@ -1,31 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSurveyLink, deleteSurveyLink } from "@/lib/ai/storage-mysql";
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const link = await getSurveyLink(id);
-    if (!link) {
-      return NextResponse.json({ error: "Link não encontrado." }, { status: 404 });
-    }
-    return NextResponse.json(link);
-  } catch (err: any) {
-    return NextResponse.json({ error: "Erro ao buscar link." }, { status: 500 });
-  }
-}
-
+import { NextRequest } from "next/server";
+import { admin, sameOrigin, failure, json, HttpError } from "@/lib/security";
+import { execute } from "@/lib/db";
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  r: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    await deleteSurveyLink(id);
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: "Erro ao excluir link." }, { status: 500 });
+    const a = await admin(r);
+    sameOrigin(r);
+    const result = await execute(
+      "UPDATE survey_links SET active=0 WHERE id=? AND admin_id=? AND used=0",
+      [(await params).id, a.userId],
+    );
+    if (!result.rowCount) throw new HttpError(404, "Link indisponível.");
+    return json({ success: true });
+  } catch (e) {
+    return failure(e);
   }
 }
