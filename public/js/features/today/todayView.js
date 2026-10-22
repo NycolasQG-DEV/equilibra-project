@@ -6,9 +6,9 @@ import { decisionQueueLabels, priorityLabels } from '../../domain/labels.js';
 
 export function renderToday({ state }) {
   const todayData = state.today;
-  const greeting = todayData?.greeting || 'Olá';
-  const dateFormatted = todayData?.dateFormatted || '';
   const userName = state.account?.name ? state.account.name.split(' ')[0] : 'Gestor';
+  const greeting = todayData?.greeting || `Olá, ${userName}.`;
+  const dateFormatted = todayData?.dateFormatted || '';
   const queue = todayData?.queue || todayData?.decisionQueue || [];
   const kpis = todayData?.kpis || {};
   const charts = todayData?.charts || {};
@@ -211,7 +211,7 @@ export function renderToday({ state }) {
     <div class="today-page">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="view-title">${greeting}, ${esc(userName)}</h1>
+          <h1 class="view-title">${esc(greeting)}</h1>
           <p class="view-subtitle">
             ${esc(dateFormatted)} · Painel de decisão e governança de saúde psicossocial
           </p>

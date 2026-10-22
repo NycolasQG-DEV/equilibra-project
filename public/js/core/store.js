@@ -176,6 +176,17 @@ class Store {
     }
   }
 
+  async loadMeta() {
+    try {
+      const meta = await get('/meta');
+      this.setState({ meta });
+      return meta;
+    } catch (err) {
+      console.error('Error loading meta:', err);
+      return null;
+    }
+  }
+
   setCycleContext(context) {
     this.setState({ activeCycleContext: context });
   }

@@ -3,7 +3,7 @@
 import { renderShell } from '../../ui/shell.js';
 import { esc, attr, fmtPercent, date } from '../../domain/formatters.js';
 import { surveyStatusLabels } from '../../domain/labels.js';
-import { post } from '../../core/api.js';
+import { post, del } from '../../core/api.js';
 import { store } from '../../core/store.js';
 import { router } from '../../core/router.js';
 import { openDialog, closeDialog } from '../../ui/dialog.js';
@@ -60,7 +60,7 @@ export function renderSurveysList({ state }) {
                 <tr>
                   <td>
                     <strong>${esc(s.title)}</strong>
-                    <div class="table-subtext">${esc(s.model || 'Diagnóstico')}</div>
+                    <div class="table-subtext"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Modelo: <strong>${esc(s.model || 'Diagnóstico')}</strong></div>
                   </td>
                   <td>${esc(s.cycle || '—')}</td>
                   <td><span class="badge ${statusClass}">${esc(statusLabel)}</span></td>
@@ -75,16 +75,21 @@ export function renderSurveysList({ state }) {
                   <td class="text-right">
                     ${s.status === 'open' ? `
                       <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm">
-                        <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Distribuição
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais informações
                       </a>
                     ` : s.status === 'closed' ? `
                       <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm">
                         <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
                       </a>
                     ` : `
-                      <button type="button" class="btn btn-primary btn-sm" data-action="open-survey-direct" data-id="${attr(s.id)}">
-                        Abrir Coleta
-                      </button>
+                      <div class="flex items-center justify-end gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" data-action="open-survey-direct" data-id="${attr(s.id)}">
+                          Abrir Coleta
+                        </button>
+                        <button type="button" class="btn btn-ghost color-danger btn-sm" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir rascunho">
+                          <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                        </button>
+                      </div>
                     `}
                   </td>
                 </tr>
@@ -118,19 +123,48 @@ export function renderSurveyDistribution({ params, state }) {
   }
 
   const invitedCount = survey.memberIds?.length || 0;
-  const responsesCount = survey.responsesCount || 0;
+  const responsesCount = survey.responsesCount || survey.responseCount || 0;
   const rate = invitedCount > 0 ? responsesCount / invitedCount : 0;
+
+  const baseUrl = window.location.origin;
+  const surveyDirectUrl = `${baseUrl}/responder/${survey.id}`;
+
+  const templates = state.meta?.templates || [];
+  const modelTemplate = templates.find(t => t.name === survey.model) || null;
+  const instrument = survey.instrument || modelTemplate || {};
+
+  const questions = (instrument.factors || []).map((f, i) => ({
+    num: i + 1,
+    factor: f[1] || 'Item',
+    text: f[2] || f[1] || ''
+  }));
+
+  const accountGroups = state.groups || [];
+  const surveyGroupIds = survey.groupIds || (survey.groupId ? [survey.groupId] : []);
+  const groupNames = surveyGroupIds.map(gid => {
+    const g = accountGroups.find(ag => ag.id === gid);
+    return g ? g.name : null;
+  }).filter(Boolean);
+
+  const groupDisplay = groupNames.length > 0
+    ? groupNames.join(', ')
+    : (survey.groupName || survey.groupNamesSnapshot?.join(', ') || 'Geral');
 
   const content = `
     <div class="survey-dist-page">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div>
-          <h1 class="view-title">Distribuição & Acompanhamento de Quórum</h1>
-          <p class="view-subtitle">
-            ${esc(survey.title)} · Ciclo: ${esc(survey.cycle || 'Geral')}
+          <div class="flex items-center gap-2 mb-1">
+            <a href="#pesquisas" class="btn btn-ghost btn-sm">
+              <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar
+            </a>
+            <h1 class="view-title m-0">Informações da Pesquisa</h1>
+          </div>
+          <p class="view-subtitle ml-1">
+            <strong>${esc(survey.title)}</strong> · Ciclo: <strong>${esc(survey.cycle || 'Geral')}</strong> · Modelo: <strong>${esc(survey.model || 'Diagnóstico')}</strong>
           </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
           <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
             <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
           </button>
@@ -140,6 +174,49 @@ export function renderSurveyDistribution({ params, state }) {
         </div>
       </div>
 
+      <!-- LINK ÚNICO DA PESQUISA (Destaque Principal) -->
+      <div class="card mb-6 border-2 border-primary bg-surface p-5">
+        <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
+          <div>
+            <h2 class="card-title text-lg flex items-center gap-2 m-0">
+              <i class="fa-solid fa-link color-primary" aria-hidden="true"></i> Link Único da Pesquisa
+            </h2>
+            <p class="table-subtext m-0 mt-1">
+              Todos os colaboradores dos grupos participantes podem responder através deste link único confidencial.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary" data-action="copy-survey-url" data-url="${attr(surveyDirectUrl)}">
+            <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar Link Único
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 mb-4">
+          <input type="text" id="survey-direct-link-input" class="input input-lg font-mono flex-1 bg-surface-subtle" value="${attr(surveyDirectUrl)}" readonly />
+          <button type="button" class="btn btn-secondary btn-lg" data-action="copy-survey-url" data-url="${attr(surveyDirectUrl)}">
+            Copiar
+          </button>
+          <a href="${attr(surveyDirectUrl)}" target="_blank" class="btn btn-ghost btn-lg" title="Abrir questionário em nova aba">
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
+        </div>
+
+        <div class="card bg-subtle p-4">
+          <div class="flex items-center justify-between mb-2">
+            <strong class="text-sm">Modelo de Mensagem Pronto (WhatsApp / E-mail):</strong>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="copy-invite-template">
+              <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar Mensagem
+            </button>
+          </div>
+          <pre id="invite-template-text" class="table-subtext m-0 whitespace-pre-wrap font-sans">Olá! Sua voz é fundamental para construirmos um ambiente de trabalho mais saudável.
+Participe da nossa pesquisa confidencial sobre fatores psicossociais e condições de trabalho.
+Leva apenas alguns minutos e suas respostas são 100% confidenciais e anônimas (processadas de forma agregada).
+
+Acesse pelo link: ${surveyDirectUrl}
+Prazo final: ${date(survey.endsAt)}.</pre>
+        </div>
+      </div>
+
+      <!-- KPIS DE ADESÃO E QUÓRUM -->
       <div class="grid grid-cols-3 gap-4 mb-6">
         <div class="kpi-card">
           <span class="kpi-title">Adesão Atual</span>
@@ -159,36 +236,36 @@ export function renderSurveyDistribution({ params, state }) {
         <div class="kpi-card">
           <span class="kpi-title">Quórum Mínimo Configurado</span>
           <div class="kpi-val color-success">Meta 70%</div>
-          <span class="kpi-sub">Proteção de anonimato e integridade do relatório</span>
+          <span class="kpi-sub">Anonimato assegurado (N ≥ 5)</span>
         </div>
       </div>
 
+      <!-- DETALHES DO MODELO & AFIRMAÇÕES -->
       <div class="card mb-6">
         <div class="card-header">
-          <h2 class="card-title">Links Individuais Seguros</h2>
-          <a href="/api/surveys/${attr(survey.id)}/invitation-links/export" class="btn btn-primary btn-sm" download>
-            <i class="fa-solid fa-file-csv" aria-hidden="true"></i> Baixar Planilha de Links (CSV)
-          </a>
+          <div>
+            <h2 class="card-title"><i class="fa-solid fa-clipboard-list color-primary" aria-hidden="true"></i> Instrumento: ${esc(survey.model || 'Diagnóstico')}</h2>
+            <span class="table-subtext">Grupos participantes: <strong>${esc(groupDisplay)}</strong> (${invitedCount} pessoas vinculadas)</span>
+          </div>
+          <span class="badge badge-neutral">${questions.length} afirmações</span>
         </div>
         <div class="card-body">
-          <p class="mb-4">
-            Cada colaborador possui um token único pseudonimizado. O servidor computa as respostas sem armazenar o remetente junto às respostas coletivas.
-          </p>
-          <div class="card bg-subtle p-4">
-            <div class="flex items-center justify-between mb-2">
-              <strong>Modelo de mensagem para WhatsApp / E-mail:</strong>
-              <button type="button" class="btn btn-ghost btn-sm" data-action="copy-invite-template">
-                <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar Texto
-              </button>
+          ${instrument.instructions ? `
+            <div class="card bg-subtle p-3 mb-4">
+              <p class="table-subtext m-0"><strong>Instruções aos colaboradores:</strong> ${esc(instrument.instructions)}</p>
             </div>
-            <pre id="invite-template-text" class="table-subtext m-0">
-Olá! Sua voz é fundamental para construirmos um ambiente de trabalho mais saudável.
-Participe da nossa pesquisa confidencial sobre fatores psicossociais e condições de trabalho.
-Leva apenas 5 minutos e suas respostas são processadas de forma 100% coletiva (sem identificação individual).
+          ` : ''}
 
-Acesse pelo seu link exclusivo: {{LINK_INDIVIDUAL}}
-Prazo final: ${date(survey.endsAt)}.
-            </pre>
+          <div class="questions-preview-list">
+            ${questions.map(q => `
+              <div class="question-preview-item">
+                <div class="question-num">${q.num}</div>
+                <div class="question-body">
+                  <div class="question-factor">${esc(q.factor)}</div>
+                  <p class="question-text">${esc(q.text)}</p>
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -199,8 +276,8 @@ Prazo final: ${date(survey.endsAt)}.
     activePath: 'pesquisas',
     breadcrumbs: [
       { label: 'Pesquisas', path: 'pesquisas' },
-      { label: survey.title, path: `pesquisas/${survey.id}` },
-      { label: 'Distribuição' }
+      { label: survey.title, path: `pesquisas/${survey.id}/distribuicao` },
+      { label: 'Informações' }
     ],
     content,
     state
@@ -287,3 +364,154 @@ export async function submitCloseEarly(surveyId) {
     showToast(err.message || 'Erro ao encerrar.', 'error');
   }
 }
+
+export function openDeleteSurveyModal(surveyId, title) {
+  const content = `
+    <div class="py-2">
+      <p class="color-danger font-semibold mb-2">
+        <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Rascunho de Pesquisa
+      </p>
+      <p class="view-subtitle mb-3">
+        Tem certeza que deseja excluir o rascunho <strong>"${esc(title)}"</strong>? Esta ação removerá a configuração deste ciclo.
+      </p>
+    </div>
+  `;
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-danger" data-action="confirm-delete-survey" data-id="${attr(surveyId)}">Excluir Rascunho</button>
+  `;
+  openDialog({ title: 'Confirmar Exclusão', content, footer });
+}
+
+export async function submitDeleteSurvey(surveyId) {
+  try {
+    await del(`/surveys/${surveyId}`);
+    await store.loadSurveys();
+    closeDialog();
+    showToast('Rascunho de pesquisa excluído com sucesso.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Erro ao excluir pesquisa.', 'error');
+  }
+}
+
+export async function handleOpenSurveyDirect(surveyId) {
+  try {
+    await post(`/surveys/${surveyId}/open`, {});
+    await store.loadSurveys();
+    showToast('Coleta aberta com sucesso!', 'success');
+    router.navigate(`pesquisas/${surveyId}/distribuicao`);
+  } catch (err) {
+    showToast(err.message || 'Erro ao abrir pesquisa.', 'error');
+  }
+}
+
+export function openSurveyDetailsModal(surveyId) {
+  const state = store.getState();
+  const survey = (state.surveys || []).find(s => s.id === surveyId);
+  if (!survey) {
+    showToast('Pesquisa não encontrada.', 'error');
+    return;
+  }
+
+  const templates = state.meta?.templates || [];
+  const modelTemplate = templates.find(t => t.name === survey.model) || null;
+  const instrument = survey.instrument || modelTemplate || {};
+
+  const questions = (instrument.factors || []).map((f, i) => ({
+    num: i + 1,
+    factor: f[1] || 'Item',
+    text: f[2] || f[1] || ''
+  }));
+
+  const statusLabel = surveyStatusLabels[survey.status] || survey.status;
+  const statusClass = survey.status === 'open' ? 'badge-success' : survey.status === 'closed' ? 'badge-neutral' : 'badge-warning';
+  const invitedCount = survey.memberIds?.length || 0;
+  const responsesCount = survey.responsesCount || survey.responseCount || 0;
+  const rate = invitedCount > 0 ? responsesCount / invitedCount : 0;
+
+  const accountGroups = state.groups || [];
+  const surveyGroupIds = survey.groupIds || (survey.groupId ? [survey.groupId] : []);
+  const groupNames = surveyGroupIds.map(gid => {
+    const g = accountGroups.find(ag => ag.id === gid);
+    return g ? g.name : null;
+  }).filter(Boolean);
+
+  const groupDisplay = groupNames.length > 0
+    ? groupNames.join(', ')
+    : (survey.groupName || survey.groupNamesSnapshot?.join(', ') || 'Geral');
+
+  const content = `
+    <div class="survey-details-modal">
+      <div class="card bg-subtle p-4 mb-4">
+        <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="badge ${statusClass}">${esc(statusLabel)}</span>
+            <span class="badge badge-neutral"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> ${esc(survey.model || 'Diagnóstico')}</span>
+          </div>
+          <span class="table-subtext">Criado em: ${date(survey.createdAt)}</span>
+        </div>
+        <p class="view-subtitle m-0">Ciclo: <strong>${esc(survey.cycle || '—')}</strong></p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="kpi-card p-3">
+          <span class="kpi-title">Público Convidado</span>
+          <div class="kpi-val text-lg">${invitedCount} pessoas</div>
+          <span class="kpi-sub">Grupos: ${esc(groupDisplay)}</span>
+        </div>
+        <div class="kpi-card p-3">
+          <span class="kpi-title">Adesão / Quórum</span>
+          <div class="kpi-val text-lg">${fmtPercent(rate)} (${responsesCount} respostas)</div>
+          <span class="kpi-sub">Prazo: até ${date(survey.endsAt)}</span>
+        </div>
+      </div>
+
+      ${instrument.instructions ? `
+        <div class="card bg-surface p-3 mb-4 border">
+          <strong class="text-sm color-primary"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Instruções do Instrumento:</strong>
+          <p class="table-subtext mt-1 mb-0">${esc(instrument.instructions)}</p>
+        </div>
+      ` : ''}
+
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-base m-0">Afirmações do Modelo (${questions.length} itens)</h3>
+        <span class="badge badge-subtle">Anonimato assegurado</span>
+      </div>
+
+      <div class="questions-preview-list max-h-60 overflow-y-auto pr-1">
+        ${questions.length === 0 ? `
+          <p class="table-subtext">Nenhuma afirmação configurada para este instrumento.</p>
+        ` : questions.map(q => `
+          <div class="question-preview-item py-2">
+            <div class="question-num">${q.num}</div>
+            <div class="question-body">
+              <div class="question-factor">${esc(q.factor)}</div>
+              <p class="question-text">${esc(q.text)}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Fechar</button>
+    ${survey.status === 'open' ? `
+      <a href="#pesquisas/${attr(survey.id)}/distribuicao" class="btn btn-primary" data-action="close-dialog">
+        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Acompanhar Coleta
+      </a>
+    ` : survey.status === 'closed' ? `
+      <a href="#resultados/ciclo/${attr(survey.id)}" class="btn btn-primary" data-action="close-dialog">
+        <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Ver Relatório
+      </a>
+    ` : ''}
+  `;
+
+  openDialog({
+    title: `Detalhes: ${survey.title}`,
+    content,
+    footer,
+    size: 'lg'
+  });
+}
+

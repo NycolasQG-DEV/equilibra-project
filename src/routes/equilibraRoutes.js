@@ -258,7 +258,8 @@ router.post('/members', protectedRoute, (req, res) => {
   const members = read('members');
   if (address && members.some((item) => item.accountId === req.account.id && item.email === address)) return fail(res, 409, 'Pessoa já cadastrada com este e-mail.');
   if (phone && members.some((item) => item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) return fail(res, 409, 'Pessoa já cadastrada com este telefone.');
-  const member = { id: id(), accountId: req.account.id, name, email: address, phone: encryptPhone(phone), createdAt: new Date().toISOString() };
+  const registration = clean(req.body.registration, 50);
+  const member = { id: id(), accountId: req.account.id, name, email: address, phone: encryptPhone(phone), registration, createdAt: new Date().toISOString() };
   members.push(member); write('members', members);
   if (Array.isArray(req.body.groupIds)) {
     const groups = read('groups');
@@ -278,7 +279,8 @@ router.put('/members/:id', protectedRoute, (req, res) => {
   if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido.');
   if (address && members.some((item) => item.id !== member.id && item.accountId === req.account.id && item.email === address)) return fail(res, 409, 'E-mail já cadastrado.');
   if (phone && members.some((item) => item.id !== member.id && item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) return fail(res, 409, 'Telefone já cadastrado.');
-  Object.assign(member, { name, email: address, phone: encryptPhone(phone) }); write('members', members);
+  const registration = clean(req.body.registration, 50);
+  Object.assign(member, { name, email: address, phone: encryptPhone(phone), registration }); write('members', members);
   if (Array.isArray(req.body.groupIds)) {
     const groups = read('groups');
     for (const g of groups) {

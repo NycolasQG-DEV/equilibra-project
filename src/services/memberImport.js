@@ -92,12 +92,73 @@ async function createTemplate() {
   return workbook.xlsx.writeBuffer();
 }
 
+function parseCsvLine(line, delimiter) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseCsv(buffer) {
+  let content = buffer.toString('utf8');
+  if (content.charCodeAt(0) === 0xFEFF) {
+    content = content.slice(1);
+  }
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) throw new Error('A planilha não contém pessoas para cadastrar.');
+  if (lines.length - 1 > MAX_ROWS) throw new Error(`Limite de ${MAX_ROWS} pessoas por arquivo.`);
+
+  const headerLine = lines[0];
+  const countSemi = (headerLine.match(/;/g) || []).length;
+  const countComma = (headerLine.match(/,/g) || []).length;
+  const delimiter = countSemi >= countComma ? ';' : ',';
+
+  const headers = parseCsvLine(headerLine, delimiter);
+  const validHeaders = HEADERS.every((header, index) => isExpectedHeader(headers[index], EXPECTED_HEADERS[index]));
+  const extraHeaders = headers.length > 4 && headers.slice(4).some((h) => h !== '');
+  if (!validHeaders || extraHeaders) throw new Error('Formato inválido. A primeira linha precisa ter: Nome, Telefone, Email, Grupo.');
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parsed = parseCsvLine(lines[i], delimiter);
+    const raw = [parsed[0] || '', parsed[1] || '', parsed[2] || '', parsed[3] || ''];
+    const extra = parsed.length > 4 && parsed.slice(4).some((val) => val !== '');
+    if (raw.every((val) => val === '') && !extra) continue;
+    rows.push({ line: i + 1, raw, extra });
+  }
+  if (!rows.length) throw new Error('A planilha não contém pessoas para cadastrar.');
+  return rows;
+}
+
 async function parseImport(fileName, base64) {
-  if (typeof fileName !== 'string' || !/\.xlsx$/i.test(fileName) || typeof base64 !== 'string') throw new Error('Envie um arquivo .xlsx válido.');
+  if (typeof fileName !== 'string' || !/\.(xlsx|csv)$/i.test(fileName) || typeof base64 !== 'string') throw new Error('Envie um arquivo .xlsx ou .csv válido.');
   const cleanBase64 = base64.trim().replace(/\s+/g, '');
   if (cleanBase64.length > Math.ceil(MAX_FILE_BYTES * 4 / 3) + 8 || !/^[A-Za-z0-9+/]+={0,2}$/.test(cleanBase64)) throw new Error('Arquivo inválido ou maior que 1 MB.');
   const buffer = Buffer.from(cleanBase64, 'base64');
-  if (!buffer.length || buffer.length > MAX_FILE_BYTES || buffer.toString('base64') !== cleanBase64 || buffer.subarray(0, 2).toString() !== 'PK') throw new Error('Arquivo inválido ou maior que 1 MB.');
+  if (!buffer.length || buffer.length > MAX_FILE_BYTES || buffer.toString('base64') !== cleanBase64) throw new Error('Arquivo inválido ou maior que 1 MB.');
+
+  if (/\.csv$/i.test(fileName)) {
+    return parseCsv(buffer);
+  }
+
+  if (buffer.subarray(0, 2).toString() !== 'PK') throw new Error('Arquivo inválido ou maior que 1 MB.');
   const workbook = new ExcelJS.Workbook();
   try { await workbook.xlsx.load(buffer); } catch { throw new Error('Não foi possível ler o Excel. Use o template .xlsx fornecido.'); }
   const sheet = workbook.worksheets.find((ws) => ws.name && ws.name.toLowerCase() === 'pessoas') || workbook.worksheets[0];

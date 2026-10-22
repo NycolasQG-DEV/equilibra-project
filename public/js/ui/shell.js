@@ -95,7 +95,6 @@ export function renderShell({
             <a href="#hoje" class="app-brand" aria-label="Equilibra - Página inicial">
               <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
               <span>Equilibra</span>
-              <span class="app-brand-badge">SST & RH</span>
             </a>
           </div>
 

@@ -19,8 +19,20 @@ export async function renderRespondent({ params }) {
 
   try {
     const surveyData = await get(`/responder/${token}`);
-    const questions = surveyData.instrument?.questions || [];
-    const surveyTitle = surveyData.survey?.title || 'Pesquisa de Fatores Psicossociais';
+    const rawFactors = surveyData.factors || [];
+    const questions = rawFactors.length > 0
+      ? rawFactors.map((f, idx) => ({
+          id: f.key,
+          label: f.label,
+          text: f.question,
+          options: Array.isArray(surveyData.options?.[idx])
+            ? surveyData.options[idx]
+            : (Array.isArray(surveyData.options) && typeof surveyData.options[0] === 'string'
+                ? surveyData.options
+                : ['Discordo totalmente', 'Discordo', 'Neutro', 'Concordo', 'Concordo totalmente'])
+        }))
+      : (surveyData.instrument?.questions || []);
+    const surveyTitle = surveyData.title || surveyData.survey?.title || 'Pesquisa de Fatores Psicossociais';
 
     const draftKey = `equilibra_draft_${token}`;
     let savedAnswers = {};
@@ -31,6 +43,7 @@ export async function renderRespondent({ params }) {
     const questionsHtml = questions.map((q, idx) => {
       const qNum = idx + 1;
       const currentVal = savedAnswers[q.id] || null;
+      const labels = q.options || ['Discordo totalmente', 'Discordo', 'Neutro', 'Concordo', 'Concordo totalmente'];
 
       return `
         <fieldset class="card respondent-question-card mb-4">
@@ -38,15 +51,15 @@ export async function renderRespondent({ params }) {
             ${qNum}. ${esc(q.text)}
           </legend>
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            ${[1, 2, 3, 4, 5].map(val => {
-              const labels = ['Discordo totalmente', 'Discordo', 'Neutro', 'Concordo', 'Concordo totalmente'];
+            ${labels.map((lbl, valIdx) => {
+              const val = valIdx + 1;
               const isChecked = String(currentVal) === String(val);
 
               return `
                 <label class="form-check likert-option">
-                  <input type="radio" name="q_${attr(q.id)}" value="${val}" ${isChecked ? 'checked' : ''} class="mb-1">
+                  <input type="radio" name="q_${attr(q.id)}" value="${val}" ${isChecked ? 'checked' : ''} class="mb-1" required>
                   <span class="likert-num">${val}</span>
-                  <span class="likert-label">${labels[val - 1]}</span>
+                  <span class="likert-label">${esc(lbl)}</span>
                 </label>
               `;
             }).join('')}
@@ -66,6 +79,11 @@ export async function renderRespondent({ params }) {
             <p class="view-subtitle">
               Sua resposta é 100% confidencial. O sistema não armazena nenhuma ligação entre a sua identidade e as opções marcadas. Os dados são analisados de forma estritamente agregada (N ≥ 5).
             </p>
+            ${surveyData.instructions ? `
+              <div class="card bg-subtle p-3 my-4 text-left">
+                <p class="table-subtext m-0"><strong>Instruções do instrumento:</strong> ${esc(surveyData.instructions)}</p>
+              </div>
+            ` : ''}
           </header>
 
           <form id="respondent-form">

@@ -67,22 +67,6 @@ function openSurvey({ surveyId, accountId, baseUrl = '' }) {
     return { error: 'invalid_date', status: 409, message: 'Defina data futura de encerramento.' };
   }
 
-  // Conflito com outra pesquisa aberta
-  const hasConflict = surveys.some(
-    (s) =>
-      s.accountId === accountId &&
-      s.id !== survey.id &&
-      s.status === 'open' &&
-      (s.memberIds || []).some((mId) => freshMemberIds.includes(mId))
-  );
-  if (hasConflict) {
-    return {
-      error: 'conflict_open_survey',
-      status: 409,
-      message: 'Há outra pesquisa aberta com pessoas deste(s) grupo(s).'
-    };
-  }
-
   const instrument = survey.instrument?.factors ? survey.instrument : snapshotInstrument(survey.model);
   if (!instrument) {
     return { error: 'invalid_model', status: 409, message: 'Modelo não disponível para aplicação.' };

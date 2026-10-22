@@ -19,6 +19,19 @@ class Router {
 
     window.addEventListener('hashchange', () => this.handleHashChange());
     window.addEventListener('popstate', () => this.handleHashChange());
+
+    // Auto-refresh the view whenever store state updates (no F5 needed)
+    let renderScheduled = false;
+    store.subscribe(() => {
+      if (renderScheduled) return;
+      renderScheduled = true;
+      requestAnimationFrame(() => {
+        renderScheduled = false;
+        if (this.currentRoute && !['login', 'registro'].includes(this.currentRoute.path) && !this.currentRoute.path.startsWith('responder')) {
+          this.refresh();
+        }
+      });
+    });
   }
 
   register(routeDef) {
@@ -115,20 +128,31 @@ class Router {
 
     // ── Render view ──
     if (this.container && typeof route.render === 'function') {
-      const html = route.render({
-        params,
-        state: store.getState(),
-        router: this
-      });
-      this.container.innerHTML = html;
+      try {
+        const html = route.render({
+          params,
+          state: store.getState(),
+          router: this
+        });
+        this.container.innerHTML = html;
 
-      // ── Post-render lifecycle ──
-      if (typeof route.mounted === 'function') {
-        try {
-          route.mounted({ params, state: store.getState(), router: this });
-        } catch (err) {
-          console.error('Error mounting route:', err);
+        // ── Post-render lifecycle ──
+        if (typeof route.mounted === 'function') {
+          try {
+            route.mounted({ params, state: store.getState(), router: this });
+          } catch (err) {
+            console.error('Error mounting route:', err);
+          }
         }
+      } catch (renderErr) {
+        console.error('Error rendering route:', renderErr);
+        this.container.innerHTML = `
+          <div class="empty-state p-8">
+            <h2 class="view-title color-danger">Erro ao carregar a página</h2>
+            <p class="empty-text">${renderErr.message || 'Ocorreu um erro ao processar esta visualização.'}</p>
+            <a href="#pesquisas" class="btn btn-primary mt-4">Voltar para Pesquisas</a>
+          </div>
+        `;
       }
 
       // ── Restore Scroll & Focus Accessibility ──
@@ -144,6 +168,28 @@ class Router {
         this.announcer.setAttribute('aria-label', `Página: ${pageTitle}`);
       }
     }
+  }
+
+  refresh() {
+    if (!this.container || !this.currentRoute || typeof this.currentRoute.render !== 'function') return;
+
+    const scrollY = window.scrollY;
+    const html = this.currentRoute.render({
+      params: this.currentParams,
+      state: store.getState(),
+      router: this
+    });
+    this.container.innerHTML = html;
+
+    if (typeof this.currentRoute.mounted === 'function') {
+      try {
+        this.currentRoute.mounted({ params: this.currentParams, state: store.getState(), router: this });
+      } catch (err) {
+        console.error('Error mounting route on refresh:', err);
+      }
+    }
+
+    window.scrollTo(0, scrollY);
   }
 
   renderNotFound() {
