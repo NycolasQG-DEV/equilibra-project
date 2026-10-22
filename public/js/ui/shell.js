@@ -13,7 +13,6 @@ export function renderShell({
   const isViewer = account?.role === 'viewer';
   const orgName = state.meta?.account?.companyName || 'Empresa';
   const roleName = roleLabels[account?.role] || account?.role || '';
-  const cycleContext = state.activeCycleContext;
 
   const navItems = [
     { key: 'hoje', path: 'hoje', label: 'Hoje', icon: 'table-cells-large' },
@@ -59,29 +58,6 @@ export function renderShell({
     `;
   }
 
-  // Persistent cycle context bar
-  let contextBarHtml = '';
-  if (cycleContext) {
-    contextBarHtml = `
-      <div class="app-context-bar" role="region" aria-label="Contexto do ciclo ativo">
-        <div class="app-context-bar-inner">
-          <div class="app-context-info">
-            <span class="app-context-title"><i class="fa-solid fa-circle-dot" aria-hidden="true"></i> ${esc(cycleContext.title)}</span>
-            <span class="app-context-cycle">Ciclo: ${esc(cycleContext.cycle)}</span>
-          </div>
-          <div class="app-context-actions">
-            ${cycleContext.surveyId ? `
-              <a href="#pesquisas/${attr(cycleContext.surveyId)}" class="btn btn-ghost btn-sm">Ver Pesquisa</a>
-            ` : ''}
-            ${cycleContext.reportId ? `
-              <a href="#resultados/ciclo/${attr(cycleContext.reportId)}" class="btn btn-ghost btn-sm">Ver Relatório</a>
-            ` : ''}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
   return `
     <div class="app-shell">
       <a href="#main-content" class="skip-link">Ir para o conteúdo principal</a>
@@ -116,7 +92,6 @@ export function renderShell({
         </div>
       </header>
 
-      ${contextBarHtml}
       ${breadcrumbHtml}
 
       <main id="main-content" class="app-main">

@@ -5,6 +5,7 @@ import { esc, attr, fmt, fmtPercent } from '../../domain/formatters.js';
 import { decisionQueueLabels, priorityLabels } from '../../domain/labels.js';
 
 export function renderToday({ state }) {
+  const isViewer = state.account?.role === 'viewer';
   const todayData = state.today;
   const userName = state.account?.name ? state.account.name.split(' ')[0] : 'Gestor';
   const greeting = todayData?.greeting || `Olá, ${userName}.`;
@@ -47,7 +48,7 @@ export function renderToday({ state }) {
           </span>
         </div>
         <div class="flex flex-col gap-3">
-          ${queue.map(item => renderQueueItem(item)).join('')}
+          ${queue.map(item => renderQueueItem(item, isViewer)).join('')}
         </div>
       </section>
     `;
@@ -55,7 +56,7 @@ export function renderToday({ state }) {
 
   // Guided onboarding for brand new workspaces
   let onboardingHtml = '';
-  if (isNewCompany) {
+  if (isNewCompany && !isViewer) {
     onboardingHtml = `
       <div class="card mb-6">
         <div class="card-header bg-subtle">
@@ -238,7 +239,7 @@ export function renderToday({ state }) {
   });
 }
 
-function renderQueueItem(item) {
+function renderQueueItem(item, isViewer = false) {
   const priorityClass = item.priority === 'high'
     ? 'badge-danger'
     : item.priority === 'medium_high'
@@ -248,6 +249,8 @@ function renderQueueItem(item) {
   const edgeClass = item.priority === 'high' ? 'card-danger-edge' : 'card-warning-edge';
   const priorityLabel = priorityLabels[item.priority] || item.priority;
   const label = decisionQueueLabels[item.type] || item.title;
+
+  const canNavigate = !isViewer || (item.actionUrl && (item.actionUrl.startsWith('resultados') || item.actionUrl.startsWith('pesquisas/')));
 
   return `
     <div class="card ${edgeClass}">
@@ -262,9 +265,11 @@ function renderQueueItem(item) {
           </p>
         </div>
         <div>
-          <a href="#${attr(item.actionUrl)}" class="btn btn-secondary btn-sm">
-            ${esc(item.actionLabel || 'Resolver')}
-          </a>
+          ${canNavigate && item.actionUrl ? `
+            <a href="#${attr(item.actionUrl)}" class="btn btn-secondary btn-sm">
+              ${isViewer ? 'Visualizar' : esc(item.actionLabel || 'Resolver')}
+            </a>
+          ` : ''}
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { field, textarea, select } from '../../ui/fields.js';
 export function renderActionsList({ state }) {
   const management = state.management || {};
   const actions = management.actions || [];
+  const isViewer = state.account?.role === 'viewer';
 
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
   const overdueCount = actions.filter(a => ['planned', 'in_progress'].includes(a.status) && a.dueDate < todayStr).length;
@@ -26,9 +27,11 @@ export function renderActionsList({ state }) {
           </p>
         </div>
         <div>
-          <button type="button" class="btn btn-primary" data-action="open-add-action-modal">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Ação Preventiva
-          </button>
+          ${!isViewer ? `
+            <button type="button" class="btn btn-primary" data-action="open-add-action-modal">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Ação Preventiva
+            </button>
+          ` : ''}
         </div>
       </div>
 
@@ -70,13 +73,13 @@ export function renderActionsList({ state }) {
                   <th>Prazo</th>
                   <th>Revisão de Eficácia</th>
                   <th>Status</th>
-                  <th class="text-right">Ações</th>
+                  ${!isViewer ? '<th class="text-right">Ações</th>' : ''}
                 </tr>
               </thead>
               <tbody>
                 ${actions.length === 0 ? `
                   <tr>
-                    <td colspan="7" class="table-empty-cell">
+                    <td colspan="${isViewer ? '6' : '7'}" class="table-empty-cell">
                       Nenhuma ação cadastrada. Transforme os achados dos relatórios em medidas preventivas.
                     </td>
                   </tr>
@@ -102,11 +105,13 @@ export function renderActionsList({ state }) {
                         ${isReviewDue ? '<span class="badge badge-warning">Revisar</span>' : ''}
                       </td>
                       <td>${actionStatusBadge(a.status)}</td>
-                      <td class="text-right">
-                        <button type="button" class="btn btn-ghost btn-sm" data-action="edit-action" data-id="${attr(a.id)}">
-                          Editar / Revisar
-                        </button>
-                      </td>
+                      ${!isViewer ? `
+                        <td class="text-right">
+                          <button type="button" class="btn btn-ghost btn-sm" data-action="edit-action" data-id="${attr(a.id)}">
+                            Editar / Revisar
+                          </button>
+                        </td>
+                      ` : ''}
                     </tr>
                   `;
                 }).join('')}

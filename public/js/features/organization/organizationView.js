@@ -12,6 +12,7 @@ export function renderPeople({ state }) {
   const members = state.members || [];
   const groups = state.groups || [];
   const filterGroupId = state.filterGroupId;
+  const isOwner = state.account?.role === 'owner';
 
   const filteredMembers = filterGroupId
     ? members.filter(m => (m.groupIds || []).includes(filterGroupId) || m.groupId === filterGroupId)
@@ -31,14 +32,16 @@ export function renderPeople({ state }) {
             Gestão de colaboradores, equipes e segmentos da empresa
           </p>
         </div>
-        <div class="flex gap-2">
-          <button type="button" class="btn btn-secondary" data-action="open-import-modal">
-            <i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar Planilha
-          </button>
-          <button type="button" class="btn btn-primary" data-action="open-add-member-modal">
-            <i class="fa-solid fa-user-plus" aria-hidden="true"></i> Adicionar Colaborador
-          </button>
-        </div>
+        ${isOwner ? `
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-secondary" data-action="open-import-modal">
+              <i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar Planilha
+            </button>
+            <button type="button" class="btn btn-primary" data-action="open-add-member-modal">
+              <i class="fa-solid fa-user-plus" aria-hidden="true"></i> Adicionar Colaborador
+            </button>
+          </div>
+        ` : ''}
       </div>
 
       <nav class="tabs-nav mb-6" aria-label="Seções de organização">
@@ -102,12 +105,14 @@ export function renderPeople({ state }) {
                     `).join('') || '<span class="color-muted">Sem grupo</span>'}
                   </td>
                   <td class="text-right">
-                    <button type="button" class="btn btn-ghost btn-sm" data-action="edit-member" data-id="${attr(m.id)}">
-                      Editar
-                    </button>
-                    <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="delete-member" data-id="${attr(m.id)}">
-                      Remover
-                    </button>
+                    ${isOwner ? `
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="edit-member" data-id="${attr(m.id)}">
+                        Editar
+                      </button>
+                      <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="delete-member" data-id="${attr(m.id)}">
+                        Remover
+                      </button>
+                    ` : '<span class="color-muted text-xs">—</span>'}
                   </td>
                 </tr>
               `;
@@ -129,6 +134,7 @@ export function renderPeople({ state }) {
 export function renderGroups({ state }) {
   const groups = state.groups || [];
   const members = state.members || [];
+  const isOwner = state.account?.role === 'owner';
 
   const content = `
     <div class="org-page">
@@ -139,11 +145,13 @@ export function renderGroups({ state }) {
             Gestão de grupos, áreas e segmentos organizacionais
           </p>
         </div>
-        <div class="flex gap-2">
-          <button type="button" class="btn btn-primary" data-action="open-add-group-modal">
-            <i class="fa-solid fa-folder-plus" aria-hidden="true"></i> Novo Grupo
-          </button>
-        </div>
+        ${isOwner ? `
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-primary" data-action="open-add-group-modal">
+              <i class="fa-solid fa-folder-plus" aria-hidden="true"></i> Novo Grupo
+            </button>
+          </div>
+        ` : ''}
       </div>
 
       <nav class="tabs-nav mb-6" aria-label="Seções de organização">
@@ -195,14 +203,16 @@ export function renderGroups({ state }) {
                     `}
                   </td>
                   <td class="text-right">
-                    <button type="button" class="btn btn-ghost btn-sm" data-action="edit-group" data-id="${attr(g.id)}">
-                      Editar
-                    </button>
-                    ${!isGeneral ? `
-                      <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="delete-group" data-id="${attr(g.id)}">
-                        Excluir
+                    ${isOwner ? `
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="edit-group" data-id="${attr(g.id)}">
+                        Editar
                       </button>
-                    ` : ''}
+                      ${!isGeneral ? `
+                        <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="delete-group" data-id="${attr(g.id)}">
+                          Excluir
+                        </button>
+                      ` : ''}
+                    ` : '<span class="color-muted text-xs">—</span>'}
                   </td>
                 </tr>
               `;

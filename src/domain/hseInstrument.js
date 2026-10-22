@@ -49,11 +49,12 @@ const dimensions = [
 ];
 const reverseItems = [3,5,6,9,12,14,16,18,20,21,22,34];
 module.exports = {
- id:'hse-indicator-pt', name:'HSE — indicador de estresse (português publicado)', version:1,
- available:true, validated:false, category:'Instrumento publicado', channel:'web', minimumResponses:5,
- status:'HSE • português publicado • 35 itens',
- description:'Instrumento HSE sobre condições de trabalho. Seis áreas e sete subescalas; apoio dividido entre gestão e colegas.',
- instructions:'Responda considerando seu trabalho atual. Itens 1 a 23: frequência. Itens 24 a 35: concordância. A redação portuguesa publicada pelo HSE foi mantida.',
+  id:'hse-indicator-pt', name:'HSE — indicador de estresse (português publicado)', version:1,
+  available:true, validated:false, category:'Instrumento publicado', channel:'web', minimumResponses:5,
+  dashboardType:'hse-nr1',
+  status:'HSE • português publicado • 35 itens',
+  description:'Instrumento HSE sobre condições de trabalho. Seis áreas e sete subescalas; apoio dividido entre gestão e colegas.',
+  instructions:'Responda considerando seu trabalho atual. Itens 1 a 23: frequência. Itens 24 a 35: concordância. A redação portuguesa publicada pelo HSE foi mantida.',
  limitation:'Versão portuguesa publicada pelo HSE; não apresentada como adaptação validada para o Brasil. Médias descritivas por subescala, com itens invertidos. Sem percentis britânicos, corte clínico ou certificação NR-1. Discuta os resultados com trabalhadores e responsável técnico.',
  sources:[
  {title:'Questionário português — HSE',url:'https://www.hse.gov.uk/stress/assets/docs/portuguese.pdf'},

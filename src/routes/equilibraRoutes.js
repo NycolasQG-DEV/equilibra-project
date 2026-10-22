@@ -194,19 +194,43 @@ function validateSurveyInput(req, accountId) {
     }
   };
 }
+router.get('/auth/invite-info', (req, res) => {
+  const token = req.query.token;
+  if (!token || typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
+    return fail(res, 400, 'Convite inválido ou expirado.');
+  }
+  const tokenH = hash(token);
+  const workspace = read('management').find(row => (row.invitations || []).some(item => item.tokenHash === tokenH && !item.usedAt && item.expiresAt > Date.now()));
+  const invitation = workspace?.invitations.find(item => item.tokenHash === tokenH && !item.usedAt && item.expiresAt > Date.now());
+  if (!invitation) return fail(res, 404, 'Convite não encontrado ou já expirado.');
+  const org = read('accounts').find(a => a.id === workspace.id);
+  res.json({
+    email: invitation.email,
+    role: invitation.role,
+    company: org?.company || 'Equilibra',
+    expiresAt: invitation.expiresAt
+  });
+});
 router.post('/auth/register', (req, res) => {
-  const name = clean(req.body.name), company = clean(req.body.company), address = email(req.body.email), password = req.body.password;
-  if (!name || !company || !validEmail(address) || typeof password !== 'string' || password.length < 10 || password.length > 128) return fail(res, 400, 'Informe nome, empresa, e-mail válido e senha com 10 a 128 caracteres.');
+  const name = clean(req.body.name);
+  let company = clean(req.body.company);
+  const address = email(req.body.email);
+  const password = req.body.password;
   const accounts = read('accounts');
   if (accounts.some((item) => item.email === address)) return fail(res, 409, 'E-mail já cadastrado.');
   let invitation, workspace;
   if (req.body.invitationToken) {
     if (typeof req.body.invitationToken !== 'string' || !/^[a-f0-9]{64}$/.test(req.body.invitationToken)) return fail(res, 400, 'Convite inválido ou expirado.');
-    workspace = read('management').find(row => row.invitations.some(item => item.tokenHash === hash(req.body.invitationToken) && !item.usedAt && item.expiresAt > Date.now() && item.email === address));
+    workspace = read('management').find(row => (row.invitations || []).some(item => item.tokenHash === hash(req.body.invitationToken) && !item.usedAt && item.expiresAt > Date.now() && item.email === address));
     invitation = workspace?.invitations.find(item => item.tokenHash === hash(req.body.invitationToken) && item.email === address && !item.usedAt && item.expiresAt > Date.now());
     if (!invitation) return fail(res, 400, 'Convite inválido ou expirado.');
     try { require('../services/entitlementService').checkUserLimit(workspace.id); } catch(error) { return fail(res, error.status || 400, error.message); }
+    if (!company && workspace) {
+      const org = accounts.find(a => a.id === workspace.id);
+      company = org?.company || 'Equilibra';
+    }
   }
+  if (!name || !company || !validEmail(address) || typeof password !== 'string' || password.length < 10 || password.length > 128) return fail(res, 400, 'Informe nome, empresa, e-mail válido e senha com 10 a 128 caracteres.');
   const account = { id: id(), name, company, email: address, passwordHash: passwordHash(password), role: invitation?.role || 'owner', ...(workspace ? { organizationId: workspace.id } : {}), createdAt: new Date().toISOString() };
   accounts.push(account);
   if (invitation) {

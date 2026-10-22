@@ -16,6 +16,7 @@ const initialState = {
     collaborators: [],
     retention: null
   },
+  team: { users: [], invitations: [] },
   activeCycleContext: null, // { surveyId, title, cycle, status }
   filterGroupId: null,
   loading: {
@@ -24,7 +25,8 @@ const initialState = {
     surveys: false,
     reports: false,
     organization: false,
-    management: false
+    management: false,
+    team: false
   },
   errors: {}
 };
@@ -173,6 +175,21 @@ class Store {
       return null;
     } finally {
       this.setLoading('management', false);
+    }
+  }
+
+  async loadTeam() {
+    this.setLoading('team', true);
+    try {
+      const team = await get('/management/team');
+      this.setState({ team });
+      this.clearError('team');
+      return team;
+    } catch (err) {
+      this.setError('team', err);
+      return { users: [], invitations: [] };
+    } finally {
+      this.setLoading('team', false);
     }
   }
 

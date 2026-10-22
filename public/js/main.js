@@ -2,9 +2,10 @@
 
 import { router } from './core/router.js';
 import { store } from './core/store.js';
-import { setAuthFailureHandler, post } from './core/api.js';
+import { setAuthFailureHandler, get, post, put, del } from './core/api.js';
 import { showToast } from './ui/toast.js';
 import { closeDialog } from './ui/dialog.js';
+import { roleLabels } from './domain/labels.js';
 
 import { renderLogin, handleLoginSubmit, renderRegister, handleRegisterSubmit, handleLogout } from './features/auth/authView.js';
 import { renderToday, mountedToday } from './features/today/todayView.js';
@@ -65,7 +66,7 @@ import {
   openAddActionModal,
   submitAddAction
 } from './features/actions/actionsView.js';
-import { renderSettings } from './features/settings/settingsView.js';
+import { renderSettings, openInviteUserModal, openInviteSuccessModal } from './features/settings/settingsView.js';
 import { renderRespondent } from './features/respond/respondView.js';
 
 // Setup Auth Failure handler
@@ -140,7 +141,6 @@ router.register({
 router.register({
   path: 'pesquisas/:id/distribuicao',
   title: 'Distribuição da Pesquisa',
-  roles: ['owner', 'editor'],
   load: async () => {
     await Promise.all([store.loadSurveys(), store.loadOrganization()]);
   },
@@ -191,7 +191,15 @@ router.register({
 router.register({
   path: 'configuracoes/:section',
   title: 'Configurações',
-  load: () => store.loadManagement(),
+  load: async () => {
+    const state = store.getState();
+    const isOwner = state.account?.role === 'owner';
+    const loads = [store.loadManagement(), store.loadMeta()];
+    if (isOwner) {
+      loads.push(store.loadTeam());
+    }
+    await Promise.all(loads);
+  },
   render: renderSettings
 });
 
@@ -210,6 +218,22 @@ router.register({
 router.register({
   path: 'registro',
   title: 'Criar conta',
+  load: async () => {
+    const raw = window.location.hash || '';
+    const queryPart = raw.includes('?') ? raw.split('?')[1] : (window.location.search ? window.location.search.slice(1) : '');
+    const params = new URLSearchParams(queryPart);
+    const token = params.get('invite') || params.get('token');
+    if (token) {
+      try {
+        const info = await get(`/auth/invite-info?token=${encodeURIComponent(token)}`);
+        store.setState({ activeInvite: { ...info, token } });
+      } catch (err) {
+        store.setState({ activeInvite: { error: err.message || 'Convite inválido ou expirado.', token } });
+      }
+    } else {
+      store.setState({ activeInvite: null });
+    }
+  },
   render: renderRegister
 });
 
@@ -293,6 +317,74 @@ document.addEventListener('click', async (e) => {
     openAddActionModal();
   } else if (action === 'submit-add-action') {
     await submitAddAction();
+  } else if (action === 'quick-add-solution') {
+    e.preventDefault();
+    if (trigger.disabled) return;
+    trigger.disabled = true;
+    const originalHtml = trigger.innerHTML;
+    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cadastrando...';
+
+    const reportId = trigger.dataset.reportId;
+    const factorKey = trigger.dataset.factorKey;
+    const factorLabel = trigger.dataset.factorLabel || factorKey;
+    const title = trigger.dataset.solutionTitle;
+    const owner = trigger.dataset.owner || 'RH / Gestão Operacional';
+    const days = Number(trigger.dataset.days) || 30;
+    const criteria = trigger.dataset.criteria || 'Redução da sobrecarga e melhoria na próxima escuta';
+    const desc = trigger.dataset.desc || 'Ação preventiva gerada pelo Portal de Soluções Equilibra (NR-1)';
+
+    try {
+      await store.loadManagement();
+      const assessments = store.state.management?.assessments || [];
+      let assessment = assessments.find(a => a.reportId === reportId && a.factor === factorKey);
+
+      if (!assessment) {
+        assessment = await post('/management/assessments', {
+          reportId,
+          factor: factorKey,
+          title: `Avaliação do Fator: ${factorLabel}`,
+          context: `Achado identificado na escuta psicossocial NR-1: fator na faixa de atenção/cuidado.`,
+          existingMeasures: 'Medidas em análise preliminar pelo SESMT/RH.',
+          decision: `Implementação da ação preventiva recomendada: ${title}`,
+          classification: 'high',
+          status: 'evaluated'
+        });
+      } else if (assessment.status !== 'evaluated') {
+        assessment = await put(`/management/assessments/${assessment.id}`, {
+          ...assessment,
+          context: assessment.context || `Achado identificado na escuta psicossocial NR-1.`,
+          decision: `Implementação da ação preventiva recomendada: ${title}`,
+          classification: 'high',
+          status: 'evaluated'
+        });
+      }
+
+      const now = new Date();
+      const due = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      const rev = new Date(due.getTime() + 15 * 24 * 60 * 60 * 1000);
+      const fmtDate = (d) => d.toISOString().slice(0, 10);
+
+      await post('/management/actions', {
+        assessmentId: assessment.id,
+        title,
+        owner,
+        dueDate: fmtDate(due),
+        reviewDate: fmtDate(rev),
+        priority: 'high',
+        successCriteria: criteria,
+        description: desc
+      });
+
+      await store.loadManagement();
+      showToast(`Ação preventiva "${title}" integrada ao Plano de Ação da NR-1 com sucesso!`, 'success');
+
+      trigger.className = 'badge badge-success';
+      trigger.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Integrado ao Plano de Ação';
+    } catch (err) {
+      trigger.disabled = false;
+      trigger.innerHTML = originalHtml;
+      showToast(err.message || 'Erro ao cadastrar ação preventiva.', 'error');
+    }
   } else if (action === 'toggle-chart-table') {
     const targetId = trigger.dataset.target;
     const tableEl = document.getElementById(targetId);
@@ -361,6 +453,72 @@ document.addEventListener('click', async (e) => {
     }
   } else if (action === 'print-page') {
     window.print();
+  } else if (action === 'open-invite-user-modal') {
+    openInviteUserModal();
+  } else if (action === 'submit-invite-user') {
+    const form = document.getElementById('invite-user-form');
+    if (!form) return;
+    const email = form.email?.value?.trim();
+    const role = form.role?.value;
+    if (!email || !role) {
+      showToast('Informe o e-mail e o papel do convidado.', 'error');
+      return;
+    }
+    try {
+      const res = await post('/management/team/invitations', { email, role });
+      await store.loadTeam();
+      closeDialog();
+      showToast('Convite criado com sucesso!', 'success');
+      if (res && res.token) {
+        openInviteSuccessModal({ email, role, token: res.token });
+      }
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar convite.', 'error');
+    }
+  } else if (action === 'copy-invite-link') {
+    const token = trigger.dataset.token;
+    const fullUrl = `${window.location.origin}/#registro?invite=${token}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullUrl);
+      showToast('Link de convite copiado para a área de transferência!', 'success');
+    } else {
+      showToast('Link: ' + fullUrl, 'info');
+    }
+  } else if (action === 'revoke-team-invitation') {
+    const id = trigger.dataset.id;
+    if (!window.confirm('Deseja realmente revogar este convite pendente?')) return;
+    try {
+      await del(`/management/team/invitations/${id}`);
+      await store.loadTeam();
+      showToast('Convite revogado com sucesso.', 'info');
+    } catch (err) {
+      showToast(err.message || 'Erro ao revogar convite.', 'error');
+    }
+  } else if (action === 'remove-team-member') {
+    const id = trigger.dataset.id;
+    const name = trigger.dataset.name || 'o membro';
+    if (!window.confirm(`Deseja realmente remover ${name} da equipe? Esta pessoa perderá acesso ao sistema.`)) return;
+    try {
+      await del(`/management/team/${id}`);
+      await store.loadTeam();
+      showToast('Membro removido da equipe com sucesso.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao remover membro.', 'error');
+    }
+  } else if (action === 'save-company-name') {
+    const form = document.getElementById('account-settings-form');
+    const companyName = form?.companyName?.value?.trim();
+    if (!companyName) {
+      showToast('Informe o nome da empresa.', 'error');
+      return;
+    }
+    try {
+      await put('/meta/account', { companyName });
+      await store.loadMeta();
+      showToast('Nome da empresa atualizado com sucesso.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao atualizar dados.', 'error');
+    }
   }
 });
 
@@ -395,7 +553,19 @@ document.addEventListener('input', (e) => {
   }
 });
 
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
+  if (e.target.dataset.action === 'change-team-role') {
+    const userId = e.target.dataset.id;
+    const newRole = e.target.value;
+    try {
+      await put(`/management/team/${userId}`, { role: newRole });
+      await store.loadTeam();
+      showToast(`Papel atualizado com sucesso para ${roleLabels[newRole] || newRole}.`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao atualizar papel do usuário.', 'error');
+      await store.loadTeam();
+    }
+  }
   if (e.target.name === 'model') {
     selectModel(e.target.value);
   }
@@ -455,6 +625,9 @@ function startAutoSync() {
         await store.loadReports();
       } else if (hash.startsWith('acoes')) {
         await store.loadManagement();
+      } else if (hash.startsWith('configuracoes')) {
+        await store.loadManagement();
+        if (state.account.role === 'owner') await store.loadTeam();
       }
     } catch {
       // Silent error handling during background auto-sync

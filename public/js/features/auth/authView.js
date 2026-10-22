@@ -5,6 +5,8 @@ import { store } from '../../core/store.js';
 import { router } from '../../core/router.js';
 import { showToast } from '../../ui/toast.js';
 import { field } from '../../ui/fields.js';
+import { esc, attr } from '../../domain/formatters.js';
+import { roleLabels } from '../../domain/labels.js';
 
 // ── Shared header ──────────────────────────────────────────────────────────
 function authHeader(subtitle) {
@@ -87,13 +89,55 @@ export async function handleLoginSubmit(form) {
 }
 
 // ── Register ───────────────────────────────────────────────────────────────
-export function renderRegister() {
+export function renderRegister({ state = store.getState() } = {}) {
+  const invite = state.activeInvite;
+
+  if (invite && invite.error) {
+    return `
+      <div class="center-page-wrap">
+        <div class="card auth-card">
+          ${authHeader('Convite de Equipe')}
+          <div class="card-body">
+            <div class="privacy-notice privacy-warning mb-4">
+              <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+              <div>
+                <strong>Convite inválido</strong>
+                <p class="m-0 text-xs">${esc(invite.error)}</p>
+              </div>
+            </div>
+            <p class="text-sm mb-4">
+              Este convite expirou ou já foi utilizado. Solicite um novo link de convite ao administrador da sua empresa.
+            </p>
+            <a href="#login" class="btn btn-secondary w-full">Voltar para o Login</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const isInvited = Boolean(invite && invite.email);
+  const roleName = isInvited ? (roleLabels[invite.role] || invite.role) : '';
+
   return `
     <div class="center-page-wrap">
       <div class="card auth-card auth-card--wide">
-        ${authHeader('Crie sua conta e comece a organizar a escuta')}
+        ${authHeader(isInvited ? 'Junte-se à equipe no Equilibra' : 'Crie sua conta e comece a organizar a escuta')}
         <div class="card-body">
+          ${isInvited ? `
+            <div class="privacy-notice privacy-info mb-4">
+              <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i>
+              <div>
+                <strong>Convite de Equipe Confirmado</strong>
+                <p class="m-0 text-xs">
+                  Você foi convidado para a equipe de <strong>${esc(invite.company)}</strong> com o papel de <strong>${esc(roleName)}</strong>. Complete os dados para entrar.
+                </p>
+              </div>
+            </div>
+          ` : ''}
+
           <form id="register-form" data-action="submit-register">
+            ${isInvited ? `<input type="hidden" name="invitationToken" value="${attr(invite.token)}" />` : ''}
+
             ${field({
               id: 'register-name',
               name: 'name',
@@ -108,14 +152,18 @@ export function renderRegister() {
               label: 'Nome da empresa',
               type: 'text',
               required: true,
+              value: isInvited ? (invite.company || '') : '',
+              disabled: Boolean(isInvited),
               placeholder: 'ex: Empresa Ltda'
             })}
             ${field({
               id: 'register-email',
               name: 'email',
-              label: 'E-mail corporativo',
+              label: isInvited ? 'E-mail corporativo convidado' : 'E-mail corporativo',
               type: 'email',
               required: true,
+              value: isInvited ? (invite.email || '') : '',
+              disabled: Boolean(isInvited),
               placeholder: 'ex: gestor@empresa.com.br'
             })}
             ${field({
@@ -135,8 +183,8 @@ export function renderRegister() {
               placeholder: '••••••••••'
             })}
             <button type="submit" id="btn-register-submit" class="btn btn-primary w-full mt-4">
-              <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
-              Criar conta
+              <i class="fa-solid ${isInvited ? 'fa-right-to-bracket' : 'fa-user-plus'}" aria-hidden="true"></i>
+              ${isInvited ? 'Aceitar Convite e Entrar' : 'Criar conta'}
             </button>
           </form>
         </div>
@@ -154,9 +202,11 @@ export async function handleRegisterSubmit(form) {
   const submitBtn = form.querySelector('[type="submit"]');
   if (submitBtn) submitBtn.disabled = true;
 
+  const activeInvite = store.getState().activeInvite;
+  const invitationToken = form.invitationToken?.value || activeInvite?.token;
   const name = form.name?.value?.trim();
-  const company = form.company?.value?.trim();
-  const email = form.email?.value?.trim();
+  const company = (form.company?.value?.trim()) || activeInvite?.company;
+  const email = (form.email?.value?.trim()) || activeInvite?.email;
   const password = form.password?.value;
   const passwordConfirm = form.passwordConfirm?.value;
 
@@ -179,7 +229,15 @@ export async function handleRegisterSubmit(form) {
   }
 
   try {
-    await post('/auth/register', { name, company, email, password });
+    const payload = {
+      name,
+      company,
+      email,
+      password,
+      ...(invitationToken ? { invitationToken } : {})
+    };
+    await post('/auth/register', payload);
+    store.setState({ activeInvite: null });
     await store.loadAccount();
     showToast('Conta criada com sucesso! Bem-vindo(a) ao Equilibra.', 'success');
     router.navigate('hoje');

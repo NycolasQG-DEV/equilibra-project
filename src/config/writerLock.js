@@ -7,7 +7,7 @@ function acquire() {
   if (fs.existsSync(filename)) {
     const pid = Number(fs.readFileSync(filename, "utf8"));
     let alive = false;
-    if (Number.isInteger(pid) && pid > 0) {
+    if (Number.isInteger(pid) && pid > 0 && pid !== process.pid) {
       try {
         process.kill(pid, 0);
         alive = true;

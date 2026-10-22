@@ -12,6 +12,8 @@ import { field } from '../../ui/fields.js';
 
 export function renderSurveysList({ state }) {
   const surveys = state.surveys || [];
+  const account = state.account || {};
+  const isViewer = account.role === 'viewer';
 
   const content = `
     <div class="surveys-page">
@@ -23,9 +25,11 @@ export function renderSurveysList({ state }) {
           </p>
         </div>
         <div>
-          <a href="#pesquisas/nova" class="btn btn-primary">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Pesquisa
-          </a>
+          ${!isViewer ? `
+            <a href="#pesquisas/nova" class="btn btn-primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Pesquisa
+            </a>
+          ` : ''}
         </div>
       </div>
 
@@ -46,7 +50,7 @@ export function renderSurveysList({ state }) {
             ${surveys.length === 0 ? `
               <tr>
                 <td colspan="7" class="table-empty-cell">
-                  Nenhuma pesquisa cadastrada. Inicie um novo ciclo de escuta.
+                  Nenhuma pesquisa cadastrada.
                 </td>
               </tr>
             ` : surveys.map(s => {
@@ -82,14 +86,18 @@ export function renderSurveysList({ state }) {
                         <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm">
                           <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
                         </a>
-                      ` : `
+                      ` : !isViewer ? `
                         <button type="button" class="btn btn-primary btn-sm" data-action="open-survey-direct" data-id="${attr(s.id)}">
                           Abrir Coleta
                         </button>
+                      ` : `
+                        <span class="badge badge-neutral">Rascunho</span>
                       `}
-                      <button type="button" class="btn btn-ghost color-danger btn-sm btn-icon" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir pesquisa">
-                        <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-                      </button>
+                      ${!isViewer ? `
+                        <button type="button" class="btn btn-ghost color-danger btn-sm btn-icon" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir pesquisa">
+                          <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                        </button>
+                      ` : ''}
                     </div>
                   </td>
                 </tr>
@@ -112,6 +120,7 @@ export function renderSurveysList({ state }) {
 export function renderSurveyDistribution({ params, state }) {
   const surveyId = params.id;
   const survey = (state.surveys || []).find(s => s.id === surveyId);
+  const isViewer = state.account?.role === 'viewer';
 
   if (!survey) {
     return renderShell({
@@ -164,17 +173,19 @@ export function renderSurveyDistribution({ params, state }) {
             <strong>${esc(survey.title)}</strong> · Ciclo: <strong>${esc(survey.cycle || 'Geral')}</strong> · Modelo: <strong>${esc(survey.model || 'Diagnóstico')}</strong>
           </p>
         </div>
-        <div class="flex gap-2 flex-wrap">
-          <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
-            <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
-          </button>
-          <button type="button" class="btn btn-secondary" data-action="open-close-early-modal" data-id="${attr(survey.id)}">
-            <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar
-          </button>
-          <button type="button" class="btn btn-ghost color-danger" data-action="open-delete-survey-modal" data-id="${attr(survey.id)}" data-title="${attr(survey.title)}" title="Excluir pesquisa">
-            <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Pesquisa
-          </button>
-        </div>
+        ${!isViewer ? `
+          <div class="flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
+              <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
+            </button>
+            <button type="button" class="btn btn-secondary" data-action="open-close-early-modal" data-id="${attr(survey.id)}">
+              <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar
+            </button>
+            <button type="button" class="btn btn-ghost color-danger" data-action="open-delete-survey-modal" data-id="${attr(survey.id)}" data-title="${attr(survey.title)}" title="Excluir pesquisa">
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Pesquisa
+            </button>
+          </div>
+        ` : ''}
       </div>
 
       <!-- LINK ÚNICO DA PESQUISA (Destaque Principal) -->
