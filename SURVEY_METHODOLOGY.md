@@ -1,83 +1,91 @@
-# Pesquisas web e metodologia
+# Metodologia de Pesquisa, Modelos e Proteção de Sigilo — Equilibra
 
-Revisão das fontes: 20/10/2026. Não há uma lista legal exaustiva de pesquisas obrigatórias. Esta seleção cobre famílias importantes de avaliação do trabalho, além de instrumentos complementares. Não representa classificação oficial do MTE.
+Revisão técnica atualizada em consonância com as exigências da NR-1 / PGR (Gerenciamento de Riscos Ocupacionais).
 
-## Aplicação disponível
+---
 
-Em Pesquisas, crie um ciclo, escolha o modelo, revise as afirmações e inicie a coleta. O participante responde no navegador pelo link. Não há envio automático nem integração com WhatsApp. O endereço localhost funciona apenas no computador do servidor; acesso externo exige hospedagem/endereço acessível e HTTPS.
+## 1. Catálogo de Modelos Disponíveis
 
-Existem dez modelos selecionáveis:
+A plataforma oferece **10 modelos de pesquisa** selecionáveis no momento da criação do ciclo:
 
-- Organização e condições de trabalho: 12 afirmações próprias.
-- Demandas, ritmo e carga: 6.
-- Autonomia e clareza de papéis: 5.
-- Liderança, apoio e reconhecimento: 6.
-- Respeito, assédio e segurança para falar: 6.
-- Jornada, pausas e recuperação: 5.
-- Mudanças e comunicação: 5.
-- Pulso das condições de trabalho: 4.
-- Acompanhamento das medidas: 5.
-- HSE: versão portuguesa publicada de 35 itens.
+### 1.1 Nove Modelos Exploratórios Próprios
+Roteiros estruturados em escala Likert de 1 a 5 (1 = Percepção muito desfavorável a 5 = Percepção muito favorável):
+1. **Organização e Condições de Trabalho (12 afirmações):** Avaliação geral do ambiente, ferramentas, demandas e relações.
+2. **Demandas, Ritmo e Carga (6 afirmações):** Ritmo de trabalho, pressão temporal e equilíbrio físico/mental.
+3. **Autonomia e Clareza de Papéis (5 afirmações):** Margem de decisão, clareza das metas e responsabilidades.
+4. **Liderança, Apoio e Reconhecimento (6 afirmações):** Suporte da gestão imediata, escuta ativa e reconhecimento do esforço.
+5. **Respeito, Assédio e Segurança Psicológica (6 afirmações):** Relações interpessoais, respeito à dignidade e liberdade para apontar falhas sem retaliação.
+6. **Jornada, Pausas e Recuperação (5 afirmações):** Cumprimento da jornada, previsibilidade de pausas e desconexão fora do expediente.
+7. **Mudanças e Comunicação (5 afirmações):** Transparência na transição de processos, tecnologia e comunicação interna.
+8. **Pulso das Condições de Trabalho (4 afirmações):** Versão concisa de sondagem periódica rápida.
+9. **Acompanhamento das Medidas (5 afirmações):** Monitoramento específico da percepção dos colaboradores sobre a eficácia de planos de ação já implantados.
 
-Os nove modelos próprios são exploratórios, sem validação psicométrica. São roteiros iniciais de escuta e acompanhamento. As referências MTE e HSE fundamentam a escolha de temas e o uso de múltiplas fontes; não constituem validação das nossas perguntas.
+*Nota:* Os modelos exploratórios próprios são roteiros técnicos de escuta interna voltados à prevenção, sem alegação de padronização psicométrica nacional.
 
-## HSE
+---
 
-A redação portuguesa publicada foi conservada, inclusive terminologia de Portugal. Não se afirma validação para a população brasileira. As primeiras 23 respostas usam frequência, as outras 12 usam concordância. A interface armazena a posição de resposta de 1 a 5. Na análise, aplica 6 menos a resposta nos itens 3, 5, 6, 9, 12, 14, 16, 18, 20, 21, 22 e 34.
+### 1.2 Instrumento HSE (Health and Safety Executive — 35 Itens)
+Versão integral de 35 itens traduzida e publicada pelo órgão britânico de saúde ocupacional. Utiliza duas escalas de resposta de 5 pontos:
+- **Itens 1 a 23:** Escala de frequência (1 = Nunca a 5 = Sempre).
+- **Itens 24 a 35:** Escala de concordância (1 = Discordo totalmente a 5 = Concordo totalmente).
 
-Dimensões conferidas na planilha oficial:
+#### Inversão Matemática de Itens Negativos
+Para garantir que a regra interpretativa seja uniforme (**maior nota = melhor condição de trabalho**), o servidor inverte matematicamente os 12 itens formulados negativamente:
 
-- Demandas: 3, 6, 9, 12, 16, 18, 20, 22.
-- Controle: 2, 10, 15, 19, 25, 30.
-- Apoio da gestão: 8, 23, 29, 33, 35.
-- Apoio dos colegas: 7, 24, 27, 31.
-- Relações: 5, 14, 21, 34.
-- Papel: 1, 4, 11, 13, 17.
-- Mudanças: 26, 28, 32.
+$$\text{Valor Calculado} = 6 - \text{Resposta Original}$$
 
-Calcula-se a média dos itens de cada subescala por participante e depois a média coletiva, sem arredondamento intermediário. Esta aplicação exige todos os itens respondidos; não imputa ausências. Exibe duas casas decimais. Não aplica percentis, cores de risco, cortes clínicos, classificação normativa britânica nem nota geral validada. Distribuição por subescala não é publicada, pois a média de itens não equivale a uma resposta ordinal individual. O mínimo de cinco é uma proteção operacional de divulgação, não prova de representatividade.
+Itens invertidos: **3, 5, 6, 9, 12, 14, 16, 18, 20, 21, 22 e 34**.
 
-Fontes HSE e atribuição:
+#### Dimensões e Subescalas HSE
+A média de cada subescala é calculada individualmente por participante e, posteriormente, consolidada na média coletiva:
+- **Demandas:** Itens 3, 6, 9, 12, 16, 18, 20, 22.
+- **Controle:** Itens 2, 10, 15, 19, 25, 30.
+- **Apoio da Gestão:** Itens 8, 23, 29, 33, 35.
+- **Apoio dos Colegas:** Itens 7, 24, 27, 31.
+- **Relações:** Itens 5, 14, 21, 34.
+- **Papel:** Itens 1, 4, 11, 13, 17.
+- **Mudanças:** Itens 26, 28, 32.
 
-- https://www.hse.gov.uk/stress/assets/docs/portuguese.pdf
-- https://www.hse.gov.uk/stress/assets/docs/indicatortoolmanual.pdf
-- https://www.hse.gov.uk/stress/assets/docs/analysistool.xls
-- https://www.hse.gov.uk/help/copyright.htm
-- https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+---
 
-Contains public sector information published by the Health and Safety Executive and licensed under the Open Government Licence. Sem endosso do HSE ou uso de seu logotipo.
+## 2. Faixas de Referência e Avaliação de Tendência
 
-## Instrumentos pesquisados e pendências
+Para orientar a priorização das intervenções de SST de maneira objetiva e visual, o Equilibra classifica os fatores consolidados em 3 faixas semafóricas:
 
-O catálogo da plataforma contém nome, finalidade, fonte e condição para habilitação. As opções abaixo ainda não são formulários executáveis:
+| Faixa | Intervalo de Média | Semáforo | Interpretação Operacional |
+|---|---|:---:|---|
+| **Atenção Prioritária** | Média $< 2,80$ | 🔴 Vermelho | Ponto crítico com forte percepção desfavorável. Demanda investigação imediata e planejamento de ação mitigatória no PGR. |
+| **Cuidado / Monitoramento** | $2,80 \le \text{Média} < 3,60$ | 🟡 Amarelo | Condição intermediária. Requer acompanhamento periódico e fortalecimento das medidas preventivas existentes. |
+| **Adequado / Protetivo** | Média $\ge 3,60$ | 🟢 Verde | Percepção predominantemente favorável. Manter as boas práticas organizacionais e reforçar a cultura de segurança. |
 
-- EET: confirmar versão e condições de uso. Estudo brasileiro: https://www.scielo.br/j/epsic/a/MRLmmQhyZQjWcN4DPffTBbq/?lang=pt
-- Escala de Estressores Psicossociais no Contexto Laboral: conferir direitos e pontuação. https://www.scielo.br/j/prc/a/Yg6GQysjkJrPB6jxVbmD6xj/?lang=pt
-- COPSOQ II/III: escolher versão brasileira e contatar a rede nacional; seguir diretrizes de aplicação e licença. https://www.copsoq-network.org/licence-guidelines-and-questionnaire
-- JCQ/JCQ2: confirmar licença com JCQ Center. https://www.jcqcenter.com/license/
-- JSS: estudo brasileiro da versão resumida; confirmar direitos, itens e cálculo. https://doi.org/10.1590/S0034-89102004000200003
-- ERI: autorização do titular para uso comercial. https://www.uniklinik-duesseldorf.de/patienten-besucher/klinikeninstitutezentren/institut-fuer-medizinische-soziologie/das-institut/forschung/the-eri-model-stress-and-health/eri-questionnaires/questionnaires-download
-- PROART: confirmar versão, autorização e aplicação técnica. https://www.repositorio.unb.br/handle/10482/15420
-- ITRA: confirmar versão e condições de uso. https://www.repositorio.unb.br/handle/10482/20611
-- QPSNordic: conferir adaptação brasileira e condições da versão. https://stami.no/publikasjon/brukerveiledning-qpsnordic-generelt-sporreskjema-om-psykologiske-og-sosiale-faktorer-i-arbeidet/
-- NAQ/NAQ-R: confirmar autorização de uso e proteção dos participantes. https://www.uib.no/en/rg/bbrg/44045/naq
-- CBI: instrumento complementar sobre exaustão; conferir versão e governança de saúde. https://nfa.dk/vaerktoejer/spoergeskemaer/spoergeskema-til-maaling-af-udbraendthed-cbi
-- MBI: licença por aplicação e restrições para aplicação online; não publicar itens na web aberta. https://www.mindgarden.com/maslach-burnout-inventory-mbi/765-mbi-license-to-administer.html
-- WHO-5: bem-estar, não exposição organizacional; escala própria de seis pontos. https://www.who.int/publications/m/item/WHO-UCN-MSD-MHE-2024.01
+### Avaliação de Tendência Histórica (Deltas)
+Ao comparar o ciclo atual com um ciclo anterior compatível (mesmo instrumento e público):
+- **Evolução Positiva:** $\Delta > +0,15$ (aumento estatisticamente perceptível de bem-estar).
+- **Declínio / Alerta:** $\Delta < -0,15$ (queda significativa na percepção das condições de trabalho).
+- **Estável:** $-0,15 \le \Delta \le +0,15$ (flutuações menores dentro da margem de tolerância).
 
-Não foram copiados ou renomeados itens desses instrumentos como se fossem nossos modelos. Uma futura habilitação exige adaptador de pontuação, versão congelada, direitos conferidos e testes próprios.
+---
 
-## NR-1 e uso dos resultados
+## 3. Diretrizes de Proteção de Sigilo e Privacidade
 
-Questionário é uma das fontes possíveis. Deve ser articulado com observação das condições reais, análise da atividade, diálogo com trabalhadores, avaliação ergonômica e dados administrativos pertinentes. O relatório auxilia investigação, inventário, decisão e plano de ação; não certifica o atendimento a todos os requisitos da NR-1.
+### 3.1 Quórum Mínimo de Divulgação ($N \ge 5$)
+Nenhum resultado quantitativo é divulgado para grupos com menos de 5 respondentes. A exigência de 5 respostas é um controle de produto desenhado para evitar constrangimento e garantir a confidencialidade das opiniões expressas.
 
-Fonte principal: MTE, Perguntas e Respostas GRO/PGR, maio/2026:
-https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/manuais-e-publicacoes/2026/perguntas-e-respostas-gro-pgr-maio-2026/@@download/file
+### 3.2 Partição Determinística de Segmentos
+Em pesquisas corporativas com múltiplos departamentos ou áreas:
+1. O sistema mapeia o número de respondentes em cada segmento.
+2. Segmentos com $n < 5$ são ordenados de forma crescente e fundidos em um grupo rotulado como *"Demais áreas (agrupadas)"*.
+3. O processo de mescla continua até que o grupo agrupado alcance $n \ge 5$.
+4. Se todos os segmentos precisarem ser agrupados, o sistema suprime a tabela de recortes e exibe unicamente a média corporativa total.
 
-## Integridade e limitações
+### 3.3 Supressão por Sobreposição Residual de Públicos
+Se dois ciclos fechados em períodos próximos possuírem públicos com diferença estrita menor que 5 participantes (ex.: ciclo anterior com 181 pessoas e ciclo atual com 178 pessoas), a divulgação do ciclo mais recente é bloqueada com aviso preventivo. Essa regra neutraliza tentativas de inferência residual por cálculo diferencial ($Total_A - Total_B$).
 
-O ciclo salva uma cópia de perguntas, instruções, opções, versão, fontes e pontuação. Respostas e relatórios usam essa cópia. Instrumentos/públicos diferentes não são comparados automaticamente. Os seis nomes antigos continuam aceitos para preservar rascunhos e recorrências; continuam sendo o questionário legado de oito itens, sem conversão retroativa.
+---
 
-O link compartilhado limita o total ao público previsto e usa cookie para impedir repetição no mesmo navegador. Não autentica o trabalhador e não garante uma resposta por pessoa entre navegadores. Convites individuais disponíveis na API têm token de uso único; a confirmação de identidade não faz parte desta etapa. Resposta e consumo de convite são persistidos juntos. Os testes verificam envios concorrentes contra a última vaga.
+## 4. Integração com a NR-1 e o PGR
 
-A seleção técnica e o piloto local continuam necessários. Nenhum dos testes de software comprova validade científica, representatividade ou eficácia causal de medidas.
+O questionário de percepção psicossocial é uma das ferramentas recomendadas para identificação de perigos e fatores de estresse no ambiente corporativo, conforme preconizado no Gerenciamento de Riscos Ocupacionais (GRO) da NR-1.
+
+1. **Abordagem Complementar:** Os resultados devem ser articulados com Análise Ergonômica do Trabalho (AET), inspeções nos postos, diálogo com a CIPA e dados de absenteísmo / saúde ocupacional.
+2. **Termo de Responsabilidade Técnica:** O relatório exige o registro formal de aceite pelo responsável técnico (médico do trabalho, engenheiro de segurança ou gestor de SST), reafirmando que as intervenções e o plano de ação são de responsabilidade direta da organização.

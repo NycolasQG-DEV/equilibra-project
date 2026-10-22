@@ -36,6 +36,9 @@ app.use((error, _request, response, _next) => {
   response.status(500).json({ error: 'Erro interno do servidor.' });
 });
 initializeStorage();
+const { runDataMigration } = require('./services/dataMigration');
+const storage = require('./config/equilibraStorage');
+try { runDataMigration(storage); } catch (e) { console.error('Aviso migração:', e.message); }
 if (require.main === module) {
   const scheduler = require('./services/scheduler');
   app.listen(port, () => {

@@ -6,6 +6,11 @@ const { createTemplate, parseImport, validateImport, validPhone, phoneKey } = re
 const router = express.Router();
 const { FACTORS, MODELS, TEMPLATES, REFERENCES, instrumentForModel, surveyInstrument, snapshotInstrument } = require('../domain/instruments');
 const { aggregate, summarizeDistribution } = require('../domain/analysis');
+const { openSurvey, closeSurvey, reissueLinks, getParticipation, extendSurvey, closeExpiredSurveys } = require('../services/surveyLifecycle');
+const { buildCycleReport, preflightSurveyAudience } = require('../domain/reporting');
+const exportService = require('../services/reportExportService');
+const managementRepo = require('../repositories/managementRepository');
+const todayService = require('../services/todayService');
 const MIN_RESULTS = 5;
 const attempts = new Map();
 const id = () => crypto.randomUUID();
@@ -90,7 +95,8 @@ function surveySummary(survey, accountId) {
   const responses = scoped('responses', accountId).filter((item) => item.surveyId === survey.id);
   const responseCount = survey.status === 'closed' ? (survey.responseCount ?? responses.length) : responses.length;
   const totalMembers = survey.memberIds?.length || 0;
-  const pct70 = totalMembers > 0 ? Math.ceil(totalMembers * 0.7) : 0;
+  const target = survey.participationTarget || 0.70;
+  const pct70 = totalMembers > 0 ? Math.ceil(totalMembers * target) : 0;
   const isExpired = Number.isFinite(new Date(survey.endsAt).getTime()) && new Date(survey.endsAt).getTime() <= Date.now();
   const canClose = responseCount >= pct70 || isExpired;
   const savedReport = scoped('reports', accountId).find(row => row.surveyId === survey.id);
@@ -104,6 +110,7 @@ function surveySummary(survey, accountId) {
     groupName,
     groupSize: totalMembers,
     responseCount,
+    participationTarget: target,
     canClose,
     pct70,
     isExpired,
@@ -114,46 +121,35 @@ function surveySummary(survey, accountId) {
 function ensureReports(accountId) {
   const reports = read('reports');
   let changed = false;
-  for (const survey of scoped('surveys', accountId)) {
-    if (survey.status !== 'closed') continue;
-    const group = scoped('groups', accountId).find((item) => (survey.groupIds || [survey.groupId]).includes(item.id));
-    const responses = scoped('responses', accountId).filter((item) => item.surveyId === survey.id);
-    const result = publishableAggregate(survey, responses);
+  const accountSurveys = scoped('surveys', accountId);
+  const closedSurveys = accountSurveys.filter(s => s.status === 'closed');
+  for (const survey of closedSurveys) {
     const existing = reports.find((item) => item.surveyId === survey.id);
     if (!existing) {
-      reports.push({
-        id: id(), accountId, surveyId: survey.id, title: survey.title, cycle: survey.cycle,
-        model: survey.model, groupName: survey.groupNamesSnapshot?.join(', ') || group?.name || 'Grupo removido',
-        closedAt: survey.closedAt || survey.endsAt, published: Boolean(result),
-        responseCount: result ? responses.length : null, result,
-        suppressionReason: result ? null : (responses.length < MIN_RESULTS ? 'Volume mínimo de respostas não atingido.' : 'Resultado omitido por proteção de públicos sobrepostos ou integridade dos dados.'),
-        instrument: survey.instrument || null, audienceFingerprint: survey.audienceFingerprint || null,
-        groupNames: survey.groupNamesSnapshot || [group?.name || 'Grupo removido'],
-        distribution: result ? summarizeDistribution(responses, surveyInstrument(survey)) : null,
-        methodology: `${surveyInstrument(survey).name}, versão ${surveyInstrument(survey).version}; ${surveyInstrument(survey).factors.length} afirmações; ${surveyInstrument(survey).limitation}`,
-        collectionChannel: 'web'
-      });
-      changed = true;
+      const instrument = surveyInstrument(survey);
+      const responses = scoped('responses', accountId).filter((item) => item.surveyId === survey.id);
+      const previousReports = reports.filter((item) => item.accountId === accountId && item.surveyId !== survey.id);
+      const previousSurveys = accountSurveys.filter((item) => item.id !== survey.id);
 
+      const report = buildCycleReport({
+        survey,
+        instrument,
+        responses,
+        previousReports,
+        previousSurveys,
+        minResults: MIN_RESULTS
+      });
+
+      reports.push(report);
+      changed = true;
     }
   }
   if (changed) write('reports', reports);
   return reports.filter((item) => item.accountId === accountId).sort((a, b) => b.closedAt.localeCompare(a.closedAt));
 }
 function closeExpired(accountId) {
-  const surveys = read('surveys'); let changed = false;
-  for (const survey of surveys) {
-    if (survey.accountId === accountId && survey.status === 'open' && Number.isFinite(new Date(survey.endsAt).getTime()) && new Date(survey.endsAt).getTime() <= Date.now()) {
-      survey.status = 'closed';
-      survey.closedAt = new Date().toISOString();
-      const responses = scoped('responses', accountId).filter((item) => item.surveyId === survey.id);
-      survey.result = publishableAggregate(survey, responses);
-      survey.responseCount = responses.length;
-      changed = true;
-    }
-  }
-  if (changed) write('surveys', surveys);
-  if (changed) ensureReports(accountId);
+  const check = closeExpiredSurveys(accountId);
+  if (check.changed) ensureReports(accountId);
 }
 function validateSurveyInput(req, accountId) {
   const title = clean(req.body.title);
@@ -415,63 +411,309 @@ router.delete('/surveys/:id', protectedRoute, (req, res) => {
   write('invitations', invitations);
   res.status(204).end();
 });
-router.post('/surveys/:id/open', protectedRoute, (req, res) => {
-  const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
-  if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
-  if (survey.status !== 'draft') return fail(res, 409, 'Pesquisa já iniciada.');
-  // Recalculate memberIds from all linked groups at open time
-  const surveyGroupIds = survey.groupIds || (survey.groupId ? [survey.groupId] : []);
+
+router.get('/surveys/preflight', protectedRoute, (req, res) => {
+  const groupIds = (req.query.groupIds || '').split(',').map(s => s.trim()).filter(Boolean);
   const accountGroups = scoped('groups', req.account.id);
-  const surveyGroups = surveyGroupIds.map(gid => accountGroups.find(g => g.id === gid)).filter(Boolean);
-  if (surveyGroups.length === 0) return fail(res, 409, 'Nenhum grupo válido encontrado para esta pesquisa.');
-  const freshMemberIds = [...new Set(surveyGroups.flatMap(g => g.memberIds))];
-  if (freshMemberIds.length < MIN_RESULTS) return fail(res, 409, `Os grupos selecionados precisam ter no total ao menos ${MIN_RESULTS} pessoas únicas.`);
-  survey.memberIds = freshMemberIds;
-  survey.instrument = survey.instrument?.factors ? survey.instrument : snapshotInstrument(survey.model);
-  if (!survey.instrument) return fail(res, 409, 'Modelo não disponível para aplicação.');
-  survey.collectionChannel = 'web';
-  survey.audienceFingerprint = hash([...freshMemberIds].sort().join(':'));
-  survey.groupNamesSnapshot = surveyGroups.map(group => group.name);
-  if (new Date(survey.endsAt).getTime() <= Date.now()) return fail(res, 409, 'Defina data futura de encerramento.');
-  if (surveys.some((item) => item.accountId === req.account.id && item.status === 'open' && item.memberIds.some((memberId) => survey.memberIds.includes(memberId)))) return fail(res, 409, 'Há outra pesquisa aberta com pessoas deste(s) grupo(s).');
-  const invitations = read('invitations'), links = survey.memberIds.map((memberId) => { const token = crypto.randomBytes(24).toString('hex'); invitations.push({ id: id(), accountId: req.account.id, surveyId: survey.id, memberId, tokenHash: hash(token), usedAt: null }); return { memberId, token }; });
-  write('invitations', invitations); survey.status = 'open'; survey.openedAt = new Date().toISOString(); write('surveys', surveys);
-  res.json({ survey: surveySummary(survey, req.account.id), link: `/responder/${survey.id}`, links });
+  const closedSurveys = scoped('surveys', req.account.id).filter(s => s.status === 'closed');
+  const result = preflightSurveyAudience({
+    groupIds,
+    accountGroups,
+    closedSurveys,
+    minResults: MIN_RESULTS
+  });
+  res.json(result);
 });
-router.post('/surveys/:id/close', protectedRoute, (req, res) => {
-  const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
+
+router.post('/surveys/:id/open', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem abrir pesquisas.');
+  const result = openSurvey({
+    surveyId: req.params.id,
+    accountId: req.account.id,
+    baseUrl: `${req.protocol}://${req.get('host')}`
+  });
+  if (result.error) return fail(res, result.status, result.message);
+  res.json({
+    survey: surveySummary(result.survey, req.account.id),
+    link: result.link,
+    links: result.links
+  });
+});
+
+router.post('/surveys/:id/reissue', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem reemitir links.');
+  const result = reissueLinks({
+    surveyId: req.params.id,
+    accountId: req.account.id,
+    baseUrl: `${req.protocol}://${req.get('host')}`
+  });
+  if (result.error) return fail(res, result.status, result.message);
+  res.json(result);
+});
+
+router.get('/surveys/:id/invitation-links/export', protectedRoute, (req, res) => {
+  const survey = read('surveys').find(s => s.id === req.params.id && s.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
-  if (survey.status !== 'open') return fail(res, 409, 'Pesquisa não está aberta.');
-  // Enforce 70% threshold for manual close or expiration date reached
-  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.NODE_TEST_CONTEXT);
-  const responses = read('responses').filter(r => r.surveyId === survey.id);
-  const totalMembers = survey.memberIds?.length || 0;
-  const pct70 = totalMembers > 0 ? Math.ceil(totalMembers * 0.7) : 0;
-  const isExpired = Number.isFinite(new Date(survey.endsAt).getTime()) && new Date(survey.endsAt).getTime() <= Date.now();
-  if (!isTest && !isExpired && responses.length < pct70) {
-    return fail(res, 409, `Ainda não é possível recolher os resultados. São necessárias ao menos ${pct70} respostas (70% de ${totalMembers} participantes) ou aguardar a data de conclusão. Respostas recebidas: ${responses.length}.`);
+  const invitations = scoped('invitations', req.account.id).filter(inv => inv.surveyId === survey.id);
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const lines = ['Segmento;Link de Acesso Individual;Status'];
+  for (const inv of invitations) {
+    const status = inv.used ? 'Respondido' : 'Pendente';
+    const link = `${baseUrl}/responder/${inv.token}`;
+    lines.push(`"${inv.segmentName || 'Geral'}";"${link}";"${status}"`);
   }
-  survey.status = 'closed';
-  survey.closedAt = new Date().toISOString();
-  survey.result = publishableAggregate(survey, responses);
-  survey.responseCount = responses.length;
-  write('surveys', surveys);
+  const csv = '\uFEFF' + lines.join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="convites-${survey.id}.csv"`);
+  res.send(csv);
+});
+
+router.get('/surveys/:id/participation', protectedRoute, (req, res) => {
+  const result = getParticipation({
+    surveyId: req.params.id,
+    accountId: req.account.id
+  });
+  if (result.error) return fail(res, result.status, result.message);
+  res.json(result);
+});
+
+router.post('/surveys/:id/extend', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem prorrogar prazos.');
+  const result = extendSurvey({
+    surveyId: req.params.id,
+    accountId: req.account.id,
+    newEndsAt: req.body.endsAt,
+    reason: req.body.reason
+  });
+  if (result.error) return fail(res, result.status, result.message);
+  res.json(surveySummary(result.survey, req.account.id));
+});
+
+router.post('/surveys/:id/close', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem encerrar pesquisas.');
+  const result = closeSurvey({
+    surveyId: req.params.id,
+    accountId: req.account.id,
+    confirmEarlyClose: Boolean(req.body.confirmEarlyClose),
+    reason: req.body.reason
+  });
+  if (result.error) {
+    return res.status(result.status || 409).json(result);
+  }
+  const responses = scoped('responses', req.account.id).filter((r) => r.surveyId === result.survey.id);
+  const surveys = read('surveys');
+  const targetSurvey = surveys.find((s) => s.id === result.survey.id);
+  if (targetSurvey) {
+    targetSurvey.result = publishableAggregate(targetSurvey, responses);
+    write('surveys', surveys);
+  }
   const reports = ensureReports(req.account.id);
-  const report = reports.find((r) => r.surveyId === survey.id);
-  const summary = surveySummary(survey, req.account.id);
+  const report = reports.find((r) => r.surveyId === result.survey.id);
+  const summary = surveySummary(targetSurvey || result.survey, req.account.id);
   res.json({ ...summary, reportId: report?.id });
 });
+
 router.get('/reports', protectedRoute, (req, res) => {
   closeExpired(req.account.id);
   res.json(ensureReports(req.account.id));
 });
+
+router.get('/reports/:id', protectedRoute, (req, res) => {
+  ensureReports(req.account.id);
+  const reports = scoped('reports', req.account.id);
+  const report = reports.find(r => r.id === req.params.id || r.surveyId === req.params.id);
+  if (!report) return fail(res, 404, 'Relatório não encontrado.');
+  res.json(report);
+});
+
+router.get('/reports/history/export', protectedRoute, async (req, res) => {
+  ensureReports(req.account.id);
+  const reports = scoped('reports', req.account.id);
+  const buffer = await exportService.generateHistoryXlsx(reports, req.account);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const fileName = `equilibra-historico-ciclos-${dateStr}.xlsx`;
+  res.set({
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Content-Length': String(buffer.length)
+  });
+  return res.send(Buffer.from(buffer));
+});
+
+router.get('/reports/:id/export', protectedRoute, async (req, res) => {
+  ensureReports(req.account.id);
+  const reports = scoped('reports', req.account.id);
+  const report = reports.find(r => r.id === req.params.id || r.surveyId === req.params.id);
+  if (!report) return fail(res, 404, 'Relatório não encontrado.');
+
+  const format = (req.query.format || 'json').toLowerCase();
+  exportService.logExportAudit(req.account, report, format);
+
+  if (format === 'csv') {
+    const csv = exportService.generateCsv(report);
+    const fileName = exportService.getExportFileName(report, 'csv');
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${fileName}"`
+    });
+    return res.send(csv);
+  }
+
+  if (format === 'xlsx') {
+    const buffer = await exportService.generateXlsx(report);
+    const fileName = exportService.getExportFileName(report, 'xlsx');
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': String(buffer.length)
+    });
+    return res.send(Buffer.from(buffer));
+  }
+
+  if (format === 'pdf') {
+    const buffer = await exportService.generatePdf(report, req.account);
+    const fileName = exportService.getExportFileName(report, 'pdf');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': String(buffer.length)
+    });
+    return res.send(buffer);
+  }
+
+  if (format === 'json') {
+    const json = exportService.generateJson(report);
+    const fileName = exportService.getExportFileName(report, 'json');
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${fileName}"`
+    });
+    return res.json(json);
+  }
+
+  return fail(res, 400, 'Formato de exportação inválido. Utilize pdf, xlsx, csv ou json.');
+});
+
+router.post('/reports/:id/accept', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem registrar o aceite do relatório.');
+  const reports = read('reports');
+  const report = reports.find(r => (r.id === req.params.id || r.surveyId === req.params.id) && r.accountId === req.account.id);
+  if (!report) return fail(res, 404, 'Relatório não encontrado.');
+
+  const acceptance = {
+    userId: req.account.userId || req.account.id,
+    userName: req.body?.acceptedBy || req.account.name || 'Responsável RH/SST',
+    acceptedBy: req.body?.acceptedBy || req.account.name || 'Responsável RH/SST',
+    notes: req.body?.notes || '',
+    acceptedAt: new Date().toISOString(),
+    instrumentVersion: report.instrument?.version || 1,
+    reportVersion: report.schemaVersion || 2,
+    statement: "Reconheço que o PGR e as medidas são de responsabilidade da empresa e que o Equilibra é uma ferramenta de apoio."
+  };
+
+  report.acceptance = acceptance;
+  report.formalAcceptance = acceptance;
+  write('reports', reports);
+
+  try {
+    managementRepo.transaction(req.account, 'report.accepted', () => ({
+      id: report.id,
+      surveyId: report.surveyId,
+      acceptance
+    }));
+  } catch (err) {
+    console.error('Erro na auditoria de aceite:', err.message);
+  }
+
+  res.json({ ok: true, report, acceptance, formalAcceptance: acceptance });
+});
+
+router.post('/reports/:id/reevaluate', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem reavaliar relatórios.');
+  const reports = read('reports');
+  const report = reports.find(r => (r.id === req.params.id || r.surveyId === req.params.id) && r.accountId === req.account.id);
+  if (!report) return fail(res, 404, 'Relatório não encontrado.');
+
+  const hasGenFailed = report.publication?.reasons?.some(r => r.code === 'generation_failed');
+  if (!hasGenFailed && report.publication?.status !== 'pending') {
+    return fail(res, 400, 'Apenas relatórios com falha técnica de processamento podem ser reavaliados. Relatórios protegidos por regras de privacidade e sigilo não podem ser alterados.');
+  }
+
+  const surveys = scoped('surveys', req.account.id);
+  const survey = surveys.find(s => s.id === report.surveyId);
+  if (!survey) return fail(res, 404, 'Pesquisa do relatório não encontrada.');
+
+  const instrument = surveyInstrument(survey);
+  const responses = scoped('responses', req.account.id).filter(item => item.surveyId === survey.id);
+  const previousReports = reports.filter(item => item.accountId === req.account.id && item.surveyId !== survey.id);
+  const previousSurveys = surveys.filter(item => item.id !== survey.id);
+
+  const newReport = buildCycleReport({
+    survey,
+    instrument,
+    responses,
+    previousReports,
+    previousSurveys,
+    minResults: MIN_RESULTS
+  });
+
+  const idx = reports.findIndex(r => r.id === report.id);
+  reports[idx] = newReport;
+  write('reports', reports);
+
+  res.json(newReport);
+});
+
 router.get('/dashboard', protectedRoute, (req, res) => {
   closeExpired(req.account.id);
   const surveys = scoped('surveys', req.account.id).map((item) => surveySummary(item, req.account.id));
-  const published = surveys.filter((item) => item.result);
+  const published = surveys.filter((item) => item.result).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
   const responses = scoped('responses', req.account.id).filter((item) => published.some((survey) => survey.id === item.surveyId));
   const groups = scoped('groups', req.account.id);
-  res.json({ members: scoped('members', req.account.id).length, groups: groups.length, customGroups: groups.filter((item) => !item.isDefault).length, surveys: surveys.length, open: surveys.filter((item) => item.status === 'open').length, closed: surveys.filter((item) => item.status === 'closed').length, published: published.length, responseCount: responses.length, result: published.sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt))[0]?.result || null, latestCycle: published[0]?.cycle || null, recent: published.slice(-3).reverse().map((item) => ({ id: item.id, title: item.title, cycle: item.cycle, groupName: item.groupName, responseCount: item.responseCount })) });
+  res.json({
+    members: scoped('members', req.account.id).length,
+    groups: groups.length,
+    customGroups: groups.filter((item) => !item.isDefault).length,
+    surveys: surveys.length,
+    open: surveys.filter((item) => item.status === 'open').length,
+    closed: surveys.filter((item) => item.status === 'closed').length,
+    published: published.length,
+    responseCount: responses.length,
+    result: published[0]?.result || null,
+    latestCycle: published[0]?.cycle || null,
+    recent: published.slice(0, 3).map((item) => ({ id: item.id, title: item.title, cycle: item.cycle, groupName: item.groupName, responseCount: item.responseCount }))
+  });
+});
+
+router.get('/today', protectedRoute, (req, res) => {
+  closeExpired(req.account.id);
+  ensureReports(req.account.id);
+
+  const surveys = scoped('surveys', req.account.id).map(item => surveySummary(item, req.account.id));
+  const reports = scoped('reports', req.account.id);
+  const members = scoped('members', req.account.id);
+  const groups = scoped('groups', req.account.id);
+
+  let assessments = [];
+  let actions = [];
+  try {
+    const mgmt = managementRepo.get(req.account.id);
+    assessments = mgmt.assessments || [];
+    actions = mgmt.actions || [];
+  } catch (err) {
+    console.error('Erro ao ler workspace de gestão para /today:', err.message);
+  }
+
+  const result = todayService.computeDecisionQueue(req.account, {
+    surveys,
+    reports,
+    assessments,
+    actions,
+    members,
+    groups
+  });
+
+  res.json(result);
 });
 
 function findSurveyByParam(param) {
@@ -492,19 +734,36 @@ function hasAnsweredCookie(req, surveyId) {
   return cookies.some((p) => p.startsWith(`${cookieKey}=`));
 }
 
-router.get('/respond/:token', (req, res) => {
+router.get(['/respond/:token', '/responder/:token'], (req, res) => {
   const { survey, invitation } = findSurveyByParam(req.params.token);
   if (!survey) return fail(res, 404, 'Convite não encontrado.');
   if (survey.status !== 'open' || new Date(survey.endsAt).getTime() <= Date.now()) return fail(res, 410, 'Pesquisa encerrada.');
   const responses = read('responses').filter((item) => item.surveyId === survey.id);
   const maxResponses = survey.memberIds.length;
   if (responses.length >= maxResponses) return fail(res, 409, 'Limite máximo de respostas atingido para este grupo.');
-  if (invitation && invitation.usedAt) return fail(res, 409, 'Resposta já enviada.');
+  if (invitation && (invitation.used || invitation.usedAt)) return fail(res, 409, 'Resposta já enviada.');
   if (!invitation && hasAnsweredCookie(req, survey.id)) return fail(res, 409, 'Resposta já enviada neste navegador.');
   const instrument = surveyInstrument(survey);
-  res.json({ title: survey.title, model: survey.model, instrument: { id: instrument.id, version: instrument.version, name: instrument.name, validated: instrument.validated }, instructions: instrument.instructions, limitation: instrument.limitation, attribution: instrument.attribution, sources: instrument.sources, options: instrument.options, collectionChannel: 'web', factors: instrument.factors.map(([key, label, question]) => ({ key, label, question })), endsAt: survey.endsAt, maxResponses, responseCount: responses.length });
+  res.json({
+    title: survey.title,
+    model: survey.model,
+    instrument: { id: instrument.id, version: instrument.version, name: instrument.name, validated: instrument.validated },
+    instructions: instrument.instructions,
+    limitation: instrument.limitation,
+    attribution: instrument.attribution,
+    sources: instrument.sources,
+    options: instrument.options,
+    collectionChannel: 'web',
+    factors: instrument.factors.map(([key, label, question]) => ({ key, label, question })),
+    endsAt: survey.endsAt,
+    maxResponses,
+    responseCount: responses.length,
+    isInvite: Boolean(invitation),
+    groupName: survey.groupNamesSnapshot?.join(', ') || 'Geral'
+  });
 });
-router.post('/respond/:token', (req, res) => {
+
+router.post(['/respond/:token', '/responder/:token'], (req, res) => {
   const { survey, invitation } = findSurveyByParam(req.params.token);
   if (!survey) return fail(res, 404, 'Convite não encontrado.');
   if (survey.status !== 'open' || new Date(survey.endsAt).getTime() <= Date.now()) return fail(res, 410, 'Pesquisa encerrada.');
@@ -512,18 +771,41 @@ router.post('/respond/:token', (req, res) => {
   const currentResponses = responses.filter((item) => item.surveyId === survey.id);
   const maxResponses = survey.memberIds.length;
   if (currentResponses.length >= maxResponses) return fail(res, 409, 'Esta pesquisa já atingiu a quantidade limite de respostas para este grupo.');
-  if (invitation && invitation.usedAt) return fail(res, 409, 'Resposta já enviada.');
+  if (invitation && (invitation.used || invitation.usedAt)) return fail(res, 409, 'Resposta já enviada.');
   if (!invitation && hasAnsweredCookie(req, survey.id)) return fail(res, 409, 'Resposta já enviada neste navegador.');
   const answers = req.body.answers;
   const factors = surveyInstrument(survey).factors;
-  if (!answers || typeof answers !== 'object' || Array.isArray(answers) || factors.some(([key]) => !Number.isInteger(answers[key]) || answers[key] < 1 || answers[key] > 5)) return fail(res, 400, 'Responda todas as questões de 1 a 5.');
-  responses.push({ id: id(), accountId: survey.accountId, surveyId: survey.id, answers: Object.fromEntries(factors.map(([key]) => [key, answers[key]])) });
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers) || factors.some(([key]) => !Number.isInteger(answers[key]) || answers[key] < 1 || answers[key] > 5)) {
+    return fail(res, 400, 'Responda todas as questões de 1 a 5.');
+  }
+
+  const segmentId = invitation ? invitation.segmentId : (req.body.segmentId || null);
+  const submittedDay = new Date().toISOString().slice(0, 10);
+  const newResponse = {
+    id: id(),
+    accountId: survey.accountId,
+    surveyId: survey.id,
+    segmentId,
+    submittedDay,
+    answers: Object.fromEntries(factors.map(([key]) => [key, answers[key]]))
+  };
+
+  // Embaralha posição no array para impedir correlação por ordem
+  const insertIndex = Math.floor(Math.random() * (responses.length + 1));
+  responses.splice(insertIndex, 0, newResponse);
+
   if (invitation) {
     const invitations = read('invitations');
     const inv = invitations.find((item) => item.id === invitation.id);
-    if (inv) inv.usedAt = new Date().toISOString();
+    if (inv) {
+      inv.used = true;
+      inv.usedDay = submittedDay;
+      delete inv.usedAt;
+    }
     writeMany({ responses, invitations });
-  } else write('responses', responses);
+  } else {
+    write('responses', responses);
+  }
   res.cookie(`answered_${survey.id}`, '1', { maxAge: 90 * 86400000, httpOnly: true, sameSite: 'lax', path: '/' });
   res.status(201).json({ ok: true });
 });
