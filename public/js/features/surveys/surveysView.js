@@ -39,7 +39,7 @@ export function renderSurveysList({ state }) {
               <th>Público Convidado</th>
               <th>Adesão / Quórum</th>
               <th>Encerramento</th>
-              <th class="text-right">Ações</th>
+              <th class="text-right table-actions-cell">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -72,25 +72,25 @@ export function renderSurveysList({ state }) {
                     </div>
                   </td>
                   <td>${date(s.endsAt)}</td>
-                  <td class="text-right">
-                    ${s.status === 'open' ? `
-                      <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm">
-                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais informações
-                      </a>
-                    ` : s.status === 'closed' ? `
-                      <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm">
-                        <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
-                      </a>
-                    ` : `
-                      <div class="flex items-center justify-end gap-2">
+                  <td class="text-right table-actions-cell">
+                    <div class="table-actions-inline">
+                      ${s.status === 'open' ? `
+                        <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm">
+                          <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais informações
+                        </a>
+                      ` : s.status === 'closed' ? `
+                        <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm">
+                          <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
+                        </a>
+                      ` : `
                         <button type="button" class="btn btn-primary btn-sm" data-action="open-survey-direct" data-id="${attr(s.id)}">
                           Abrir Coleta
                         </button>
-                        <button type="button" class="btn btn-ghost color-danger btn-sm" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir rascunho">
-                          <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-                        </button>
-                      </div>
-                    `}
+                      `}
+                      <button type="button" class="btn btn-ghost color-danger btn-sm btn-icon" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir pesquisa">
+                        <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
@@ -168,8 +168,11 @@ export function renderSurveyDistribution({ params, state }) {
           <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
             <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
           </button>
-          <button type="button" class="btn btn-ghost color-danger" data-action="open-close-early-modal" data-id="${attr(survey.id)}">
-            <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar Antecipadamente
+          <button type="button" class="btn btn-secondary" data-action="open-close-early-modal" data-id="${attr(survey.id)}">
+            <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar
+          </button>
+          <button type="button" class="btn btn-ghost color-danger" data-action="open-delete-survey-modal" data-id="${attr(survey.id)}" data-title="${attr(survey.title)}" title="Excluir pesquisa">
+            <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Pesquisa
           </button>
         </div>
       </div>
@@ -365,30 +368,151 @@ export async function submitCloseEarly(surveyId) {
   }
 }
 
+let deleteCountdownTimer = null;
+
 export function openDeleteSurveyModal(surveyId, title) {
+  // Limpa timer anterior se houver
+  if (deleteCountdownTimer) {
+    clearInterval(deleteCountdownTimer);
+    deleteCountdownTimer = null;
+  }
+
+  let secondsLeft = 10;
+
   const content = `
-    <div class="py-2">
-      <p class="color-danger font-semibold mb-2">
-        <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Rascunho de Pesquisa
-      </p>
-      <p class="view-subtitle mb-3">
-        Tem certeza que deseja excluir o rascunho <strong>"${esc(title)}"</strong>? Esta ação removerá a configuração deste ciclo.
-      </p>
+    <div class="delete-survey-modal-content">
+      <div class="delete-survey-warning">
+        <div class="delete-survey-warning__header">
+          <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+          <span>Atenção: Ação irreversível de exclusão</span>
+        </div>
+        <p class="delete-survey-warning__body">
+          Você está prestes a excluir permanentemente a pesquisa <strong>"${esc(title)}"</strong>.
+        </p>
+        <ul class="delete-survey-warning__list">
+          <li>Todos os questionários e links únicos de resposta serão desativados.</li>
+          <li>Respostas já enviadas e métricas vinculadas a este ciclo serão excluídas.</li>
+          <li>Os grupos vinculados serão liberados para novos ciclos de pesquisa.</li>
+        </ul>
+
+        <div class="delete-survey-timer-box" id="delete-timer-container">
+          <div class="delete-survey-timer-text">
+            <span id="delete-timer-msg">
+              <i class="fa-regular fa-clock" aria-hidden="true"></i> Leia o aviso com atenção antes de confirmar:
+            </span>
+            <span class="delete-survey-timer-badge" id="delete-timer-badge">
+              <span id="delete-seconds-count">10</span>s
+            </span>
+          </div>
+          <div class="delete-survey-progress">
+            <div class="delete-survey-progress-bar" id="delete-progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <label class="delete-survey-consent-row disabled" id="delete-consent-label">
+        <input type="checkbox" id="delete-survey-consent-checkbox" disabled />
+        <span class="delete-survey-consent-label">
+          Compreendo que a exclusão da pesquisa <strong>"${esc(title)}"</strong> é irreversível e desejo prosseguir.
+        </span>
+      </label>
     </div>
   `;
+
   const footer = `
     <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
-    <button type="button" class="btn btn-danger" data-action="confirm-delete-survey" data-id="${attr(surveyId)}">Excluir Rascunho</button>
+    <button type="button" class="btn btn-danger" id="btn-confirm-delete-survey" data-action="confirm-delete-survey" data-id="${attr(surveyId)}" disabled>
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Apagar Pesquisa
+    </button>
   `;
-  openDialog({ title: 'Confirmar Exclusão', content, footer });
+
+  openDialog({
+    title: 'Excluir Pesquisa',
+    content,
+    footer,
+    onClose: () => {
+      if (deleteCountdownTimer) {
+        clearInterval(deleteCountdownTimer);
+        deleteCountdownTimer = null;
+      }
+    }
+  });
+
+  // Elementos do diálogo aberto
+  const timerContainer = document.getElementById('delete-timer-container');
+  const timerBadge = document.getElementById('delete-timer-badge');
+  const secondsSpan = document.getElementById('delete-seconds-count');
+  const progressBar = document.getElementById('delete-progress-bar');
+  const timerMsg = document.getElementById('delete-timer-msg');
+  const consentLabel = document.getElementById('delete-consent-label');
+  const consentCheckbox = document.getElementById('delete-survey-consent-checkbox');
+  const deleteBtn = document.getElementById('btn-confirm-delete-survey');
+
+  // Inicializa temporizador de 10 segundos
+  deleteCountdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+
+    if (secondsSpan) {
+      secondsSpan.textContent = String(Math.max(0, secondsLeft));
+    }
+
+    if (progressBar) {
+      progressBar.style.width = `${Math.max(0, (secondsLeft / 10) * 100)}%`;
+    }
+
+    if (secondsLeft <= 0) {
+      clearInterval(deleteCountdownTimer);
+      deleteCountdownTimer = null;
+
+      if (timerContainer) {
+        timerContainer.classList.add('timer-completed');
+      }
+      if (timerMsg) {
+        timerMsg.innerHTML = '<i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Tempo de leitura concluído. Você já pode marcar a confirmação abaixo:';
+      }
+      if (timerBadge) {
+        timerBadge.style.display = 'none';
+      }
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+
+      // Libera a checkbox
+      if (consentCheckbox && consentLabel) {
+        consentCheckbox.disabled = false;
+        consentLabel.classList.remove('disabled');
+      }
+    }
+  }, 1000);
+
+  // Escuta alteração da checkbox para liberar o botão de exclusão
+  if (consentCheckbox && deleteBtn) {
+    consentCheckbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        deleteBtn.disabled = false;
+        deleteBtn.focus();
+      } else {
+        deleteBtn.disabled = true;
+      }
+    });
+  }
 }
 
 export async function submitDeleteSurvey(surveyId) {
+  const consentCheckbox = document.getElementById('delete-survey-consent-checkbox');
+  if (consentCheckbox && !consentCheckbox.checked) {
+    showToast('Você precisa marcar a caixa de confirmação para poder apagar a pesquisa.', 'warning');
+    return;
+  }
+
   try {
     await del(`/surveys/${surveyId}`);
     await store.loadSurveys();
     closeDialog();
-    showToast('Rascunho de pesquisa excluído com sucesso.', 'success');
+    showToast('Pesquisa excluída com sucesso.', 'success');
+    if (window.location.hash.includes(surveyId)) {
+      router.navigate('pesquisas');
+    }
   } catch (err) {
     showToast(err.message || 'Erro ao excluir pesquisa.', 'error');
   }

@@ -188,10 +188,23 @@ class Store {
   }
 
   setCycleContext(context) {
+    const current = this.state.activeCycleContext;
+    if (
+      current &&
+      context &&
+      current.reportId === context.reportId &&
+      current.surveyId === context.surveyId &&
+      current.title === context.title &&
+      current.cycle === context.cycle &&
+      current.status === context.status
+    ) {
+      return;
+    }
     this.setState({ activeCycleContext: context });
   }
 
   clearCycleContext() {
+    if (!this.state.activeCycleContext) return;
     this.setState({ activeCycleContext: null });
   }
 }

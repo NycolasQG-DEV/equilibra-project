@@ -400,17 +400,19 @@ router.put('/surveys/:id', protectedRoute, (req, res) => {
   Object.assign(survey, validation.fields); write('surveys', surveys); res.json(surveySummary(survey, req.account.id));
 });
 router.delete('/surveys/:id', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem excluir pesquisas.');
   const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
-  if (survey.status === 'open') return fail(res, 409, 'Encerre a pesquisa antes de excluir.');
-  if (survey.status === 'closed') {
-    survey.archivedAt = new Date().toISOString();
-    write('surveys', surveys);
-    return res.status(204).end();
-  }
+  
+  // Remove a pesquisa da lista
   write('surveys', surveys.filter((item) => item.id !== survey.id));
+  
+  // Limpa convites e respostas associados à pesquisa excluída
   const invitations = read('invitations').filter((item) => item.surveyId !== survey.id);
   write('invitations', invitations);
+  const responses = read('responses').filter((item) => item.surveyId !== survey.id);
+  write('responses', responses);
+  
   res.status(204).end();
 });
 

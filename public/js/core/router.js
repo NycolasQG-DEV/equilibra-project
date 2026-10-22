@@ -52,6 +52,9 @@ class Router {
     const cleanPath = path.replace(/^#/, '');
     if (replace) {
       window.history.replaceState(null, '', `#${cleanPath}`);
+      // replaceState does NOT fire hashchange — dispatch it manually so the
+      // router picks up the new hash and renders the correct view.
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
     } else {
       window.location.hash = cleanPath;
     }
