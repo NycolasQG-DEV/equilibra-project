@@ -105,7 +105,18 @@ test('template, importação validada e grupo Geral automático', async () => {
     assert.equal(groups.find((group) => group.isDefault).memberIds.length, 6);
     assert.equal(groups.find((group) => group.name === 'Marketing').memberIds.length, 1);
     assert.equal((await call('/members/import', 'POST', valid)).status, 422);
-    assert.equal((await call('/members')).body.length, 6);
     assert.equal(fs.readFileSync(path.join(directory, 'members.json'), 'utf8').includes('11999990002'), false);
+
+    // Test CSV import with UTF-8 BOM, semicolon delimiters, and new group creation
+    const csvContent = '\uFEFFNome;Telefone;Email;Grupo\nPessoa CSV 1;11999990020;csv1@example.test;Tecnologia\nPessoa CSV 2;11999990021;csv2@example.test;\n';
+    const csvPayload = { fileName: 'pessoas.csv', base64: Buffer.from(csvContent, 'utf8').toString('base64') };
+    const csvPreview = await call('/members/import/preview', 'POST', csvPayload);
+    assert.equal(csvPreview.status, 200);
+    assert.equal(csvPreview.body.valid, 2);
+    assert.equal(csvPreview.body.invalid, 0);
+    const csvImported = await call('/members/import', 'POST', csvPayload);
+    assert.equal(csvImported.status, 201);
+    assert.deepEqual(csvImported.body, { imported: 2, groupsCreated: 1 });
+    assert.equal((await call('/members')).body.length, 8);
   } finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(directory, { recursive: true, force: true }); }
 });

@@ -24,14 +24,15 @@ module.exports = function createRouter() {
           role: row.role || "owner",
           disabled: Boolean(row.disabled),
         })),
-      invitations: repo
-        .get(req.account.id)
-        .invitations.map(({ id, email, role, expiresAt, usedAt }) => ({
+      invitations: (repo.get(req.account.id).invitations || [])
+        .filter((inv) => !inv.usedAt && inv.expiresAt > Date.now())
+        .map(({ id, email, role, expiresAt, usedAt, token }) => ({
           id,
           email,
           role,
           expiresAt,
           usedAt,
+          token,
         })),
     });
   });
@@ -53,6 +54,7 @@ module.exports = function createRouter() {
       const row = repo.create({
         email,
         role,
+        token,
         tokenHash: hash(token),
         expiresAt: Date.now() + 7 * 86400000,
         usedAt: null,
@@ -90,6 +92,24 @@ module.exports = function createRouter() {
     storage.write("accounts", accounts);
     repo.transaction(req.account, "team.updated", () => ({ id: row.id }));
     res.json({ id: row.id, role: row.role, disabled: row.disabled });
+  });
+  router.delete("/team/:id", (req, res) => {
+    ownerOnly(req);
+    if (req.params.id === req.account.id || req.params.id === req.account.userId) {
+      throw new DomainError("Não é possível remover a si mesmo da equipe.", 400);
+    }
+    const accounts = storage.read("accounts");
+    const idx = accounts.findIndex(
+      (item) =>
+        item.id === req.params.id && item.organizationId === req.account.id,
+    );
+    if (idx === -1) throw new DomainError("Colaborador não encontrado.", 404);
+    const sessions = storage.read("sessions").filter(s => s.accountId !== req.params.id);
+    storage.write("sessions", sessions);
+    accounts.splice(idx, 1);
+    storage.write("accounts", accounts);
+    repo.transaction(req.account, "team.member_removed", () => ({ id: req.params.id }));
+    res.status(204).end();
   });
   return router;
 };

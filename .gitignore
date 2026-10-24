@@ -22,7 +22,17 @@ data/.writer.lock
 data/*.tmp
 # Runtime data and generated browser dependencies are never published.
 data/
+data-demo/
 public/vendor/
+!public/vendor/fonts/
+!public/vendor/fonts/*
 .env.*
 !.env.example
 *.xlsx
+
+.impeccable/config.local.json
+
+.impeccable/live/
+
+.impeccable/hook.cache.json
+.agents/skills/impeccable/scripts/bin/

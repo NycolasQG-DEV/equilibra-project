@@ -1,0 +1,94 @@
+/* public/css/print.css - Estilos dedicados de impressão */
+
+@media print {
+  @page {
+    margin: 15mm 12mm 15mm 12mm;
+    size: A4 portrait;
+  }
+
+  /* Oculta elementos de navegação e controle interativo */
+  .sidebar,
+  .sidebar-backdrop,
+  .menu-toggle,
+  .ux-back,
+  .ux-tabs,
+  .btn,
+  button,
+  .icon-button,
+  #toast,
+  #modal,
+  .modal-backdrop,
+  .modal-actions,
+  .export-dropdown,
+  .report-subnav {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #1c142b !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .shell {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Cabeçalho do relatório impresso */
+  .report-print-head {
+    display: block !important;
+    border-bottom: 2px solid #581c43 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .report-print-head .logo {
+    font-size: 18pt !important;
+    font-weight: 800 !important;
+    color: #581c43 !important;
+  }
+
+  /* Cartões e seções não quebram ao meio */
+  .ux-panel,
+  .ux-factor-card,
+  .ux-summary-card,
+  .table-wrap,
+  table,
+  tr,
+  fieldset {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #e4ddec !important;
+    padding: 6px 8px !important;
+    font-size: 9pt !important;
+  }
+
+  th {
+    background: #f0ebf8 !important;
+    color: #581c43 !important;
+  }
+
+  /* Quebras de página deliberadas */
+  .page-break {
+    page-break-before: always !important;
+    break-before: always !important;
+  }
+
+  /* Garante cores de fundo legíveis e bordas visíveis */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

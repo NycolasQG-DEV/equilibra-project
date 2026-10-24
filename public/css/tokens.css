@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Equilibra Design System — Tokens (Deep Mulberry & Rose Edition)
+   ========================================================================== */
+
+:root {
+  /* ── Brand Colors (Deep Mulberry & Rose) ── */
+  --color-primary: #581c43;
+  --color-primary-hover: #431433;
+  --color-primary-active: #340e26;
+  --color-primary-subtle: #faedf4;
+  --color-primary-subtle-hover: #f5deec;
+
+  --color-accent-rose: #a23b72;
+  --color-accent-rose-hover: #892f5e;
+  --color-accent-rose-subtle: #fdf2f7;
+
+  /* ── Neutral Canvas & Surfaces ── */
+  --color-bg: #faf6f8;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f5edf2;
+  --color-surface-hover: #fcf9fb;
+
+  /* ── Borders & Dividers ── */
+  --color-border: #ede2e8;
+  --color-border-subtle: #f5edf2;
+  --color-border-strong: #d9cad3;
+
+  /* ── Typography & Contrasts (WCAG AAA >= 7:1 for primary, >= 4.5:1 for secondary) ── */
+  --color-text-primary: #1c142b;
+  --color-text-secondary: #524765;
+  --color-text-muted: #766a87;
+  --color-text-on-primary: #ffffff;
+  --color-text-on-accent: #ffffff;
+
+  /* ── Semantic Status Roles ── */
+  --color-success: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-success-border: #bbf7d0;
+  --color-success-text: #14532d;
+
+  --color-warning: #b45309;
+  --color-warning-bg: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-text: #78350f;
+
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fee2e2;
+  --color-danger-border: #fecaca;
+  --color-danger-text: #7f1d1d;
+
+  --color-info: #1d4ed8;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+  --color-info-text: #1e3a8a;
+
+  /* ── Reference Bands (Semáforo Psicossocial) ── */
+  --band-adequado: #15803d;
+  --band-adequado-bg: #dcfce7;
+  --band-adequado-text: #14532d;
+  --band-adequado-border: #bbf7d0;
+
+  --band-cuidado: #b45309;
+  --band-cuidado-bg: #fef3c7;
+  --band-cuidado-text: #78350f;
+  --band-cuidado-border: #fde68a;
+
+  --band-atencao: #b91c1c;
+  --band-atencao-bg: #fee2e2;
+  --band-atencao-text: #7f1d1d;
+  --band-atencao-border: #fecaca;
+
+  --band-unclassified: #524765;
+  --band-unclassified-bg: #f5edf2;
+  --band-unclassified-text: #362d45;
+  --band-unclassified-border: #ede2e8;
+
+  /* ── Group & Segment Hues (12 accessible distinct tokens) ── */
+  --group-1: #2e7d52;
+  --group-2: #1a5f9e;
+  --group-3: #a0522d;
+  --group-4: #7b3f9e;
+  --group-5: #c0392b;
+  --group-6: #d4850a;
+  --group-7: #1a7a72;
+  --group-8: #5b5ea6;
+  --group-9: #b5451b;
+  --group-10: #2874a6;
+  --group-11: #6b6b00;
+  --group-12: #7d3c6b;
+
+  /* ── Typography Scale ── */
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.8125rem;  /* 13px */
+  --font-size-base: 0.875rem; /* 14px */
+  --font-size-md: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* ── Spacing Scale (4, 8, 12, 16, 20, 24, 32, 48) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ── Radii Scale (6, 8, 10, 12, 16, full) ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  /* ── Depth & Shadows (Single elevation declaration: offset + blur, no colored halos) ── */
+  --shadow-sm: 0 1px 2px 0 rgba(28, 20, 43, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(28, 20, 43, 0.06), 0 2px 4px -2px rgba(28, 20, 43, 0.03);
+  --shadow-lg: 0 10px 18px -4px rgba(28, 20, 43, 0.08), 0 4px 6px -2px rgba(28, 20, 43, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(28, 20, 43, 0.10), 0 8px 10px -6px rgba(28, 20, 43, 0.05);
+
+  /* ── Layer Stacking (Z-Index) ── */
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-drawer: 300;
+  --z-dialog-backdrop: 500;
+  --z-dialog: 510;
+  --z-toast: 1000;
+
+  /* ── Transitions & Motion ── */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}

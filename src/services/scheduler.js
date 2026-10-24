@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const storage = require("../config/equilibraStorage");
 const repo = require("../repositories/managementRepository");
+const { closeExpiredSurveys } = require("./surveyLifecycle");
 function nextMonth(date, months) {
   return require("../domain/dates")
     .addMonths(`${date}T12:00:00Z`, months)
@@ -8,6 +9,7 @@ function nextMonth(date, months) {
     .slice(0, 10);
 }
 function tick() {
+  closeExpiredSurveys();
   const today = require("../domain/dates").today();
   for (const workspace of storage.read("management")) {
     for (const schedule of workspace.schedules.filter(

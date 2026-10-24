@@ -1,46 +1,113 @@
-# Equilibra web
+# Equilibra Web — Plataforma de Escuta e Gestão NR-1 / SST
 
-Aplicação local para organizar pesquisas de percepção do trabalho, avaliar achados, acompanhar ações e verificar sua eficácia.
+Plataforma web para a equipe interna de RH e Segurança e Saúde no Trabalho (SST) organizar a escuta confidencial sobre condições de trabalho e fatores psicossociais, transformar dados coletivos em relatórios técnicos auditáveis e gerir planos de ação contínuos no âmbito da NR-1 / PGR.
 
-## Rodar
+---
 
-Requer Node.js 20.12 ou superior.
+## 1. Visão Geral e Pilares
+
+1. **Privacidade e Sigilo Estatístico por Desenho ($N \ge 5$):**
+   - Nenhuma média, percentual ou distribuição é divulgada para amostras com menos de 5 respondentes.
+   - Partição determinística de segmentos: áreas com $n < 5$ são agrupadas automaticamente em *"Demais áreas (agrupadas)"* para impedir identificação de indivíduos por exclusão.
+   - Supressão preventiva por sobreposição residual: previne inferência quando ciclos sucessivos têm públicos quase idênticos (diferença $< 5$).
+2. **Conformidade Técnica com a NR-1 / PGR:**
+   - Termo formal de aceite técnico por Engenheiro(a) de Segurança ou Médico(a) do Trabalho com hash de integridade e registro auditado.
+   - Instrumentos psicossociais estruturados (incluindo modelo oficial HSE de 35 itens com inversões de escala calculadas no servidor).
+   - Trilha de auditoria encadeada por hash SHA-256 para eventos de gestão, exportação e aceite.
+3. **Decisão Operacional Ágil:**
+   - Cockpit *"Hoje"* com fila de triagem prioritária baseada em 5 condições operacionais e gráficos de tendência.
+   - Gestão integrada de planos de ação (5W2H) com acompanhamento de prazos, anexação de evidências e revisão de eficácia.
+4. **Exportação Regulatória em 4 Formatos:**
+   - **PDF:** Relatório vetorial diagramado com hash SHA-256, cabeçalho institucional e disclaimers regulamentares.
+   - **Excel (.xlsx):** Pasta de trabalho com 7 abas detalhadas (Resumo, Fatores, Distribuição, Segmento x Fator, Participação, Comparação, Metodologia) e exportação consolidada do histórico da empresa.
+   - **CSV:** Codificado em UTF-8 com BOM e separador `;` para compatibilidade imediata com Microsoft Excel em português.
+   - **JSON:** Exportação sanitizada de auditoria estruturada para integração com sistemas internos.
+
+---
+
+## 2. Requisitos e Inicialização
+
+Requer **Node.js 20.12 ou superior** (Express 5, Vanilla JS ES Modules, sem dependências de build).
+
+### Instalação e Execução
 
 ```bash
+# 1. Instalar dependências (apenas express, exceljs, pdfkit e dev tools)
 npm install
+
+# 2. Executar verificações de código e conformidade (sintaxe e zero inline handlers)
+npm run check
+
+# 3. Executar suíte completa de testes unitários e de integração (38 testes)
+npm test
+
+# 4. Executar bateria de testes ponta a ponta (E2E)
+npm run e2e
+
+# 5. Iniciar servidor em desenvolvimento com recarga automática
+npm run dev
+
+# 6. Iniciar servidor em produção
 npm start
 ```
 
-Abra `http://localhost:3000`. Para recarga automática do servidor, use `npm run dev`.
+Acesse no navegador: `http://localhost:3000`.
 
-## Fluxo
+---
 
-1. Crie uma conta administrativa ou entre em uma conta existente.
-2. Cadastre pessoas com nome, telefone e e-mail.
-3. Crie grupos selecionando as pessoas cadastradas.
-4. Crie uma pesquisa em rascunho com título, modelo selecionável, ciclo, grupos e data de encerramento. Revise as perguntas e limitações antes de criar.
-5. Inicie a coleta quando o grupo tiver pelo menos 5 pessoas. Copie o link web compartilhado e distribua por conta própria. Não há envio automático.
-6. O formulário funciona no navegador. O link compartilhado limita o total de respostas e bloqueia reenvio no mesmo navegador; não autentica cada trabalhador. Ao fechar o ciclo, o resultado coletivo aparece somente com pelo menos 5 respostas.
-7. Consulte **Resultados > Relatórios e histórico**. Cada ciclo encerrado gera um relatório salvo. Resultados coletivos podem ser impressos ou salvos como PDF pelo navegador.
+## 3. Scripts Disponíveis
 
-A visão geral mostra o último ciclo publicado. Há dez modelos web: nove roteiros próprios exploratórios com perguntas distintas e a versão portuguesa de 35 itens publicada pelo HSE. Esta versão HSE não é apresentada como validada para o Brasil. Os seis nomes legados preservam o questionário anterior de oito itens. Os resultados não constituem diagnóstico, laudo ou comprovação de conformidade com NR-1. Veja [pesquisas, fontes e metodologia](SURVEY_METHODOLOGY.md), incluindo o catálogo de outros instrumentos e as condições ainda necessárias para habilitá-los.
+| Comando | Descrição |
+|---|---|
+| `npm start` | Inicia o servidor Express em `http://localhost:3000`. |
+| `npm run dev` | Inicia o servidor com flag `--watch` do Node.js. |
+| `npm test` | Executa todos os 38 testes automatizados em `tests/` com isolamento completo em diretório temporário. |
+| `npm run check` | Valida sintaxe JavaScript de todos os arquivos e audita estritamente a ausência de atributos inline (`onclick`, `style`) em `public/`. |
+| `npm run e2e` | Roda a jornada ponta a ponta em 10 passos: autenticação, cockpit, criação de pesquisa, abertura, distribuição pseudonimizada, coleta confidencial, encerramento antecipado, geração de relatório, 4 exportações e aceite formal NR-1. |
+| `npm run qa` | Inicia ambiente isolado de demonstração na porta 3107 com dados fictícios temporários. |
+| `node scripts/seedConsolidatedCompany.js` | Gera base de teste completa e realista da empresa fictícia "Zenai Soluções Tecnológicas" (181 colaboradores, 7 áreas, 4 ciclos fechados, 1 HSE, 1 suprimido por sobreposição, ações e auditoria). |
 
-## Dados e limites
+---
 
-Relatórios ficam em `data/reports.json` como cópias do resultado no fechamento. Mudanças posteriores no nome do grupo não alteram o histórico.
+## 4. Arquitetura do Sistema
 
-Os dados ficam em arquivos JSON locais na pasta `data/`. Contas têm senha derivada por `scrypt`, sessão em cookie `HttpOnly` e recursos isolados por organização. Telefones são cifrados com AES-GCM. A chave local fica em `data/.identity-key`; faça backup dela junto dos dados ou configure `EQUILIBRA_DATA_KEY` com 32 bytes em base64. Em produção, essa variável é obrigatória. Convites são gravados como hash e respostas não guardam identificador da pessoa. Ainda assim, a persistência local não oferece cofre de identidade isolado, recuperação de convites, backup remoto, MFA, auditoria externa imutável nem garantias para operação real com dados sensíveis. Use apenas dados de teste até concluir essas camadas e validar base legal, retenção e instrumento com os profissionais responsáveis.
+### Backend (Node.js 20+ / Express 5)
+- **Armazenamento:** Adaptador em arquivo JSON local com escrita atômica (rename), recuperação de diário de transações e chave criptográfica AES-256-GCM para dados sensíveis.
+- **Isolamento:** Múltiplas organizações isoladas por `accountId` / `organizationId`. A variável `EQUILIBRA_DATA_DIR` permite isolamento em tempo de execução/testes.
+- **Serviços Principais:**
+  - `src/domain/reporting.js`: Motor puro de agregação, classificação semafórica e regras de supressão estatística.
+  - `src/domain/instruments.js`: Catálogo de 10 modelos web com snapshot congelado por ciclo e inversões HSE.
+  - `src/services/surveyLifecycle.js`: Máquina de estados da pesquisa (draft → open → closed → archived), distribuição e controle de quórum.
+  - `src/services/todayService.js`: Motor do cockpit operacional com fila de triagem e cálculo de KPIs.
+  - `src/services/reportExportService.js`: Gerador dos 4 formatos de exportação (PDF vetorial, Excel 7 abas, CSV BOM, JSON).
 
-Pode-se usar `EQUILIBRA_DATA_DIR` para escolher outro diretório de dados. Execute `npm test` para o teste integrado de isolamento, coleta e publicação.
+### Frontend (Vanilla JS ES Modules + Design System CSS)
+- **Zero build step:** Servido diretamente pelo Express usando módulos ES nativos.
+- **Tipografia Local:** Família *Plus Jakarta Sans* auto-hospedada em `public/vendor/fonts/` (zero dependências de CDN externa).
+- **Paleta Reconciliada:** Baseada em Deep Mulberry (`#581c43`), cores semânticas de acessibilidade e tema claro/escuro nativo.
+- **Organização Modular:**
+  - `public/js/main.js`: Inicializador, roteador global e delegação de eventos via `data-action`.
+  - `public/js/core/`: `api.js` (com retry e tratamento de erro HTTP), `router.js` (roteamento declarativo SPA com `:id`), `store.js` (estado observável), `errors.js` (mensagens amigáveis em português).
+  - `public/js/domain/`: `labels.js`, `formatters.js` (escapes XSS, formatação percentual, semáforo de fatores).
+  - `public/js/ui/`: `shell.js` (layout base, drawer responsivo, skip-link), `dialog.js` (modal acessível com foco preso e retorno), `toast.js`, `fields.js`, `chart.js` (canvas com fallback em tabela semântica).
+  - `public/js/features/`: Módulos de tela (`todayView`, `surveysView`, `resultsView`, `actionsView`, `organizationView`, `settingsView`, `respondView`).
+- **Acessibilidade e Segurança:**
+  - Zero atributos inline (`onclick` e `style` banidos).
+  - Suporte completo a navegação por teclado (`Tab`, `Escape`), leitor de tela (`aria-describedby`, `aria-live`, `aria-modal`) e contraste WCAG AA.
 
-## Gestão após os resultados
+---
 
-Em **Resultados**, examine o ciclo publicado e registre achados e avaliação. Depois planeje ações com responsável, prazo, evidências e revisão de eficácia. Compare ciclos compatíveis e vincule a remedição. Em **Resultados > Relatórios e histórico**, consulte o histórico e exporte o dossiê JSON com decisões e ações.
+## 5. Instrumentos de Escuta e Metodologia
 
-O painel Geral apresenta pendências e o último ciclo publicado, sem misturar períodos em uma média. Resultados parciais não são publicados. Ciclos encerrados são arquivados, preservando histórico. Há equipe com três papéis, convites manuais, agendamentos de rascunhos, controle de versões, histórico de alterações, retenção configurável e backups locais diários. O adaptador JSON exige um processo por pasta de dados.
+O Equilibra disponibiliza 10 modelos de pesquisa no catálogo:
+- **9 Roteiros Próprios Exploratórios:** Perguntas em escala Likert de 1 a 5 cobrindo Demandas, Autonomia, Apoio, Relações, Reconhecimento, Jornada, Mudanças e Segurança Psicológica.
+- **1 Instrumento HSE (Health and Safety Executive):** Versão oficial de 35 itens com cálculo automático das 7 subescalas e inversão matemática dos 12 itens formulados negativamente ($6 - resposta$).
 
-Groq e Mercado Pago possuem adaptadores no servidor. Configure `.env` conforme `.env.example`. Sem credenciais, IA e checkout exibem indisponibilidade. Planos iniciais: Essencial R$149, Popular R$349 e Avançado R$799 mensais. IA começa no Popular. A prévia local não exige pagamento e é identificada na tela Assinatura.
+### Faixas de Referência Normativas
+- **Atenção Prioritária (Vermelho):** Média $< 2,80$
+- **Cuidado / Monitoramento (Amarelo):** Média entre $2,80$ e $3,59$
+- **Adequado / Protetivo (Verde):** Média $\ge 3,60$
 
-Consulte [plano de implementação](docs/IMPLEMENTATION_PLAN.md), [operação e configuração](docs/OPERATIONS.md) e [validação](docs/VALIDATION.md).
+*Nota Metodológica:* O questionário de percepção é uma das fontes de informação do processo de gerenciamento de riscos ocupacionais (GRO). Deve ser conjugado com análise ergonômica do trabalho (AET), observação direta e diálogo com trabalhadores e CIPA. O relatório gerado não constitui laudo psicológico ou diagnóstico clínico individual.
 
-Execute `npm run check` e `npm test`. `npm run qa` serve uma instalação sintética separada para testar a interface. Não existe etapa de build: os arquivos estáticos são servidos diretamente pelo Express.
+Consulte [Metodologia de Pesquisa](SURVEY_METHODOLOGY.md), [Operação e Runbook](docs/OPERATIONS.md) e [Relatório de Validação](docs/VALIDATION.md) para documentação detalhada.

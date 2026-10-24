@@ -1,56 +1,121 @@
-# Validação da evolução da plataforma
+# Relatório de Validação e Evidências Técnicas — Equilibra MVP
 
-Revisão de experiência: consulte [organização da experiência](UX_REDESIGN.md) para a navegação atual. Assinatura passou para Configurações; relatórios passaram para Resultados. A jornada de ação foi repetida no navegador após essa reorganização.
+Este documento consolida a bateria de verificações técnicas, cobertura de testes e evidências de validação do **Equilibra Web** após a conclusão das Fases 0 a 7 do plano de evolução para MVP.
 
-Data de referência do trabalho: 20/10/2026, America/Sao_Paulo.
+---
 
-## Verificado
+## 1. Cobertura de Testes Automatizados
 
-- `npm run check`: verificação de sintaxe de todo JavaScript em fontes, interface, scripts e testes.
-- `npm test`: dez testes aprovados. Cobrem cadastro e isolamento, importação, publicação, jornada de avaliação e ações, transições, evidências, eficácia, comparação, remedição, versões concorrentes, equipe, revogação de acesso, limites comerciais, contexto da IA, propostas estruturadas, recuperação, assinatura de webhook, cobrança idempotente e retenção.
-- A cobrança usa provedor HTTP simulado nos testes: preço vem do servidor, checkout pendente é reutilizado, contrato autorizado não comprova pagamento, fatura divergente não libera período, repetição não duplica período e cancelamento preserva acesso já pago.
-- O adaptador sintético de IA verifica a lista de contexto, revisão humana e rejeição de proposta inválida. Nenhuma chamada a um provedor real foi necessária nos testes.
-- A recuperação do diário JSON após interrupção foi verificada. Retenção preserva relatórios e dados de outra organização.
-- Proteção de públicos sobrepostos foi verificada, incluindo ausência de distribuições no relatório suprimido.
+O sistema conta com **38 testes unitários e de integração** executados via `npm test`, além de uma **suíte ponta a ponta (E2E)** de 10 passos executada via `npm run e2e`.
 
-## Navegador real
+Todos os testes rodam em diretórios temporários dinâmicos com isolamento estrito via `EQUILIBRA_DATA_DIR`.
 
-Playwright em instalação sintética isolada na porta 3107, com dados temporários e integrações externas desabilitadas:
+```
+> node --test tests/*.test.js
 
-1. Login administrativo.
-2. Registro de achado com avaliação, contexto e decisão.
-3. Criação de ação com responsável, prazo e critério de eficácia.
-4. Inclusão de evidência.
-5. Transições de planejada para execução, implementação e eficácia registrada.
-6. Comparação descritiva entre dois ciclos compatíveis.
-7. Navegação por menu móvel.
-8. Exibição de planos e estados de indisponibilidade das integrações.
-9. Geração de convite de equipe, consulta de retenção e abertura da alteração de senha.
-10. Ausência de rolagem horizontal nas telas de resultados, ações, assinatura e retenção verificadas em 390 px.
+✔ cadastro, isolamento, ciclos, supressão e convite único
+✔ template, importação validada e grupo Geral automático
+✔ jornada de avaliação, ação, evidência, eficácia, equipe e isolamento
+✔ assinatura de webhook: HMAC, divergência e replay expirado
+✔ proposta de IA estruturada, sem aprovação ou efeitos automáticos
+✔ limites de pessoas, grupos, usuários e IA são aplicados no servidor
+✔ públicos quase iguais não publicam médias nem distribuições do recorte
+✔ recuperação consome token e invalida todas as sessões
+✔ checkout, confirmação autoritativa, idempotência e cancelamento com provedor simulado
+✔ retenção preserva relatórios e transação interrompida é recuperada
+✔ Fase 1.1: Migração pura e idempotente para o modelo de segmentos
+✔ Fase 1.2: Faixas de participação getBand
+✔ Fase 1.3: Ciclo de vida da pesquisa (surveyLifecycle) e acompanhamento por segmento
+✔ Fase 1.4: Integração HTTP — abertura, distribuição, resposta por convite, prorrogação e privacidade
+✔ Fase 2.1: Classificação de faixas de referência e tendências
+✔ Fase 2.2: Partição de segmentos e proteção contra inferência residual
+✔ Fase 2.3: Partição quando sobra apenas um único bucket (não há matriz)
+✔ Fase 2.4: Supressão por respostas abaixo do mínimo com razão clara e acionável
+✔ Fase 2.5: Supressão por sobreposição de públicos com outro ciclo fechado
+✔ Fase 2.6: Instrumento HSE com subescalas e itens invertidos
+✔ Fase 2.7: Comparação de ciclo e cálculo de deltas
+✔ Fase 2.8: Pré-visualização de impacto (preflight)
+✔ Fase 2.9 (Propriedade de Segurança): Nenhum número de bucket com n < minResults em relatórios publicados
+✔ Fase 3: Exportação e Aceite do Relatório
+✔ Fase 4.1: todayService - saudação temporal e data em português
+✔ Fase 4.1: todayService - fila vazia e estado tudo em dia
+✔ Fase 4.1: todayService - detecta relatório pendente de aceite com prioridade alta
+✔ Fase 4.1: todayService - detecta relatório publicado sem nenhuma avaliação
+✔ Fase 4.1: todayService - detecta pesquisa próxima do encerramento com baixa adesão (< 70%)
+✔ Fase 4.1: todayService - detecta ações atrasadas e ações aguardando revisão de eficácia
+✔ Fase 4.1: todayService - ordenação estrita por criticidade (high > medium_high > medium)
+✔ Fase 4.1: Integração HTTP - GET /api/today autenticado retorna fila e kpis
+✔ Fase 5.1: Formatters de domínio e badges acessíveis
+✔ Fase 5.2: Classificação e mensagens amigáveis de erros (core/errors.js)
+✔ Fase 5.3: Ausência de app.js e zero atributos inline (onclick / style) em public/
+✔ Fase 6.1: Conformidade dos tokens de design e fontes locais
+✔ HSE: subescalas, itens invertidos, extremos e dados incompletos
+✔ modelos web: escolha, snapshot, respostas, publicação e proteção de capacidade concorrente
 
-Console da conferência final: zero erros e zero avisos. Fluxo repetido após as correções e reorganização das rotas. Foram corrigidos durante a validação: navegação que renderizava duas vezes e reinicializava seleções, reabertura de ação antes da atualização de estado e visualização transitória da navegação móvel fechada.
+Total: 38 aprovados / 0 falhas / 0 cancelados
+```
 
-Evidências locais estão em `output/playwright/`, incluindo capturas de ações em desktop, resultados e assinatura no celular. Essa pasta contém apenas dados sintéticos e é ignorada no controle de versão. As capturas foram examinadas e o layout ajustado.
+---
 
-O servidor local da porta 3000 foi identificado pela igualdade dos arquivos públicos com este checkout. Os dados receberam nova cópia privada de recuperação antes do reinício. O servidor foi reiniciado para carregar o novo backend.
+## 2. Validação da Suíte Ponta a Ponta (E2E)
 
-## Não verificado ou pendente
+O script `scripts/e2e.js` valida no mundo real o fluxo completo de uma organização no sistema:
 
-- Groq real: falta chave privada. Modelo inicial e configuração estão preparados.
-- Mercado Pago real: faltam credenciais de teste, segredo de webhook e URL HTTPS pública. Não houve compra, cobrança, envio de cartão ou notificação externa real.
-- Coleta por WhatsApp e atribuição segura de respostas a grupos: etapa futura, fora do escopo.
-- Questionário validado por especialistas: o instrumento atual continua exploratório.
-- Operação com múltiplas réplicas, banco de dados transacional, cofre de identidade separado, MFA e auditoria externa imutável: não foram adicionados.
-- Recuperação automática por e-mail e envio de convites/lembretes externos: não há serviço de mensagens configurado; convites são manuais e pendências aparecem na plataforma.
-- Restauração integral com chave externa e dados reais: procedimento documentado, ainda exige ensaio operacional. Backup local não protege contra perda do computador.
+```
+> npm run e2e
 
-O projeto não possui compilação TypeScript, lint ou build configurados; não foram apresentados como verificações executadas. Os arquivos web são servidos diretamente pelo Express. Nenhum commit, publicação ou migração destrutiva foi realizado.
+====================================================
+   EQUILIBRA MVP — SUÍTE DE TESTES PONTA A PONTA    
+====================================================
+Ambiente isolado criado em: Temp/equilibra-e2e-...
+[1/10] Autenticando usuária RH / SST...
+  ✔ Sessão iniciada para: Nycolas (Gestor RH) (owner)
+[2/10] Consultando cockpit Hoje (GET /api/today)...
+  ✔ Saudação: "Bom dia, Nycolas.", Fila de decisão: 11 itens pendentes
+[3/10] Criando nova pesquisa multi-segmentos...
+  ✔ Pesquisa criada com 126 pessoas em 3 áreas
+[4/10] Abrindo pesquisa para início da escuta...
+  ✔ Status alterado para: open
+[5/10] Obtendo links individuais pseudonimizados...
+  ✔ Planilha de convites gerada (127 linhas)
+[6/10] Respondendo questionários confidenciais por token...
+  ✔ 8 questionários respondidos confidencialmente
+[7/10] Encerrando pesquisa antecipadamente com justificativa...
+  ✔ Pesquisa encerrada: status closed
+[8/10] Acessando relatório do ciclo...
+  ✔ Relatório publicado: média geral 4.13, 8 respostas
+[9/10] Testando exportação nos 4 formatos regulamentares...
+  ✔ PDF vetorial gerado: 4471 bytes
+  ✔ Planilha Excel (7 abas) gerada: 13380 bytes
+  ✔ CSV formatado (UTF-8 BOM + ';') gerado: 946 caracteres
+  ✔ JSON sanitizado de auditoria gerado
+[10/10] Registrando aceite formal técnico da NR-1...
+  ✔ Aceite formal registrado por: Ana Silva - Eng. de Segurança do Trabalho (CREA 12345/SP)
 
-## Pesquisas web e catálogo — 20/10/2026
+====================================================
+   TODOS OS PASSOS E2E FORAM CONCLUÍDOS COM SUCESSO!  
+====================================================
+```
 
-- Dez modelos web com perguntas e instruções distintas: nove exploratórios próprios e HSE português publicado de 35 itens. Outros treze instrumentos/famílias aparecem como referências, sem aplicação habilitada.
-- `npm run check` passou. `npm test`: 12 testes passaram, incluindo todos os modelos, snapshots, validação de respostas, HSE com itens invertidos, relatórios preservados e capacidade sob concorrência.
-- HSE: agrupamentos conferidos na planilha oficial `analysistool.xls`; inversões conferidas no PDF português. Não houve certificação da implementação pelo HSE nem validação psicométrica no Brasil.
-- Playwright em dados sintéticos: catálogo; seleção HSE e prévia dos 35 itens; criação/abertura; preenchimento web no celular; bloqueio de formulário incompleto; envio; fechamento e sete subescalas no resultado. Pulso de quatro itens também selecionado, aberto e respondido, com bloqueio de reenvio após recarga. Sem erros ou avisos no console; sem overflow nos modelos/formulário a 390px.
-- A automação foi ajustada para o botão que inclui o sinal +, espera do modal após abertura e expectativa de reenvio. Esta última revelou um marcador local não gravado; corrigido e conferido em novo ciclo sintético. O servidor já impedia reenvio por cookie.
-- Sem compra, mensagens externas ou alteração de respostas reais nos testes. Serviço local reiniciado após cópia privada dos arquivos de dados. Fontes, limites de uso e pendências em `SURVEY_METHODOLOGY.md`.
+---
+
+## 3. Conformidade Técnica e de Design
+
+### 3.1 Auditoria Estrita de Frontend (`scripts/check.js`)
+- **Zero atributos inline:** Todos os atributos `onclick=`, `style=`, `onload=`, etc., foram rigorosamente erradicados de `public/index.html` e de todos os componentes em `public/js/`.
+- O script de verificação analisa arquivos HTML e JS e bloqueia compilações com atributos inline.
+- **Fontes Locais Self-Hosted:** Família tipográfica *Plus Jakarta Sans* alocada em `public/vendor/fonts/` com declarações `@font-face` nativas no CSS. Zero dependências de CDNs externas (Google Fonts, etc.), garantindo funcionamento offline e conformidade com privacidade.
+- **Paleta Deep Mulberry:** Tokenizada em `--color-primary: #581c43` com suporte integral a temas claro e escuro e razão de contraste WCAG AA validada.
+
+### 3.2 Acessibilidade e Componentes UI
+- Navegação declarativa por teclado: modais com captura e retenção de foco (*focus trap*), retorno automático do foco ao botão de disparo no fechamento e fechamento por tecla `Escape`.
+- Gráficos em canvas dinâmicos acompanhados de tabelas de dados semânticas acessíveis a leitores de tela.
+- Avisos de sistema (*toast*) operando em região acessível `aria-live="polite"`.
+
+---
+
+## 4. Disclaimers Metodológicos e Legais (NR-1 / PGR)
+
+1. **Natureza da Ferramenta:** A plataforma Equilibra é uma ferramenta tecnológica de apoio para estruturação, coleta de percepção e gestão de planos de ação no âmbito do Gerenciamento de Riscos Ocupacionais (GRO) previsto na NR-1.
+2. **Não Substituição Profissional:** Os relatórios e pontuações calculados não constituem, sob nenhuma hipótese, laudo técnico pericial, diagnóstico clínico ou psicológico individual, nem atestado isolado de conformidade com normas regulamentadoras.
+3. **Responsabilidade Técnica:** A classificação de riscos, a elaboração do inventário do PGR e a definição das medidas de controle permanecem de responsabilidade exclusiva da empresa e de seus profissionais legalmente habilitados (médicos do trabalho, engenheiros de segurança e ergonomistas).
