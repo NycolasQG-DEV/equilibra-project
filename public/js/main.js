@@ -58,6 +58,7 @@ import {
 import {
   renderCyclesList,
   renderCycleReport,
+  mountedCycleReport,
   openAcceptModal,
   submitAcceptReport
 } from './features/results/resultsView.js';
@@ -178,7 +179,8 @@ router.register({
   path: 'resultados/ciclo/:id',
   title: 'Relatório do Ciclo',
   load: () => store.loadReports(),
-  render: renderCycleReport
+  render: renderCycleReport,
+  mounted: mountedCycleReport
 });
 
 router.register({

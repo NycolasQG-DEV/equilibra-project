@@ -41,10 +41,10 @@ export function renderToday({ state }) {
         <div class="flex items-center justify-between mb-3">
           <h2 id="queue-heading" class="card-title">
             <i class="fa-solid fa-bell color-primary" aria-hidden="true"></i>
-            Precisa da sua decisão hoje (${queue.length})
+            Ações e Decisões Prioritárias (${queue.length})
           </h2>
           <span class="table-subtext">
-            Ordenado por criticidade operacional
+            Governança e conformidade contínua NR-1
           </span>
         </div>
         <div class="flex flex-col gap-3">
@@ -98,8 +98,11 @@ export function renderToday({ state }) {
 
   // Operational KPIs
   const activeSurvey = kpis.activeSurvey;
-  const actions = kpis.actionsSummary || { total: 0, onTrack: 0, overdue: 0, needsReview: 0 };
-  const pop = kpis.monitoredPopulation || { membersCount: 0, groupsCount: 0 };
+  const actions = kpis.actionsSummary || kpis.actions || { total: 0, onTrack: 0, overdue: 0, needsReview: 0 };
+  const pop = kpis.monitoredPopulation || kpis.population || { membersCount: 0, groupsCount: 0 };
+
+  const membersCount = pop.membersCount ?? pop.totalMembers ?? (state.members ? state.members.length : 0);
+  const groupsCount = pop.groupsCount ?? pop.totalGroups ?? (state.groups ? state.groups.filter(g => !g.isDefault).length : 0);
 
   const kpisHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
@@ -113,7 +116,7 @@ export function renderToday({ state }) {
           <div class="dist-bar">
             <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(activeSurvey.participationRate * 100))}"></div>
           </div>
-          <span class="kpi-sub mt-2">${activeSurvey.responsesCount} respostas de ${activeSurvey.totalInvited} convidados</span>
+          <span class="kpi-sub mt-2">${activeSurvey.responsesCount || activeSurvey.responses || 0} respostas de ${activeSurvey.totalInvited || activeSurvey.invited || 0} convidados</span>
         ` : `
           <div class="kpi-val color-muted">Nenhuma aberta</div>
           <span class="kpi-sub">Todos os ciclos anteriores foram encerrados.</span>
@@ -123,27 +126,30 @@ export function renderToday({ state }) {
 
       <div class="kpi-card">
         <span class="kpi-title">Planos de Ação (NR-1)</span>
-        <div class="kpi-val">${actions.total}</div>
+        <div class="kpi-val">${actions.total || actions.totalActive || 0}</div>
         <div class="flex items-center gap-2 mt-1">
-          <span class="badge badge-success" title="No prazo">${actions.onTrack} no prazo</span>
-          ${actions.overdue > 0 ? `<span class="badge badge-danger" title="Atrasadas">${actions.overdue} atrasadas</span>` : ''}
-          ${actions.needsReview > 0 ? `<span class="badge badge-warning" title="Aguardando revisão de eficácia">${actions.needsReview} revisar</span>` : ''}
+          <span class="badge badge-success" title="No prazo"><span class="status-dot dot-success" aria-hidden="true"></span> ${actions.onTrack || actions.onTime || 0} no prazo</span>
+          ${(actions.overdue || 0) > 0 ? `<span class="badge badge-danger" title="Atrasadas"><span class="status-dot dot-danger" aria-hidden="true"></span> ${actions.overdue} atrasadas</span>` : ''}
+          ${(actions.needsReview || actions.reviewDue || 0) > 0 ? `<span class="badge badge-warning" title="Aguardando revisão de eficácia"><span class="status-dot dot-warning" aria-hidden="true"></span> ${actions.needsReview || actions.reviewDue} a revisar</span>` : ''}
         </div>
         <span class="kpi-sub mt-2">Acompanhamento contínuo no PGR</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-title">População Monitorada</span>
-        <div class="kpi-val">${pop.membersCount}</div>
+        <div class="kpi-val">${membersCount}</div>
         <div class="table-subtext mt-1">
-          colaboradores em ${pop.groupsCount} áreas ativas
+          colaboradores em ${groupsCount} áreas ativas
         </div>
-        <span class="kpi-sub mt-2">Proteção server-enforced de privacidade (N ≥ 5)</span>
+        <span class="kpi-sub mt-2">Base ativa de colaboradores</span>
       </div>
     </div>
   `;
 
   // Decision Charts Section
+  const partTrendList = Array.isArray(charts.participationTrend) ? charts.participationTrend : (charts.participationTrendData?.labels ? charts.participationTrendData.labels.map((lbl, i) => ({ cycle: lbl, rate: charts.participationTrendData.rates[i] })) : []);
+  const factorRankingList = Array.isArray(charts.factorRanking) ? charts.factorRanking : (charts.factorAverages?.labels ? charts.factorAverages.labels.map((lbl, i) => ({ label: lbl, average: charts.factorAverages.values[i] })) : []);
+
   const chartsHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
       <div class="card">
@@ -157,8 +163,8 @@ export function renderToday({ state }) {
             <table class="table">
               <thead><tr><th>Ciclo</th><th>Adesão</th></tr></thead>
               <tbody>
-                ${(charts.participationTrend?.labels || []).map((lbl, i) => `
-                  <tr><td>${esc(lbl)}</td><td>${fmtPercent(charts.participationTrend.rates[i])}</td></tr>
+                ${partTrendList.map(p => `
+                  <tr><td>${esc(p.fullCycle || p.cycle)}</td><td>${p.rate}%</td></tr>
                 `).join('')}
               </tbody>
             </table>
@@ -177,8 +183,8 @@ export function renderToday({ state }) {
             <table class="table">
               <thead><tr><th>Fator</th><th>Média</th></tr></thead>
               <tbody>
-                ${(charts.factorAverages?.labels || []).map((lbl, i) => `
-                  <tr><td>${esc(lbl)}</td><td>${fmt(charts.factorAverages.values[i])}</td></tr>
+                ${factorRankingList.map(f => `
+                  <tr><td>${esc(f.label)}</td><td>${fmt(f.average)}</td></tr>
                 `).join('')}
               </tbody>
             </table>
@@ -197,8 +203,8 @@ export function renderToday({ state }) {
             <table class="table">
               <thead><tr><th>Status</th><th>Qtd</th></tr></thead>
               <tbody>
-                ${(charts.actionEfficacy?.labels || []).map((lbl, i) => `
-                  <tr><td>${esc(lbl)}</td><td>${charts.actionEfficacy.counts[i]}</td></tr>
+                ${(charts.actionEfficacy?.labels || ['Eficazes', 'Em andamento', 'A revisar']).map((lbl, i) => `
+                  <tr><td>${esc(lbl)}</td><td>${(charts.actionEfficacy?.counts ? charts.actionEfficacy.counts[i] : 0)}</td></tr>
                 `).join('')}
               </tbody>
             </table>
@@ -247,20 +253,23 @@ function renderQueueItem(item, isViewer = false) {
     : 'badge-info';
 
   const edgeClass = item.priority === 'high' ? 'card-danger-edge' : 'card-warning-edge';
-  const priorityLabel = priorityLabels[item.priority] || item.priority;
-  const label = decisionQueueLabels[item.type] || item.title;
+  const rawPriority = item.priority || 'medium';
+  const dotClass = rawPriority === 'high' ? 'dot-danger' : rawPriority === 'medium_high' ? 'dot-warning' : 'dot-info';
+  let cleanLabel = item.priorityLabel || priorityLabels[rawPriority] || (rawPriority === 'medium_high' ? 'Média-Alta' : rawPriority);
+  cleanLabel = cleanLabel.replace(/^prioridade\s*/i, '');
+  const label = item.title || decisionQueueLabels[item.type] || 'Ação Requerida';
 
   const canNavigate = !isViewer || (item.actionUrl && (item.actionUrl.startsWith('resultados') || item.actionUrl.startsWith('pesquisas/')));
 
   return `
     <div class="card ${edgeClass}">
-      <div class="card-body flex items-center justify-between p-4">
+      <div class="card-body flex items-center justify-between p-4 flex-wrap gap-3">
         <div>
           <div class="flex items-center gap-2 mb-1">
-            <span class="badge ${priorityClass}">Prioridade ${priorityLabel}</span>
+            <span class="badge ${priorityClass}"><span class="status-dot ${dotClass}" aria-hidden="true"></span> Prioridade ${esc(cleanLabel)}</span>
             <strong class="color-primary">${esc(label)}</strong>
           </div>
-          <p class="view-subtitle">
+          <p class="view-subtitle m-0">
             ${esc(item.message || item.description)}
           </p>
         </div>
@@ -277,7 +286,6 @@ function renderQueueItem(item, isViewer = false) {
 }
 
 export function mountedToday({ state }) {
-  // Set widths for data-width attributes
   document.querySelectorAll('[data-width]').forEach(el => {
     el.style.width = `${el.dataset.width}%`;
   });
@@ -286,17 +294,17 @@ export function mountedToday({ state }) {
   if (!charts || !window.DashboardCharts) return;
 
   const partCanvas = document.getElementById('chart-participation-canvas');
-  if (partCanvas && charts.participationTrend) {
-    window.DashboardCharts.createParticipationTrendChart(partCanvas, charts.participationTrend);
+  if (partCanvas && (charts.participationTrend || charts.participationTrendData)) {
+    window.DashboardCharts.createParticipationTrendChart(partCanvas, charts.participationTrend || charts.participationTrendData);
   }
 
   const factorCanvas = document.getElementById('chart-factors-canvas');
-  if (factorCanvas && charts.factorAverages) {
-    window.DashboardCharts.createFactorBarChart(factorCanvas, charts.factorAverages);
+  if (factorCanvas && (charts.factorRanking || charts.factorAverages)) {
+    window.DashboardCharts.createFactorBarChart(factorCanvas, charts.factorRanking || charts.factorAverages);
   }
 
   const actionCanvas = document.getElementById('chart-actions-canvas');
-  if (actionCanvas && charts.actionEfficacy) {
-    window.DashboardCharts.createActionEfficacyChart(actionCanvas, charts.actionEfficacy);
+  if (actionCanvas && (charts.actionEfficacy || charts.efficacy)) {
+    window.DashboardCharts.createActionEfficacyChart(actionCanvas, charts.actionEfficacy || charts.efficacy);
   }
 }

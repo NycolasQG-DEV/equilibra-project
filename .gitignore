@@ -35,4 +35,7 @@ public/vendor/
 .impeccable/live/
 
 .impeccable/hook.cache.json
+data_backup*/
+__pycache__/
+*.pyc
 .agents/skills/impeccable/scripts/bin/

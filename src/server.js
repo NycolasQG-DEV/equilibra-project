@@ -15,8 +15,8 @@ app.use((request, response, next) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
     const origin = request.get('origin');
     if (origin) {
-      try { if (new URL(origin).host !== request.get('host')) return response.status(403).json({ error: 'Origem não autorizada.' }); }
-      catch { return response.status(403).json({ error: 'Origem não autorizada.' }); }
+      try { if (new URL(origin).host !== request.get('host')) return response.status(403).json({ error: 'Origem nÃ£o autorizada.' }); }
+      catch { return response.status(403).json({ error: 'Origem nÃ£o autorizada.' }); }
     }
     if (!request.is('application/json') && request.get('content-type')?.split(';')[0].trim() !== 'application/json') return response.status(415).json({ error: 'Envie JSON.' });
   }
@@ -31,19 +31,25 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (_request, response) => response.json({ status: 'ok' }));
 app.get('*path', (_request, response) => response.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 app.use((error, _request, response, _next) => {
-  if (error instanceof SyntaxError && 'body' in error) return response.status(400).json({ error: 'JSON inválido.' });
+  if (error instanceof SyntaxError && 'body' in error) return response.status(400).json({ error: 'JSON invÃ¡lido.' });
   console.error(error);
   response.status(500).json({ error: 'Erro interno do servidor.' });
 });
 initializeStorage();
 const { runDataMigration } = require('./services/dataMigration');
 const storage = require('./config/equilibraStorage');
-try { runDataMigration(storage); } catch (e) { console.error('Aviso migração:', e.message); }
+try { runDataMigration(storage); } catch (e) { console.error('Aviso migraÃ§Ã£o:', e.message); }
 if (require.main === module) {
+  process.on('uncaughtException', (error) => {
+    console.error('[FATAL] uncaughtException — servidor continuando:', error.message);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL] unhandledRejection — servidor continuando:', reason);
+  });
   const scheduler = require('./services/scheduler');
   app.listen(port, () => {
     console.log(`Equilibra: http://localhost:${port}`);
-    const run = () => { try { scheduler.tick(); } catch (error) { console.error('Agendador indisponível:', error.name); } };
+    const run = () => { try { scheduler.tick(); } catch (error) { console.error('Agendador indisponÃ­vel:', error.name); } };
     run(); setInterval(run, 60000).unref();
   });
 }

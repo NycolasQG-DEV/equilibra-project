@@ -156,11 +156,10 @@ export async function renderRespondent({ params }) {
               <div class="status-icon-circle status-icon-circle-lg status-icon-circle-success">
                 <i class="fa-solid fa-check" aria-hidden="true"></i>
               </div>
-              <h1 class="view-title mb-2">Resposta Registrada com Sucesso</h1>
-              <p class="view-subtitle mb-4">
-                Obrigado pela sua participação! Suas contribuições foram agregadas aos indicadores coletivos da empresa para subsidiar melhorias contínuas nas condições de trabalho.
+              <h1 class="view-title mb-2">Resposta Enviada</h1>
+              <p class="view-subtitle m-0">
+                Obrigado por dedicar seu tempo. Suas respostas foram computadas e apoiarão melhorias contínuas no ambiente de trabalho.
               </p>
-              <span class="badge badge-success">Sua privacidade foi preservada</span>
             </div>
           </div>
         `;

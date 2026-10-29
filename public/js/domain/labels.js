@@ -23,6 +23,7 @@ export const assessmentStatusLabels = {
 
 export const priorityLabels = {
   high: 'Alta',
+  medium_high: 'Média-Alta',
   medium: 'Média',
   low: 'Baixa'
 };

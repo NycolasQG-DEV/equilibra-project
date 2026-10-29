@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const { aggregate, summarizeDistribution, compareReports } = require('./analysis');
 const { classifyFactor, evaluateTrend, REFERENCE_BANDS_CONFIG } = require('../config/referenceBands');
 const { getBand } = require('../services/surveyLifecycle');
+const { generateContextualInsights } = require('./contextualInsights');
 
 const DEFAULT_MIN_RESULTS = 5;
 
@@ -162,7 +163,7 @@ function partitionSegments({ segments = [], responses = [], minResults = DEFAULT
         n: bucket.n,
         level: classification?.level || 'unclassified',
         levelLabel: classification?.label || 'Sem faixa',
-        levelIcon: classification?.icon || '—'
+        levelIcon: classification?.icon || '�'
       };
     });
 
@@ -502,7 +503,7 @@ function buildCycleReport({
         n: responses.length,
         level: classification?.level || 'unclassified',
         levelLabel: classification?.label || 'Sem faixa',
-        levelIcon: classification?.icon || '—',
+        levelIcon: classification?.icon || '�',
         disclaimer: classification?.disclaimer || REFERENCE_BANDS_CONFIG.disclaimer,
         delta: null,
         trend: null,
@@ -648,6 +649,17 @@ function buildCycleReport({
     ? generateRuleBasedSummary({ factors, comparison, segmentation: partition, participation, instrument })
     : null;
 
+  // Insights contextuais  converte dados brutos em diagn�stico significativo por tipo de instrumento
+  const reportForInsights = {
+    published: isPublished,
+    factors,
+    model: survey.model,
+    instrument,
+    comparison,
+    historicalSeries,
+    participationRate: participation.total.rate,
+  };
+  const insights = isPublished ? generateContextualInsights(reportForInsights) : null;
   const methodologyText = `${instrument.name}, versão ${instrument.version}; ${instrument.factors?.length || 0} afirmações; ${instrument.limitation}`;
 
   return {
@@ -681,7 +693,9 @@ function buildCycleReport({
     comparison,
     historicalSeries,
     summary,
-    recommendations: [], // Campo reservado para catálogo futuro
+    insights,
+    recommendations: insights?.recomendacoes || [], // Recomenda��es contextuais geradas pelo motor de insights
+    // Campo preservado para catálogo futuro
     instrument: {
       id: instrument.id,
       name: instrument.name,

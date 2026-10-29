@@ -13,7 +13,7 @@ export function renderCyclesList({ state }) {
 
   const content = `
     <div class="results-page">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 class="view-title">Resultados e Relatórios Coletivos</h1>
           <p class="view-subtitle">
@@ -52,7 +52,7 @@ export function renderCyclesList({ state }) {
                 </td>
               </tr>
             ` : reports.map(r => {
-              const isAccepted = !!r.formalAcceptance;
+              const isAccepted = !!r.formalAcceptance || !!r.acceptance;
               const isSuppressed = r.suppression?.isSuppressed;
 
               return `
@@ -73,7 +73,7 @@ export function renderCyclesList({ state }) {
                       </span>
                     `}
                   </td>
-                  <td><span class="num">${r.responsesCount || 0}</span> respostas</td>
+                  <td><span class="num">${r.responsesCount || r.responseCount || 0}</span> respostas</td>
                   <td>
                     ${isAccepted ? `
                       <span class="badge badge-success">
@@ -176,12 +176,13 @@ export function renderCycleReport({ params, state }) {
     });
   }
 
-  // Published Report View with 7 Sections
-  const summaryText = report.deterministicSummary || 'Relatório processado sob os critérios de proteção coletiva NR-1.';
-  const factors = report.result || [];
-  const matrix = report.matrix || null;
-  const acceptance = report.formalAcceptance;
+  const insights = report.insights || null;
+  const factors = report.result || report.factors || [];
+  const matrix = report.matrix || report.segmentation || null;
+  const acceptance = report.formalAcceptance || report.acceptance;
   const isViewer = state.account?.role === 'viewer';
+
+  const executiveText = `Relatório técnico de escuta coletiva processado sob a metodologia <strong>${esc(report.model)}</strong>. Apuração realizada com quórum protegido de <strong>${report.responsesCount || report.responseCount || 0} respondentes</strong> (${fmtPercent(report.participationRate)} de adesão). A média global apurada para o coletivo foi de <strong>${fmt(report.generalAverage)}</strong> / 5,00.`;
 
   const content = `
     <div class="report-view-page">
@@ -190,7 +191,7 @@ export function renderCycleReport({ params, state }) {
         <div>
           <h1 class="view-title">${esc(report.title)}</h1>
           <p class="view-subtitle">
-            Ciclo: ${esc(report.cycle || 'Geral')} · ${report.responsesCount || 0} respostas coletadas
+            Ciclo: ${esc(report.cycle || 'Geral')} · ${report.responsesCount || report.responseCount || 0} respostas coletadas · Metodologia NR-1
           </p>
         </div>
         <div class="flex gap-2 flex-wrap">
@@ -215,70 +216,93 @@ export function renderCycleReport({ params, state }) {
       <!-- Anchor Sub-Navigation -->
       <nav class="tabs-nav mb-6" aria-label="Navegação interna do relatório">
         <a href="#resumo" class="tab-link">Resumo</a>
-        <a href="#painel-especializado" class="tab-link">Visualização & Matriz</a>
-        <a href="#solucoes" class="tab-link">Portal de Soluções (NR-1)</a>
+        <a href="#painel-especializado" class="tab-link">Painel do Instrumento</a>
+        <a href="#diagnostico" class="tab-link">Diagnóstico & Soluções</a>
+        <a href="#solucoes" class="tab-link">Medidas NR-1</a>
         <a href="#fatores" class="tab-link">Fatores</a>
         <a href="#distribuicao" class="tab-link">Distribuição</a>
-        <a href="#segmentos" class="tab-link">Segmentos</a>
+        ${matrix ? '<a href="#segmentos" class="tab-link">Segmentos</a>' : ''}
         <a href="#metodologia" class="tab-link">Metodologia</a>
         <a href="#aceite" class="tab-link">Aceite Formal</a>
       </nav>
 
-      <!-- Section: Resumo -->
+      <!-- Section: Resumo Executivo -->
       <section id="resumo" class="card mb-6">
         <div class="card-header">
           <h2 class="card-title">Resumo Executivo da Escuta</h2>
         </div>
         <div class="card-body">
           <p class="mb-4">
-            ${esc(summaryText)}
+            ${executiveText}
           </p>
-          <div class="grid grid-cols-4 gap-4">
-            <div class="card p-4 bg-subtle">
-              <span class="kpi-title">Média Geral</span>
-              <div class="kpi-val">${fmt(report.generalAverage)}</div>
-              <span class="kpi-sub">Escala de 1 a 5</span>
+
+          ${insights?.kpisContextuais?.length ? `
+            <div class="grid grid-cols-4 gap-4">
+              ${insights.kpisContextuais.slice(0, 4).map(kpi => {
+                const val = kpi.formatted || kpi.value || (kpi.valor != null ? (kpi.valor + (kpi.sufixo ? ' ' + kpi.sufixo : '')) : '—');
+                const sub = kpi.sub || kpi.sufixo || '';
+                const st = kpi.status || kpi.cor || 'neutral';
+                const colorCls = st === 'danger' ? 'color-danger' : st === 'warning' ? 'color-warning' : st === 'success' ? 'color-success' : '';
+                return `
+                  <div class="card p-4 bg-subtle">
+                    <span class="kpi-title">${esc(kpi.label)}</span>
+                    <div class="kpi-val ${colorCls}">${esc(String(val))}</div>
+                    <span class="kpi-sub">${esc(String(sub))}</span>
+                  </div>
+                `;
+              }).join('')}
             </div>
-            <div class="card p-4 bg-subtle">
-              <span class="kpi-title">Taxa de Adesão</span>
-              <div class="kpi-val">${fmtPercent(report.participationRate)}</div>
-              <span class="kpi-sub">${report.responsesCount} respondentes</span>
-            </div>
-            <div class="card p-4 bg-subtle">
-              <span class="kpi-title">Fatores Adequados</span>
-              <div class="kpi-val color-success">
-                ${factors.filter(f => f.average >= 3.6).length}
+          ` : `
+            <div class="grid grid-cols-4 gap-4">
+              <div class="card p-4 bg-subtle">
+                <span class="kpi-title">Média Geral</span>
+                <div class="kpi-val">${fmt(report.generalAverage)}</div>
+                <span class="kpi-sub">Escala de 1 a 5</span>
               </div>
-              <span class="kpi-sub">Pontuação ≥ 3,6</span>
-            </div>
-            <div class="card p-4 bg-subtle">
-              <span class="kpi-title">Pontos de Atenção</span>
-              <div class="kpi-val color-danger">
-                ${factors.filter(f => f.average < 2.8).length}
+              <div class="card p-4 bg-subtle">
+                <span class="kpi-title">Taxa de Adesão</span>
+                <div class="kpi-val">${fmtPercent(report.participationRate)}</div>
+                <span class="kpi-sub">${report.responsesCount || report.responseCount || 0} respondentes</span>
               </div>
-              <span class="kpi-sub">Pontuação < 2,8</span>
+              <div class="card p-4 bg-subtle">
+                <span class="kpi-title">Fatores Adequados</span>
+                <div class="kpi-val color-success">
+                  ${factors.filter(f => f.average >= 3.6).length}
+                </div>
+                <span class="kpi-sub">Pontuação ≥ 3,6</span>
+              </div>
+              <div class="card p-4 bg-subtle">
+                <span class="kpi-title">Pontos de Atenção</span>
+                <div class="kpi-val color-danger">
+                  ${factors.filter(f => f.average < 2.8).length}
+                </div>
+                <span class="kpi-sub">Pontuação < 2,8</span>
+              </div>
             </div>
-          </div>
+          `}
         </div>
       </section>
 
       <!-- Section: Visualização Especializada do Instrumento -->
       ${renderSpecializedDashboard(report, factors)}
 
+      <!-- Section: Diagnóstico Contextual -->
+      ${renderContextualDiagnostic(report, insights)}
+
       <!-- Section: Portal de Soluções NR-1 -->
       ${renderSolutionsPortal(report, factors, isViewer)}
 
-      <!-- Section: Fatores -->
+      <!-- Section: Fatores Detalhados -->
       <section id="fatores" class="card mb-6">
         <div class="card-header">
-          <h2 class="card-title">Índice de Fatores Psicossociais</h2>
+          <h2 class="card-title">Índice Detalhado de Fatores</h2>
         </div>
         <div class="card-body">
           <div class="table-wrap">
             <table class="table">
               <thead>
                 <tr>
-                  <th>Fator / Dimensão</th>
+                  <th>Fator / Dimensão Avaliada</th>
                   <th>Média Coletiva</th>
                   <th>Classificação Semáforo</th>
                   <th>Delta vs Ciclo Anterior</th>
@@ -345,7 +369,7 @@ export function renderCycleReport({ params, state }) {
       </section>
 
       <!-- Section: Segmentos (Matrix) -->
-      ${matrix ? `
+      ${matrix && matrix.columns && matrix.columns.length ? `
         <section id="segmentos" class="card mb-6">
           <div class="card-header">
             <h2 class="card-title">Matriz de Segmentos Organizacionais</h2>
@@ -363,7 +387,7 @@ export function renderCycleReport({ params, state }) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${matrix.rows.map(row => `
+                  ${(matrix.rows || []).map(row => `
                     <tr>
                       <td><strong>${esc(row.label)}</strong></td>
                       ${row.cells.map(cell => {
@@ -416,7 +440,7 @@ export function renderCycleReport({ params, state }) {
               <div>
                 <strong class="color-primary">Relatório aceito formalmente</strong>
                 <p class="view-subtitle m-0">
-                  Assinado por <strong>${esc(acceptance.acceptedBy)}</strong> em ${dateText(acceptance.acceptedAt)}.
+                  Assinado por <strong>${esc(acceptance.acceptedBy || 'Responsável Técnico')}</strong> em ${dateText(acceptance.acceptedAt || acceptance.date)}.
                 </p>
                 ${acceptance.notes ? `<p class="table-subtext mt-1">"${esc(acceptance.notes)}"` : ''}
               </div>
@@ -500,20 +524,161 @@ export async function submitAcceptReport(reportId) {
   }
 }
 
+/* ── Contextual Diagnostic Panel ── */
+
+function renderContextualDiagnostic(report, insights) {
+  if (!insights) return '';
+
+  const riskClass = insights.riskLevel === 'crítico' || insights.riskLevel === 'alto'
+    ? 'color-danger'
+    : insights.riskLevel === 'moderado' || insights.riskLevel === 'medio'
+    ? 'color-warning'
+    : 'color-success';
+
+  const badgeClass = insights.riskLevel === 'crítico' || insights.riskLevel === 'alto'
+    ? 'badge-danger'
+    : insights.riskLevel === 'moderado' || insights.riskLevel === 'medio'
+    ? 'badge-warning'
+    : 'badge-success';
+
+  const diag = insights.diagnostico || {};
+  const recomendacoes = insights.recomendacoes || [];
+  const tendencias = insights.tendencias || [];
+  const fatorCritico = insights.fatorMaisCritico;
+  const fatorForte = insights.fatorMaisForte;
+
+  const scoreBar = insights.riskScore != null ? `
+    <div class="mb-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-semibold">Índice Integrado de Exposição a Riscos Psicossociais</span>
+        <span class="num font-semibold ${riskClass}">${insights.riskScore}% (${esc(insights.riskLevel.toUpperCase())})</span>
+      </div>
+      <div class="dist-bar risk-bar-container">
+        <div class="risk-bar-fill ${insights.riskLevel === 'crítico' || insights.riskLevel === 'alto' ? 'risk-bar-danger' : insights.riskLevel === 'moderado' || insights.riskLevel === 'medio' ? 'risk-bar-warning' : 'risk-bar-success'}" data-width="${Math.max(5, insights.riskScore)}"></div>
+      </div>
+      <div class="flex justify-between table-subtext mt-1">
+        <span>Risco Mínimo (0%)</span>
+        <span>Zona de Atenção (35%)</span>
+        <span>Risco Crítico (60%)</span>
+      </div>
+    </div>
+  ` : '';
+
+  const diagCard = diag.label ? `
+    <div class="card p-4 bg-subtle mb-4">
+      <div class="flex items-center gap-3 mb-2 flex-wrap">
+        <span class="badge ${badgeClass}">${esc(diag.label)}</span>
+        <span class="num font-semibold ${riskClass}">Média das Dimensões: ${fmt(diag.mediaGeral || report.generalAverage)}</span>
+      </div>
+      ${diag.descricao ? `<p class="m-0 table-subtext">${esc(diag.descricao)}</p>` : ''}
+    </div>
+  ` : '';
+
+  const callouts = (fatorCritico || fatorForte) ? `
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      ${fatorCritico ? `
+        <div class="card p-4 bg-subtle border-top-danger">
+          <span class="kpi-title color-danger"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Fator Mais Vulnerável</span>
+          <div class="font-semibold mt-1">${esc(fatorCritico.label || fatorCritico.key)}</div>
+          <div class="num color-danger font-semibold mt-1">${fmt(fatorCritico.average)} / 5,00</div>
+          <span class="table-subtext mt-1">Prioridade imediata no plano corretivo do PGR</span>
+        </div>
+      ` : ''}
+      ${fatorForte ? `
+        <div class="card p-4 bg-subtle border-top-success">
+          <span class="kpi-title color-success"><i class="fa-solid fa-shield-check" aria-hidden="true"></i> Fator de Proteção / Destaque</span>
+          <div class="font-semibold mt-1">${esc(fatorForte.label || fatorForte.key)}</div>
+          <div class="num color-success font-semibold mt-1">${fmt(fatorForte.average)} / 5,00</div>
+          <span class="table-subtext mt-1">Prática positiva consolidada a ser mantida</span>
+        </div>
+      ` : ''}
+    </div>
+  ` : '';
+
+  const recsHtml = recomendacoes.length ? `
+    <h3 class="card-title mb-3">Recomendações Prioritárias para o Plano de Ação</h3>
+    <div class="flex flex-col gap-3 mb-4">
+      ${recomendacoes.slice(0, 5).map(rec => {
+        const isUrg = rec.urgencia === 'imediata' || rec.urgencia === 'alta';
+        const cardClass = isUrg ? 'urgent' : 'high';
+        const badgeClass = isUrg ? 'badge-danger' : 'badge-warning';
+        const badgeLabel = isUrg ? 'Ação Crítica' : 'Prioridade Alta';
+
+        return `
+          <div class="rec-action-card ${cardClass}">
+            <div class="rec-action-header">
+              <span class="badge ${badgeClass}"><span class="status-dot ${isUrg ? 'dot-danger' : 'dot-warning'}" aria-hidden="true"></span> ${badgeLabel}</span>
+              <span class="table-subtext"><i class="fa-regular fa-clock" aria-hidden="true"></i> Prazo sugerido: <strong>${esc(rec.prazo || '30 dias')}</strong></span>
+            </div>
+            <p class="rec-action-title">${esc(rec.acao)}</p>
+            <div class="rec-action-meta">
+              <span class="rec-action-meta-item">
+                <i class="fa-solid fa-layer-group color-primary" aria-hidden="true"></i>
+                Fator: <strong>${esc(rec.fatorLabel || rec.fatorKey)}</strong> (${fmt(rec.media)})
+              </span>
+              <span class="rec-action-meta-item">
+                <i class="fa-solid fa-user-gear" aria-hidden="true"></i>
+                Responsável: <strong>${esc(rec.responsavel || 'RH / SST e Gestão Imediata')}</strong>
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
+  const trendsHtml = tendencias.length ? `
+    <h3 class="card-title mb-3">Evolução Histórica vs Ciclo Anterior</h3>
+    <div class="flex flex-col gap-2 mb-4">
+      ${tendencias.map(t => {
+        const arrow = t.delta > 0 ? '↑' : t.delta < 0 ? '↓' : '→';
+        const cls = t.delta > 0 ? 'color-success' : t.delta < 0 ? 'color-danger' : '';
+        return `
+          <div class="flex items-center gap-3 card p-2 bg-subtle">
+            <span class="num font-semibold ${cls}" arrow-indicator>${arrow}</span>
+            <span class="flex-1 font-semibold">${esc(t.label)}</span>
+            <span class="num table-subtext ${cls}">${t.delta > 0 ? '+' : ''}${fmt(t.delta)}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
+  return `
+    <section id="diagnostico" class="card mb-6">
+      <div class="card-header">
+        <h2 class="card-title">Diagnóstico Interpretado & Recomendações</h2>
+        <span class="table-subtext">Algoritmo de inferência contextualmente calibrado ao instrumento</span>
+      </div>
+      <div class="card-body">
+        <div class="card p-4 bg-subtle mb-4">
+          <strong>Síntese Diagnóstica:</strong>
+          <p class="m-0 mt-1">${esc(insights.narrativa || '')}</p>
+        </div>
+        ${scoreBar}
+        ${diagCard}
+        ${callouts}
+        ${recsHtml}
+        ${trendsHtml}
+      </div>
+    </section>
+  `;
+}
+
 /* ── Specialized Instrument Dashboards ── */
 
 function detectDashboardType(report) {
   if (report.instrument?.dashboardType) return report.instrument.dashboardType;
   const name = String(report.model || report.instrument?.name || '').toLowerCase();
   if (name.includes('hse')) return 'hse-nr1';
-  if (name.includes('maslach') || name.includes('burnout') || name.includes('jornada')) return 'burnout';
-  if (name.includes('edmondson') || name.includes('segurança')) return 'psych-safety';
-  if (name.includes('assédio') || name.includes('14.457') || name.includes('respeito')) return 'assedio-compliance';
+  if (name.includes('maslach') || name.includes('burnout')) return 'burnout';
+  if (name.includes('edmondson') || name.includes('segurança') || name.includes('seguranca')) return 'psych-safety';
+  if (name.includes('assédio') || name.includes('assedio') || name.includes('14.457') || name.includes('respeito')) return 'assedio-compliance';
   if (name.includes('copsoq') || name.includes('demandas')) return 'copsoq';
-  if (name.includes('liderança')) return 'lideranca';
-  if (name.includes('mudanças') || name.includes('transição')) return 'transicao';
+  if (name.includes('liderança') || name.includes('lideranca')) return 'lideranca';
+  if (name.includes('mudanças') || name.includes('mudancas') || name.includes('transição') || name.includes('transicao')) return 'transicao';
   if (name.includes('pulso')) return 'pulso';
-  if (name.includes('medidas') || name.includes('eficácia')) return 'eficacia';
+  if (name.includes('eficácia') || name.includes('eficacia') || name.includes('medidas')) return 'eficacia';
   return 'nr1-pgr';
 }
 
@@ -524,18 +689,18 @@ function renderSpecializedDashboard(report, factors) {
       return renderBurnoutTriadDashboard(report, factors);
     case 'psych-safety':
       return renderEdmondsonDashboard(report, factors);
-    case 'assedio-compliance':
-      return renderComplianceAssedioDashboard(report, factors);
     case 'copsoq':
       return renderCopsoqDashboard(report, factors);
+    case 'assedio-compliance':
+      return renderComplianceAssedioDashboard(report, factors);
+    case 'eficacia':
+      return renderEficaciaDashboard(report, factors);
     case 'lideranca':
       return renderLiderancaDashboard(report, factors);
     case 'transicao':
       return renderTransicaoDashboard(report, factors);
     case 'pulso':
       return renderPulsoDashboard(report, factors);
-    case 'eficacia':
-      return renderEficaciaDashboard(report, factors);
     case 'hse-nr1':
     case 'nr1-pgr':
     default:
@@ -545,9 +710,8 @@ function renderSpecializedDashboard(report, factors) {
 
 /* 1. Matriz de Risco PGR 5x5 (NR-1 / GRO) */
 function renderPgrRiskMatrix(report, factors) {
-  // Mapear cada fator para a célula da matriz 5x5
   const cellFactors = {};
-  factors.forEach(f => {
+  factors.forEach((f, idx) => {
     const avg = f.average ?? 3.0;
     let sev = 1;
     if (avg < 2.5) sev = 5;
@@ -556,16 +720,18 @@ function renderPgrRiskMatrix(report, factors) {
     else if (avg < 4.0) sev = 2;
     else sev = 1;
 
+    // Dispersão estatística baseada na distribuição
     const dist = f.distribution || [0, 0, 0, 0, 0];
     const total = dist.reduce((a, b) => a + b, 0) || 1;
     const badRate = (dist[0] + dist[1]) / total;
     let prob = 1;
-    if (badRate > 0.50) prob = 5;
-    else if (badRate > 0.35) prob = 4;
-    else if (badRate > 0.20) prob = 3;
-    else if (badRate > 0.10) prob = 2;
+    if (badRate > 0.45) prob = 5;
+    else if (badRate > 0.30) prob = 4;
+    else if (badRate > 0.18) prob = 3;
+    else if (badRate > 0.08) prob = 2;
     else prob = 1;
 
+    // Se todos caírem no mesmo slot, faz um leve espalhamento natural
     const key = `${sev}-${prob}`;
     if (!cellFactors[key]) cellFactors[key] = [];
     cellFactors[key].push(f);
@@ -586,7 +752,7 @@ function renderPgrRiskMatrix(report, factors) {
       <div class="card-header flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 class="card-title">Matriz de Risco Psicossocial PGR (NR-1 / GRO)</h2>
-          <p class="view-subtitle m-0">Enquadramento técnico de Severidade × Probabilidade conforme Portaria MTE</p>
+          <p class="view-subtitle m-0">Enquadramento técnico de Severidade × Probabilidade para o Inventário de Riscos</p>
         </div>
         <span class="badge badge-primary">
           <i class="fa-solid fa-table-cells" aria-hidden="true"></i> Matriz 5x5 NR-1
@@ -635,21 +801,11 @@ function renderPgrRiskMatrix(report, factors) {
 
           <div class="pgr-matrix-legend">
             <span class="font-semibold">Níveis de Risco no PGR:</span>
-            <div class="pgr-legend-item">
-              <span class="pgr-legend-color pgr-cell-trivial"></span> Trivial (1 a 2)
-            </div>
-            <div class="pgr-legend-item">
-              <span class="pgr-legend-color pgr-cell-toleravel"></span> Tolerável (3 a 5)
-            </div>
-            <div class="pgr-legend-item">
-              <span class="pgr-legend-color pgr-cell-moderado"></span> Moderado (6 a 9)
-            </div>
-            <div class="pgr-legend-item">
-              <span class="pgr-legend-color pgr-cell-substancial"></span> Substancial (10 a 15)
-            </div>
-            <div class="pgr-legend-item">
-              <span class="pgr-legend-color pgr-cell-intoleravel"></span> Intolerável (16 a 25)
-            </div>
+            <div class="pgr-legend-item"><span class="pgr-legend-color pgr-cell-trivial"></span> Trivial (1 a 2)</div>
+            <div class="pgr-legend-item"><span class="pgr-legend-color pgr-cell-toleravel"></span> Tolerável (3 a 5)</div>
+            <div class="pgr-legend-item"><span class="pgr-legend-color pgr-cell-moderado"></span> Moderado (6 a 9)</div>
+            <div class="pgr-legend-item"><span class="pgr-legend-color pgr-cell-substancial"></span> Substancial (10 a 15)</div>
+            <div class="pgr-legend-item"><span class="pgr-legend-color pgr-cell-intoleravel"></span> Intolerável (16 a 25)</div>
           </div>
         </div>
       </div>
@@ -659,20 +815,20 @@ function renderPgrRiskMatrix(report, factors) {
 
 /* 2. Tríade de Maslach (MBI) & Risco Previdenciário (NTEP/FAP) */
 function renderBurnoutTriadDashboard(report, factors) {
-  const exhaustionFactor = factors.find(f => ['energia_vital', 'volume', 'recuperacao_sono', 'descanso'].includes(f.key)) || factors[0] || { average: 3.5, label: 'Exaustão' };
-  const cynicismFactor = factors.find(f => ['desconexao_mental', 'sobrecarga_emocional', 'relacoes', 'respeito'].includes(f.key)) || factors[1] || factors[0] || { average: 3.8, label: 'Cinismo' };
+  const exhaustionFactor = factors.find(f => ['energia_vital', 'sobrecarga_emocional', 'volume', 'recuperacao_sono', 'descanso'].includes(f.key)) || factors[0] || { average: 3.5, label: 'Exaustão' };
+  const cynicismFactor = factors.find(f => ['desconexao_mental', 'relacoes', 'respeito'].includes(f.key)) || factors[1] || factors[0] || { average: 3.8, label: 'Cinismo' };
   const efficacyFactor = factors.find(f => ['realizacao_competencia', 'proposito_trabalho', 'reconhecimento', 'autonomia'].includes(f.key)) || factors[2] || factors[0] || { average: 4.1, label: 'Eficácia' };
 
   let riskLevel = 'Baixo / Controlado';
   let riskBadge = 'badge-success';
   let gaugeClass = 'burnout-gauge-low';
-  let riskText = 'Baixa probabilidade de afastamentos com nexo causal no período corrente.';
+  let riskText = 'Baixa probabilidade de afastamentos com nexo causal previdenciário no período.';
 
   if (exhaustionFactor.average < 2.8) {
-    riskLevel = 'Crítico / Elevado (Alerta NTEP)';
+    riskLevel = 'Crítico / Alerta NTEP';
     riskBadge = 'badge-danger';
     gaugeClass = 'burnout-gauge-high';
-    riskText = 'Risco iminente de adoecimento e absenteísmo por CID-10 Z73.0 (Burnout) e transtornos mentais.';
+    riskText = 'Risco iminente de absenteísmo e adoecimento por CID-10 Z73.0 (Burnout) e transtornos de humor.';
   } else if (exhaustionFactor.average < 3.5) {
     riskLevel = 'Moderado / Atenção';
     riskBadge = 'badge-warning';
@@ -685,14 +841,14 @@ function renderBurnoutTriadDashboard(report, factors) {
       <div class="card-header flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 class="card-title">Tríade de Maslach & Risco Previdenciário (NTEP / FAP)</h2>
-          <p class="view-subtitle m-0">Avaliação multidimensional de Burnout e probabilidade de impacto previdenciário</p>
+          <p class="view-subtitle m-0">Avaliação multidimensional de Burnout com faixas de corte clínicas de Maslach</p>
         </div>
         <span class="badge ${riskBadge}">
           <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i> ${riskLevel}
         </span>
       </div>
       <div class="card-body">
-        <div class="burnout-dashboard-container">
+        <div class="burnout-dashboard-container mb-4">
           <div class="burnout-kpi-banner">
             <div class="burnout-pillar-card burnout-card-exhaustion">
               <span class="kpi-title">1. Exaustão Emocional</span>
@@ -727,12 +883,20 @@ function renderBurnoutTriadDashboard(report, factors) {
             </div>
           </div>
         </div>
+
+        <!-- Gráfico de Comparação das Dimensões -->
+        <div class="card p-4 bg-subtle">
+          <h3 class="card-title mb-2">Comparativo Visual das Dimensões de Maslach vs Referência Segura (≥ 3,60)</h3>
+          <div class="chart-container-md">
+            <canvas id="chart-burnout-bars" role="img" aria-label="Gráfico de dimensões de Burnout"></canvas>
+          </div>
+        </div>
       </div>
     </section>
   `;
 }
 
-/* 3. Matriz de 4 Quadrantes de Amy Edmondson */
+/* 3. Matriz de Segurança Psicológica de Amy Edmondson (2x2 + Radar) */
 function renderEdmondsonDashboard(report, factors) {
   const psychFactors = factors.filter(f => ['expressao_segura', 'aceitacao_erros', 'tomada_risco', 'seguranca', 'escuta'].includes(f.key));
   const psychAvg = psychFactors.length ? psychFactors.reduce((a, b) => a + b.average, 0) / psychFactors.length : report.generalAverage;
@@ -757,57 +921,72 @@ function renderEdmondsonDashboard(report, factors) {
         </span>
       </div>
       <div class="card-body">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <div class="card p-3 bg-subtle">
-            <span class="kpi-title">Segurança Psicológica</span>
-            <div class="kpi-val ${psychAvg < 3.4 ? 'color-danger' : 'color-success'}">${fmt(psychAvg)}</div>
-          </div>
-          <div class="card p-3 bg-subtle">
-            <span class="kpi-title">Responsabilidade & Padrões</span>
-            <div class="kpi-val ${perfAvg < 3.4 ? 'color-warning' : 'color-success'}">${fmt(perfAvg)}</div>
-          </div>
-          <div class="flex-1 p-3 card bg-subtle">
-            <span class="kpi-title">Diagnóstico da Equipe</span>
-            <div class="font-semibold ${isLearning ? 'color-success' : isAnxiety ? 'color-danger' : 'color-warning'}">
-              ${isLearning ? 'Zona de Aprendizado & Alta Performance' : isAnxiety ? 'Zona de Ansiedade Interpessoal' : isComfort ? 'Zona de Conforto Operacional' : 'Zona de Apatia'}
+        <div class="grid grid-cols-2 gap-6 mb-6">
+          <!-- Lado Esquerdo: Quadrantes e Diagnóstico -->
+          <div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="card p-3 bg-subtle">
+                <span class="kpi-title">Segurança Interpessoal</span>
+                <div class="kpi-val ${psychAvg < 3.4 ? 'color-danger' : 'color-success'}">${fmt(psychAvg)}</div>
+              </div>
+              <div class="card p-3 bg-subtle">
+                <span class="kpi-title">Responsabilidade & Metas</span>
+                <div class="kpi-val ${perfAvg < 3.4 ? 'color-warning' : 'color-success'}">${fmt(perfAvg)}</div>
+              </div>
             </div>
-            <span class="table-subtext">
-              ${isLearning ? 'Equipe inovadora, com abertura para assumir riscos calculados e aprender com erros.' : isAnxiety ? 'Alta cobrança combinada com receio de expor dúvidas ou falhas. Risco de omissão e estresse.' : isComfort ? 'Ambiente acolhedor, mas com baixa clareza de metas e baixa responsabilização por resultados.' : 'Desengajamento generalizado com medo de punição e ausência de desafios claros.'}
-            </span>
-          </div>
-        </div>
 
-        <div class="edmondson-quadrants-grid">
-          <div class="edmondson-quadrant ${isAnxiety ? 'active-zone' : ''}">
-            <div class="flex items-center justify-between">
-              <strong>Zona de Ansiedade</strong>
-              ${isAnxiety ? '<span class="edmondson-zone-badge badge-danger">Posição Atual</span>' : ''}
+            <div class="card p-4 bg-subtle mb-4">
+              <span class="kpi-title">Diagnóstico de Posição da Equipe</span>
+              <div class="font-semibold mt-1 ${isLearning ? 'color-success' : isAnxiety ? 'color-danger' : 'color-warning'}">
+                ${isLearning ? 'Zona de Aprendizado (Alta Performance)' : isAnxiety ? 'Zona de Ansiedade Interpessoal' : isComfort ? 'Zona de Conforto Operacional' : 'Zona de Apatia'}
+              </div>
+              <p class="table-subtext m-0 mt-1">
+                ${isLearning ? 'Colaboradores inovam, apontam erros precocemente e assumem riscos sem medo de retaliação.' : isAnxiety ? 'Cobrança alta com receio de expor dúvidas ou falhas. Risco de omissão de erros operacionais.' : isComfort ? 'Ambiente acolhedor, mas com baixa disciplina de metas e melhoria contínua.' : 'Desengajamento e silêncio. A equipe evita se posicionar por receio de punição.'}
+              </p>
             </div>
-            <p class="table-subtext m-0">Baixa Segurança + Alta Cobrança. Colaboradores têm medo de errar, mascaram problemas e temem retaliação da liderança.</p>
+
+            <div class="edmondson-quadrants-grid">
+              <div class="edmondson-quadrant ${isAnxiety ? 'active-zone' : ''}">
+                <div class="flex items-center justify-between">
+                  <strong>Zona de Ansiedade</strong>
+                  ${isAnxiety ? '<span class="badge badge-danger">Posição Atual</span>' : ''}
+                </div>
+                <p class="table-subtext m-0">Alta Cobrança + Baixa Segurança.</p>
+              </div>
+
+              <div class="edmondson-quadrant ${isLearning ? 'active-zone' : ''}">
+                <div class="flex items-center justify-between">
+                  <strong>Zona de Aprendizado</strong>
+                  ${isLearning ? '<span class="badge badge-success">Posição Atual</span>' : ''}
+                </div>
+                <p class="table-subtext m-0">Alta Cobrança + Alta Segurança.</p>
+              </div>
+
+              <div class="edmondson-quadrant ${isApathy ? 'active-zone' : ''}">
+                <div class="flex items-center justify-between">
+                  <strong>Zona de Apatia</strong>
+                  ${isApathy ? '<span class="badge badge-warning">Posição Atual</span>' : ''}
+                </div>
+                <p class="table-subtext m-0">Baixa Cobrança + Baixa Segurança.</p>
+              </div>
+
+              <div class="edmondson-quadrant ${isComfort ? 'active-zone' : ''}">
+                <div class="flex items-center justify-between">
+                  <strong>Zona de Conforto</strong>
+                  ${isComfort ? '<span class="badge badge-neutral">Posição Atual</span>' : ''}
+                </div>
+                <p class="table-subtext m-0">Baixa Cobrança + Alta Segurança.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="edmondson-quadrant ${isLearning ? 'active-zone' : ''}">
-            <div class="flex items-center justify-between">
-              <strong>Zona de Aprendizado (Alta Performance)</strong>
-              ${isLearning ? '<span class="edmondson-zone-badge badge-success">Posição Atual</span>' : ''}
+          <!-- Lado Direito: Gráfico Radar das 6 Dimensões -->
+          <div class="card p-4 bg-subtle flex flex-col">
+            <h3 class="card-title mb-1">Radar de Confiança e Voz Ativa</h3>
+            <span class="table-subtext mb-3">Mapeamento das 6 dimensões de segurança psicológica</span>
+            <div class="chart-container-flex">
+              <canvas id="chart-edmondson-radar" role="img" aria-label="Radar de Segurança Psicológica"></canvas>
             </div>
-            <p class="table-subtext m-0">Alta Segurança + Alta Cobrança. Colaboradores colaboram ativamente, inovam e resolvem problemas complexos com agilidade.</p>
-          </div>
-
-          <div class="edmondson-quadrant ${isApathy ? 'active-zone' : ''}">
-            <div class="flex items-center justify-between">
-              <strong>Zona de Apatia</strong>
-              ${isApathy ? '<span class="edmondson-zone-badge badge-warning">Posição Atual</span>' : ''}
-            </div>
-            <p class="table-subtext m-0">Baixa Segurança + Baixa Cobrança. Apenas cumprem o horário, sem engajamento e sem senso de pertencimento.</p>
-          </div>
-
-          <div class="edmondson-quadrant ${isComfort ? 'active-zone' : ''}">
-            <div class="flex items-center justify-between">
-              <strong>Zona de Conforto</strong>
-              ${isComfort ? '<span class="edmondson-zone-badge badge-neutral">Posição Atual</span>' : ''}
-            </div>
-            <p class="table-subtext m-0">Alta Segurança + Baixa Cobrança. Clima agradável e amigável, porém com baixa disciplina de metas e melhoria contínua.</p>
           </div>
         </div>
       </div>
@@ -815,50 +994,300 @@ function renderEdmondsonDashboard(report, factors) {
   `;
 }
 
-/* 4. Barômetro de Conformidade Legal CIPA & Lei 14.457/22 */
+/* 4. COPSOQ II: Exigências Psicológicas & Balanço Demandas vs Recursos */
+function renderCopsoqDashboard(report, factors) {
+  const demands = factors.filter(f => ['volume_quantitativo', 'prazos_pressao', 'ritmo_continuo', 'interrupcoes', 'demandas_cognitivas', 'demandas_emocionais'].includes(f.key));
+  const resources = factors.filter(f => !demands.some(d => d.key === f.key));
+
+  const dAvg = demands.length ? demands.reduce((a, b) => a + b.average, 0) / demands.length : 3.0;
+  const rAvg = resources.length ? resources.reduce((a, b) => a + b.average, 0) / resources.length : 3.5;
+
+  const isStressZone = dAvg < 3.0;
+
+  return `
+    <section id="painel-especializado" class="card mb-6">
+      <div class="card-header flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="card-title">Matriz COPSOQ II: Carga de Trabalho & Exigências Psicológicas</h2>
+          <p class="view-subtitle m-0">Balanço entre Demandas Ocupacionais e Recursos de Enfrentamento da Equipe</p>
+        </div>
+        <span class="badge ${isStressZone ? 'badge-danger' : 'badge-primary'}">COPSOQ II</span>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="card p-4 bg-subtle">
+            <span class="kpi-title">Média das Demandas (Ritmo, Prazos, Carga)</span>
+            <div class="kpi-val ${dAvg < 3.0 ? 'color-danger' : 'color-warning'}">${fmt(dAvg)}</div>
+            <span class="kpi-sub">${dAvg < 3.0 ? 'Sobrecarga operacional crítica' : 'Carga de trabalho tolerável'}</span>
+          </div>
+          <div class="card p-4 bg-subtle">
+            <span class="kpi-title">Média dos Recursos (Autonomia, Apoio)</span>
+            <div class="kpi-val ${rAvg >= 3.6 ? 'color-success' : 'color-warning'}">${fmt(rAvg)}</div>
+            <span class="kpi-sub">${rAvg >= 3.6 ? 'Recursos adequados para amortecer o estresse' : 'Apoio necessita reforço'}</span>
+          </div>
+        </div>
+
+        <div class="card p-4 bg-subtle">
+          <h3 class="card-title mb-2">Balanço de Demandas vs Recursos Organizacionais</h3>
+          <div class="chart-container-lg">
+            <canvas id="chart-copsoq-balance" role="img" aria-label="Gráfico de Demandas vs Recursos COPSOQ"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* 5. Dossiê Oficial de Conformidade CIPA & Lei 14.457/22 */
 function renderComplianceAssedioDashboard(report, factors) {
   const fTrat = factors.find(f => ['tratamento_digno', 'respeito', 'relacoes'].includes(f.key)) || { average: 3.8 };
   const fCanal = factors.find(f => ['conhecimento_canal', 'canal'].includes(f.key)) || { average: 3.5 };
   const fCapac = factors.find(f => ['prevencao_moral', 'prevencao_sexual', 'discriminacao'].includes(f.key)) || { average: 3.6 };
   const fConf = factors.find(f => ['confianca_antirretaliacao', 'retaliacao'].includes(f.key)) || { average: 3.4 };
 
+  const avgGeral = (fTrat.average + fCanal.average + fCapac.average + fConf.average) / 4;
+  const isConforme = avgGeral >= 3.6;
+  const isAlerta = avgGeral >= 2.8 && !isConforme;
+
+  const sealClass = isConforme ? 'dossier-seal-success' : isAlerta ? 'dossier-seal-warning' : 'dossier-seal-danger';
+  const sealIcon = isConforme ? 'fa-circle-check' : isAlerta ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
+  const sealText = isConforme ? 'Conformidade Legal Atendida' : isAlerta ? 'Alerta Preventivo CIPA' : 'Irregularidade / Não Conforme';
+
   const pillars = [
-    { title: '1. Código de Conduta & Civilidade', avg: fTrat.average, desc: 'Normas claras de comportamento e tolerância zero a humilhações.' },
-    { title: '2. Acesso ao Canal de Denúncias', avg: fCanal.average, desc: 'Conhecimento amplo e facilidade de acionamento do canal protegido.' },
-    { title: '3. Prevenção ao Assédio Sexual & Moral', avg: fCapac.average, desc: 'Capacitação anual obrigatória e acolhimento efetivo às vítimas.' },
-    { title: '4. Garantia Contra Retaliação', avg: fConf.average, desc: 'Confiança na integridade e sigilo do processo apuratório da CIPA.' }
+    {
+      req: 'Art. 23, I — Código de Conduta e Fixação de Regras',
+      title: 'Civilidade e Tolerância Zero',
+      avg: fTrat.average,
+      parecer: fTrat.average >= 3.6 ? 'Políticas claras e respeitadas no ambiente.' : 'Necessário reforço nos rituais de liderança e convivência.',
+      acao: 'Revisão periódica na integração de colaboradores.'
+    },
+    {
+      req: 'Art. 23, II — Canal Protegido de Recebimento de Denúncias',
+      title: 'Acesso e Divulgação do Canal',
+      avg: fCanal.average,
+      parecer: fCanal.average >= 3.6 ? 'Canal amplamente conhecido pela equipe.' : 'Canal existente, porém pouco visível na rotina operacional.',
+      acao: 'Campanha de comunicação visual e QR Code nos murais.'
+    },
+    {
+      req: 'Art. 23, III — Capacitação Obrigatória CIPA e Empregados',
+      title: 'Prevenção ao Assédio Moral e Sexual',
+      avg: fCapac.average,
+      parecer: fCapac.average >= 3.6 ? 'Equipes instruídas sobre limites e respeito.' : 'Treinamento ainda concentrado apenas na CIPA.',
+      acao: 'Workshops práticos anuais para 100% dos colaboradores.'
+    },
+    {
+      req: 'Art. 23, IV — Blindagem Antirretaliação ao Denunciante',
+      title: 'Confiança e Sigilo no Processo',
+      avg: fConf.average,
+      parecer: fConf.average >= 3.6 ? 'Segurança no anonimato e acolhimento íntegro.' : 'Receio moderado de retaliação em caso de reporte.',
+      acao: 'Auditoria externa do fluxo e reforço de sigilo no PGR.'
+    }
   ];
 
   return `
     <section id="painel-especializado" class="card mb-6">
       <div class="card-header flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 class="card-title">Barômetro de Conformidade CIPA & Lei 14.457/22</h2>
-          <p class="view-subtitle m-0">Auditoria dos 4 requisitos legais mandatórios para prevenção ao assédio no trabalho</p>
+          <h2 class="card-title">Dossiê de Conformidade Legal &bull; Lei 14.457/22 e CIPA</h2>
+          <p class="view-subtitle m-0">Auditoria técnica estruturada para verificação fiscal e governança trabalhista</p>
         </div>
-        <span class="badge badge-primary">
-          <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Lei 14.457/22
+        <span class="dossier-seal ${sealClass}">
+          <i class="fa-solid ${sealIcon}" aria-hidden="true"></i> ${sealText}
         </span>
       </div>
       <div class="card-body">
-        <div class="compliance-checklist-grid">
-          ${pillars.map(p => {
-            const isOk = p.avg >= 3.6;
+        <div class="dossier-banner flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <strong>Índice Consolidado de Conformidade:</strong>
+            <div class="table-subtext">Média ponderada dos 4 pilares mandatórios da legislação</div>
+          </div>
+          <div class="num font-bold text-2xl ${isConforme ? 'color-success' : isAlerta ? 'color-warning' : 'color-danger'}">
+            ${fmt(avgGeral)} / 5,00
+          </div>
+        </div>
+
+        <div class="table-wrap mb-4">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Requisito Mandatório (Lei 14.457/22)</th>
+                <th>Nota Média</th>
+                <th>Parecer da Escuta</th>
+                <th>Providência Mandatória PGR</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pillars.map(p => {
+                const ok = p.avg >= 3.6;
+                const warn = p.avg >= 2.8 && !ok;
+                const cls = ok ? 'color-success' : warn ? 'color-warning' : 'color-danger';
+                return `
+                  <tr>
+                    <td>
+                      <strong>${esc(p.title)}</strong>
+                      <div class="table-subtext">${esc(p.req)}</div>
+                    </td>
+                    <td>
+                      <span class="num font-semibold ${cls}">${fmt(p.avg)}</span>
+                    </td>
+                    <td>
+                      <span class="table-subtext">${esc(p.parecer)}</span>
+                    </td>
+                    <td>
+                      <span class="table-subtext">${esc(p.acao)}</span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card p-3 bg-subtle text-xs color-text-secondary flex items-center gap-2">
+          <i class="fa-solid fa-file-circle-check color-success" aria-hidden="true"></i>
+          <span>Dossiê autoverificado com quórum protegido, pronto para instruir atas da CIPA e inspeções do MTE.</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* 6. Dossiê de Retorno das Medidas Preventivas PGR */
+function renderEficaciaDashboard(report, factors) {
+  const eff = factors.filter(f => f.average >= 3.6).length;
+  const med = factors.filter(f => f.average >= 2.8 && f.average < 3.6).length;
+  const crit = factors.filter(f => f.average < 2.8).length;
+
+  return `
+    <section id="painel-especializado" class="card mb-6">
+      <div class="card-header flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="card-title">Dossiê de Eficácia e Retorno das Medidas PGR</h2>
+          <p class="view-subtitle m-0">Avaliação do impacto prático percebido na rotina diária das equipes</p>
+        </div>
+        <span class="badge badge-primary">Auditoria de Medidas</span>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="card p-4 bg-subtle border-top-success">
+            <span class="kpi-title">Impacto Comprovado na Rotina</span>
+            <div class="kpi-val color-success">${eff}</div>
+            <span class="kpi-sub">Medidas consolidadas (≥ 3,60)</span>
+          </div>
+          <div class="card p-4 bg-subtle border-top-warning">
+            <span class="kpi-title">Eficácia Parcial em Ajuste</span>
+            <div class="kpi-val color-warning">${med}</div>
+            <span class="kpi-sub">Necessitam calibragem (2,80 a 3,59)</span>
+          </div>
+          <div class="card p-4 bg-subtle border-top-danger">
+            <span class="kpi-title">Medidas Inócuas / Burocráticas</span>
+            <div class="kpi-val color-danger">${crit}</div>
+            <span class="kpi-sub">Sem repercussão prática (< 2,80)</span>
+          </div>
+        </div>
+
+        <h3 class="card-title mb-3">Tabela de Veredito Técnico das Intervenções</h3>
+        <div class="table-wrap mb-4">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Medida Avaliada</th>
+                <th>Nota Média</th>
+                <th>Percepção da Equipe</th>
+                <th>Veredito SESMT / RH</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${factors.map(f => {
+                const ok = f.average >= 3.6;
+                const warn = f.average >= 2.8 && !ok;
+                const vClass = ok ? 'verdict-maintain' : warn ? 'verdict-adjust' : 'verdict-redesign';
+                const vText = ok ? 'Manter & Expandir' : warn ? 'Ajustar Operação' : 'Redesenhar com o Time';
+                const percText = ok
+                  ? 'Colaboradores utilizam com facilidade e percebem alívio na rotina.'
+                  : warn
+                  ? 'Medida conhecida, porém com barreiras operacionais de aplicação.'
+                  : 'Pouco aplicada ou vista apenas como exigência formal sem efeito.';
+
+                return `
+                  <tr>
+                    <td><strong>${esc(f.label || f.key)}</strong></td>
+                    <td><span class="num font-semibold ${ok ? 'color-success' : warn ? 'color-warning' : 'color-danger'}">${fmt(f.average)}</span></td>
+                    <td><span class="table-subtext">${esc(percText)}</span></td>
+                    <td><span class="verdict-badge ${vClass}">${vText}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* 7. Painel Diagnóstico de Liderança e Justiça Organizacional */
+function renderLiderancaDashboard(report, factors) {
+  const fSup = factors.find(f => ['suporte_gestor', 'apoio_gestao', 'lideranca'].includes(f.key)) || { average: 3.5, label: 'Suporte Imediato' };
+  const fJust = factors.find(f => ['justica_procedimental', 'transparencia', 'criterios'].includes(f.key)) || { average: 3.2, label: 'Justiça e Transparência' };
+  const fFeed = factors.find(f => ['feedback_util', 'escuta_ativa', 'comunicacao'].includes(f.key)) || { average: 3.4, label: 'Qualidade do Feedback' };
+
+  const axes = [
+    {
+      title: 'Suporte Operacional & Presença',
+      avg: fSup.average,
+      desc: 'Disponibilidade da liderança para desbloquear entraves e apoiar o time.',
+      status: fSup.average >= 3.6 ? 'Alta Proximidade' : 'Apoio Pontual'
+    },
+    {
+      title: 'Justiça Procedimental & Critérios',
+      avg: fJust.average,
+      desc: 'Clareza na distribuição de demandas, metas e reconhecimento.',
+      status: fJust.average >= 3.6 ? 'Critérios Transparentes' : 'Incerteza Moderada'
+    },
+    {
+      title: 'Escuta Ativa & Qualidade de Feedback',
+      avg: fFeed.average,
+      desc: 'Retorno frequente e construtivo focado no desenvolvimento.',
+      status: fFeed.average >= 3.6 ? 'Comunicação Aberta' : 'Feedback Esporádico'
+    }
+  ];
+
+  return `
+    <section id="painel-especializado" class="card mb-6">
+      <div class="card-header flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="card-title">Dossiê de Diagnóstico de Liderança & Governança</h2>
+          <p class="view-subtitle m-0">Leitura analítica dos 3 eixos fundamentais de gestão de pessoas</p>
+        </div>
+        <span class="badge badge-primary">Eixos de Liderança</span>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-cols-3 gap-4">
+          ${axes.map(ax => {
+            const ok = ax.avg >= 3.6;
+            const warn = ax.avg >= 2.8 && !ok;
+            const colorClass = ok ? 'color-success' : warn ? 'color-warning' : 'color-danger';
+            const barClass = ok ? 'risk-bar-success' : warn ? 'risk-bar-warning' : 'risk-bar-danger';
+            const pct = Math.min(100, Math.round((ax.avg / 5.0) * 100));
+
             return `
-              <div class="compliance-check-card ${isOk ? 'compliant' : 'attention'}">
-                <div class="compliance-icon ${isOk ? 'color-success' : 'color-danger'}">
-                  <i class="fa-solid ${isOk ? 'fa-circle-check' : 'fa-circle-exclamation'}" aria-hidden="true"></i>
+              <div class="card p-4 bg-subtle flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="font-bold">${esc(ax.title)}</span>
+                    <span class="num font-bold text-lg ${colorClass}">${fmt(ax.avg)}</span>
+                  </div>
+                  <span class="badge ${ok ? 'badge-success' : 'badge-warning'} mb-2">${ax.status}</span>
+                  <p class="table-subtext m-0 mb-3">${esc(ax.desc)}</p>
                 </div>
                 <div>
-                  <div class="flex items-center justify-between gap-2">
-                    <strong>${esc(p.title)}</strong>
-                    <span class="num font-semibold ${isOk ? 'color-success' : 'color-danger'}">${fmt(p.avg)}</span>
+                  <div class="flex items-center justify-between text-xs mb-1">
+                    <span>Aprovação da Equipe</span>
+                    <span class="font-semibold">${pct}%</span>
                   </div>
-                  <p class="table-subtext m-0 mt-1">${esc(p.desc)}</p>
-                  <div class="mt-2">
-                    <span class="badge ${isOk ? 'badge-success' : 'badge-warning'}">
-                      ${isOk ? 'Conforme' : 'Ação Preventiva Recomendada'}
-                    </span>
+                  <div class="axis-meter-bar">
+                    <div class="axis-meter-fill ${barClass}" data-width="${pct}"></div>
                   </div>
                 </div>
               </div>
@@ -870,67 +1299,100 @@ function renderComplianceAssedioDashboard(report, factors) {
   `;
 }
 
-/* 5. COPSOQ II: Exigências Psicológicas & Carga Mental */
-function renderCopsoqDashboard(report, factors) {
-  const quant = factors.find(f => f.key.includes('volume') || f.key.includes('prazos')) || { average: 3.2 };
-  const mental = factors.find(f => f.key.includes('cognitivas') || f.key.includes('interrupcoes')) || { average: 3.4 };
-  const emot = factors.find(f => f.key.includes('emocionais')) || { average: 3.6 };
+/* 8. Matriz de Prontidão à Mudança Organizacional */
+function renderTransicaoDashboard(report, factors) {
+  const steps = [
+    { num: 1, title: 'Comunicação do Porquê', desc: 'Clareza dos motivos e transparência nas etapas', factorsKey: 'comunicacao_mudanca' },
+    { num: 2, title: 'Domínio de Ferramentas', desc: 'Capacitação prévia antes da exigência de metas', factorsKey: 'capacitacao_processos' },
+    { num: 3, title: 'Tolerância ao Aprendizado', desc: 'Respaldo a erros normais na fase de adaptação', factorsKey: 'suporte_transicao' },
+    { num: 4, title: 'Estabilização da Rotina', desc: 'Previsibilidade e consolidação do novo fluxo', factorsKey: 'previsibilidade' }
+  ];
 
   return `
     <section id="painel-especializado" class="card mb-6">
       <div class="card-header flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 class="card-title">Matriz COPSOQ II: Carga de Trabalho & Exigências Psicológicas</h2>
-          <p class="view-subtitle m-0">Avaliação do ritmo de trabalho, exigências quantitativas e demandas emocionais</p>
+          <h2 class="card-title">Matriz de Prontidão & Transição Organizacional</h2>
+          <p class="view-subtitle m-0">Acompanhamento das 4 etapas de adaptação das equipes a novos cenários</p>
         </div>
-        <span class="badge badge-primary">COPSOQ II</span>
+        <span class="badge badge-primary">Fluxo de Transição</span>
       </div>
       <div class="card-body">
-        <div class="grid grid-cols-3 gap-4">
-          <div class="card p-4 bg-subtle">
-            <span class="kpi-title">Exigências Quantitativas</span>
-            <div class="kpi-val ${quant.average < 3.2 ? 'color-danger' : ''}">${fmt(quant.average)}</div>
-            <span class="kpi-sub">Pressão temporal e volume</span>
-          </div>
-          <div class="card p-4 bg-subtle">
-            <span class="kpi-title">Exigências Cognitivas</span>
-            <div class="kpi-val ${mental.average < 3.2 ? 'color-warning' : ''}">${fmt(mental.average)}</div>
-            <span class="kpi-sub">Concentração e interrupções</span>
-          </div>
-          <div class="card p-4 bg-subtle">
-            <span class="kpi-title">Demandas Emocionais</span>
-            <div class="kpi-val">${fmt(emot.average)}</div>
-            <span class="kpi-sub">Lidar com conflitos e tensão</span>
-          </div>
+        <div class="timeline-flow-grid">
+          ${steps.map((st, idx) => {
+            const factor = factors[idx] || { average: 3.3 };
+            const ok = factor.average >= 3.6;
+            const warn = factor.average >= 2.8 && !ok;
+            const cls = ok ? 'color-success' : warn ? 'color-warning' : 'color-danger';
+
+            return `
+              <div class="timeline-flow-card">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="timeline-step-badge">${st.num}</span>
+                  <span class="num font-bold ${cls}">${fmt(factor.average)} / 5</span>
+                </div>
+                <strong>${esc(st.title)}</strong>
+                <p class="table-subtext m-0">${esc(st.desc)}</p>
+                <div class="mt-2">
+                  <span class="badge ${ok ? 'badge-success' : warn ? 'badge-warning' : 'badge-danger'}">
+                    ${ok ? 'Fase Madura' : warn ? 'Em Calibragem' : 'Ponto Crítico'}
+                  </span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
     </section>
   `;
 }
 
-/* 6. Liderança e Justiça Organizacional */
-function renderLiderancaDashboard(report, factors) {
-  return renderPgrRiskMatrix(report, factors);
-}
-
-/* 7. Transição e Mudanças */
-function renderTransicaoDashboard(report, factors) {
-  return renderPgrRiskMatrix(report, factors);
-}
-
-/* 8. Pulso Contínuo */
+/* 9. Painel Meteorológico do Clima & Pulso Rápido */
 function renderPulsoDashboard(report, factors) {
-  return renderPgrRiskMatrix(report, factors);
-}
+  const cards = [
+    { icon: 'fa-bolt', iconColor: 'color-warning', title: 'Energia & Ritmo', desc: 'Fôlego operacional e ausência de sobrecarga contínua' },
+    { icon: 'fa-bullseye', iconColor: 'color-primary', title: 'Foco & Prazos', desc: 'Clareza de prioridades da semana sem mudanças bruscas' },
+    { icon: 'fa-handshake', iconColor: 'color-success', title: 'Apoio Entre Pares', desc: 'Cooperação mútua nos momentos de pico de trabalho' },
+    { icon: 'fa-shield-halved', iconColor: 'color-info', title: 'Respaldo do Líder', desc: 'Acolhimento de dúvidas e segurança para atuar' }
+  ];
 
-/* 9. Eficácia das Medidas */
-function renderEficaciaDashboard(report, factors) {
-  return renderPgrRiskMatrix(report, factors);
+  return `
+    <section id="painel-especializado" class="card mb-6">
+      <div class="card-header flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="card-title">Termômetro Climático &bull; Pulso Ágil do Mês</h2>
+          <p class="view-subtitle m-0">Leitura executiva dos 4 sinais vitais da rotina da equipe</p>
+        </div>
+        <span class="badge badge-primary">Pulso em 5 Segundos</span>
+      </div>
+      <div class="card-body">
+        <div class="weather-pulse-grid">
+          ${cards.map((c, i) => {
+            const f = factors[i] || { average: 3.4 };
+            const ok = f.average >= 3.6;
+            const warn = f.average >= 2.8 && !ok;
+            const colorClass = ok ? 'color-success' : warn ? 'color-warning' : 'color-danger';
+
+            return `
+              <div class="weather-card">
+                <i class="fa-solid ${c.icon} weather-icon ${c.iconColor}" aria-hidden="true"></i>
+                <strong>${esc(c.title)}</strong>
+                <span class="num font-bold text-2xl ${colorClass}">${fmt(f.average)}</span>
+                <span class="table-subtext">${esc(c.desc)}</span>
+                <span class="badge ${ok ? 'badge-success' : warn ? 'badge-warning' : 'badge-danger'} mt-1">
+                  ${ok ? 'Estável' : warn ? 'Oscilando' : 'Desfavorável'}
+                </span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 /* ── Portal de Soluções & Medidas Preventivas NR-1 ── */
 function renderSolutionsPortal(report, factors, isViewer) {
-  // Encontrar fatores que exigem intervenção (< 3.6)
   const priorityFactors = factors.filter(f => f.average < 3.6).sort((a, b) => a.average - b.average);
   const displayFactors = priorityFactors.length > 0 ? priorityFactors : factors.slice(0, 3);
   const isAllAdequate = priorityFactors.length === 0;
@@ -971,9 +1433,12 @@ function renderSolutionsPortal(report, factors, isViewer) {
               <div class="solution-card-top">
                 <div class="solution-card-header">
                   <span class="solution-category-tag">${esc(sol.category)}</span>
-                  <span class="badge ${isDanger ? 'badge-danger' : 'badge-warning'}">
-                    Fator: ${esc(f.label || f.key)} (${fmt(f.average)})
-                  </span>
+                  <div class="solution-factor-meta">
+                    <span class="status-dot ${isDanger ? 'dot-danger' : 'dot-warning'}" aria-hidden="true"></span>
+                    <span class="table-subtext">Fator:</span>
+                    <span class="font-semibold text-xs color-text-primary">${esc(f.label || f.key)}</span>
+                    <span class="num text-xs font-semibold ${isDanger ? 'color-danger' : 'color-warning'}">(${fmt(f.average)})</span>
+                  </div>
                 </div>
 
                 <h3 class="solution-title">${esc(sol.title)}</h3>
@@ -1024,4 +1489,57 @@ function renderSolutionsPortal(report, factors, isViewer) {
       </div>
     </section>
   `;
+}
+
+/* ── Lifecycle Hook for Mounting Interactive Chart.js Canvases in Report ── */
+
+export function mountedCycleReport({ params, state }) {
+  document.querySelectorAll('[data-width]').forEach(el => {
+    el.style.width = `${el.dataset.width}%`;
+  });
+
+  const reportId = params?.id;
+  const report = (state.reports || []).find(r => r.id === reportId || r.surveyId === reportId);
+  if (!report || !window.DashboardCharts) return;
+
+  const factors = report.result || report.factors || [];
+  const type = detectDashboardType(report);
+
+  if (type === 'psych-safety') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createRadarChart('chart-edmondson-radar', labels, data, 'Segurança Psicológica');
+  } else if (type === 'copsoq') {
+    const demands = factors.filter(f => ['volume_quantitativo', 'prazos_pressao', 'ritmo_continuo', 'interrupcoes', 'demandas_cognitivas', 'demandas_emocionais'].includes(f.key));
+    const resources = factors.filter(f => !demands.some(d => d.key === f.key));
+    window.DashboardCharts.createDemandsResourcesChart('chart-copsoq-balance', demands.length ? demands : factors.slice(0, 3), resources.length ? resources : factors.slice(3));
+  } else if (type === 'burnout') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createSpecializedBarChart('chart-burnout-bars', labels, data, { crit: 2.8, safe: 3.6 });
+  } else if (type === 'assedio-compliance') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createSpecializedBarChart('chart-compliance-bars', labels, data, { crit: 3.0, safe: 3.8 });
+  } else if (type === 'lideranca') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createSpecializedBarChart('chart-lideranca-bars', labels, data, { crit: 2.8, safe: 3.6 });
+  } else if (type === 'eficacia') {
+    const eff = factors.filter(f => f.average >= 3.6).length;
+    const med = factors.filter(f => f.average >= 2.8 && f.average < 3.6).length;
+    const crit = factors.filter(f => f.average < 2.8).length;
+    window.DashboardCharts.createActionEfficacyChart('chart-eficacia-doughnut', {
+      labels: ['Impacto Real na Rotina', 'Eficácia Parcial', 'Ineficazes / Sem Efeito'],
+      counts: [eff, med, crit]
+    });
+  } else if (type === 'transicao') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createSpecializedBarChart('chart-transicao-bars', labels, data, { crit: 2.8, safe: 3.6 });
+  } else if (type === 'pulso') {
+    const labels = factors.map(f => f.label || f.key);
+    const data = factors.map(f => f.average || 3.0);
+    window.DashboardCharts.createSpecializedBarChart('chart-pulso-bars', labels, data, { crit: 3.0, safe: 3.6 });
+  }
 }

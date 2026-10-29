@@ -5,30 +5,30 @@
 :root {
   /* ── Brand Colors (Deep Mulberry & Rose) ── */
   --color-primary: #581c43;
-  --color-primary-hover: #431433;
-  --color-primary-active: #340e26;
-  --color-primary-subtle: #faedf4;
-  --color-primary-subtle-hover: #f5deec;
+  --color-primary-hover: #712456;
+  --color-primary-active: #020617;
+  --color-primary-subtle: #f1f5f9;
+  --color-primary-subtle-hover: #e2e8f0;
 
-  --color-accent-rose: #a23b72;
-  --color-accent-rose-hover: #892f5e;
-  --color-accent-rose-subtle: #fdf2f7;
+  --color-accent-rose: #0284c7;
+  --color-accent-rose-hover: #0369a1;
+  --color-accent-rose-subtle: #e0f2fe;
 
   /* ── Neutral Canvas & Surfaces ── */
-  --color-bg: #faf6f8;
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-subtle: #f5edf2;
-  --color-surface-hover: #fcf9fb;
+  --color-surface-subtle: #f1f5f9;
+  --color-surface-hover: #f8fafc;
 
   /* ── Borders & Dividers ── */
-  --color-border: #ede2e8;
-  --color-border-subtle: #f5edf2;
-  --color-border-strong: #d9cad3;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+  --color-border-strong: #cbd5e1;
 
   /* ── Typography & Contrasts (WCAG AAA >= 7:1 for primary, >= 4.5:1 for secondary) ── */
-  --color-text-primary: #1c142b;
-  --color-text-secondary: #524765;
-  --color-text-muted: #766a87;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
   --color-text-on-primary: #ffffff;
   --color-text-on-accent: #ffffff;
 
@@ -69,10 +69,10 @@
   --band-atencao-text: #7f1d1d;
   --band-atencao-border: #fecaca;
 
-  --band-unclassified: #524765;
-  --band-unclassified-bg: #f5edf2;
-  --band-unclassified-text: #362d45;
-  --band-unclassified-border: #ede2e8;
+  --band-unclassified: #475569;
+  --band-unclassified-bg: #f1f5f9;
+  --band-unclassified-text: #1e293b;
+  --band-unclassified-border: #e2e8f0;
 
   /* ── Group & Segment Hues (12 accessible distinct tokens) ── */
   --group-1: #2e7d52;
@@ -89,7 +89,7 @@
   --group-12: #7d3c6b;
 
   /* ── Typography Scale ── */
-  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Montserrat', system-ui, -apple-system, sans-serif;
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
