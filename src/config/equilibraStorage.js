@@ -45,7 +45,8 @@ function read(name) {
     return JSON.parse(JSON.stringify(memoryCache[name]));
   }
   initializeStorage();
-  return JSON.parse(fs.readFileSync(files[name], 'utf8'));
+  const raw = fs.readFileSync(files[name], 'utf8').replace(/^\uFEFF/, '');
+  return JSON.parse(raw);
 }
 
 function backup() {

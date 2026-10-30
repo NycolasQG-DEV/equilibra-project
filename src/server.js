@@ -38,6 +38,8 @@ app.use((error, _request, response, _next) => {
   console.error(error);
   response.status(500).json({ error: 'Erro interno do servidor.' });
 });
+const storage = require('./config/equilibraStorage');
+const { runDataMigration } = require('./services/dataMigration');
 initializeStorage();
 // Inicialização do Supabase se configurado no ambiente
 if (storage.initSupabaseIfEnabled) {
@@ -45,8 +47,6 @@ if (storage.initSupabaseIfEnabled) {
     console.error('[Supabase] Falha ao sincronizar inicialização:', err.message);
   });
 }
-const { runDataMigration } = require('./services/dataMigration');
-const storage = require('./config/equilibraStorage');
 try { runDataMigration(storage); } catch (e) { console.error('Aviso migraÃ§Ã£o:', e.message); }
 if (require.main === module) {
   process.on('uncaughtException', (error) => {

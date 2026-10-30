@@ -15,6 +15,12 @@ const TABLES = ['accounts', 'members', 'groups', 'surveys', 'reports', 'invitati
 let client = null;
 
 function isEnabled() {
+  if (process.env.NODE_ENV === 'test' || process.env.SUPABASE_DISABLE_SYNC === 'true') {
+    return false;
+  }
+  if (process.env.EQUILIBRA_DATA_DIR && (process.env.EQUILIBRA_DATA_DIR.includes('equilibra-') || process.env.EQUILIBRA_DATA_DIR.includes('tmp'))) {
+    return false;
+  }
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
   return Boolean(url && key);
