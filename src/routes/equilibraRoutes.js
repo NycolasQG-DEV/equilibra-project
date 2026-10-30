@@ -186,7 +186,7 @@ function validateSurveyInput(req, accountId) {
       cycle,
       model,
       instrument: snapshotInstrument(model),
-      collectionChannel: 'web',
+      collectionChannel: req.body.collectionChannel === 'whatsapp' ? 'whatsapp' : 'web',
       groupIds: groups.map(g => g.id),
       groupId: groups[0].id,
       memberIds,
@@ -458,7 +458,8 @@ router.post('/surveys/:id/open', protectedRoute, (req, res) => {
   const result = openSurvey({
     surveyId: req.params.id,
     accountId: req.account.id,
-    baseUrl: `${req.protocol}://${req.get('host')}`
+    baseUrl: `${req.protocol}://${req.get('host')}`,
+    channel: req.body?.collectionChannel || null
   });
   if (result.error) return fail(res, result.status, result.message);
   res.json({

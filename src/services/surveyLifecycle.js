@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const storage = require('../config/equilibraStorage');
 const { snapshotInstrument, surveyInstrument, instrumentForModel } = require('../domain/instruments');
 const { aggregate, summarizeDistribution } = require('../domain/analysis');
+const { dispatchSurveyViaWhatsApp } = require('./whatsappSurveyService');
 
 const MIN_RESULTS = 5;
 
@@ -24,7 +25,7 @@ function getBand(rate) {
  * Abre uma pesquisa que estava em rascunho.
  * Snapshot dos segmentos e pessoas, geração dos tokens com segmentId.
  */
-function openSurvey({ surveyId, accountId, baseUrl = '' }) {
+function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
   const surveys = storage.read('surveys');
   const survey = surveys.find((s) => s.id === surveyId && s.accountId === accountId);
   if (!survey) return { error: 'not_found', status: 404, message: 'Pesquisa não encontrada.' };
@@ -119,7 +120,7 @@ function openSurvey({ surveyId, accountId, baseUrl = '' }) {
   survey.segments = segmentsSnapshot;
   survey.participationTarget = survey.participationTarget || 0.70;
   survey.instrument = instrument;
-  survey.collectionChannel = 'web';
+  survey.collectionChannel = (channel === 'whatsapp' || survey.collectionChannel === 'whatsapp') ? 'whatsapp' : 'web';
   survey.audienceFingerprint = hash([...freshMemberIds].sort().join(':'));
   survey.groupNamesSnapshot = surveyGroups.map((g) => g.name);
 
@@ -131,10 +132,19 @@ function openSurvey({ surveyId, accountId, baseUrl = '' }) {
     surveys
   });
 
+  // Dispatch assíncrono via WhatsApp se o canal foi configurado
+  if (survey.collectionChannel === 'whatsapp') {
+    setImmediate(() => {
+      dispatchSurveyViaWhatsApp(survey, links).catch((err) => {
+        console.error('[WA-LIFECYCLE] Erro no despacho WhatsApp:', err.message);
+      });
+    });
+  }
+
   return {
     ok: true,
     survey,
-    link: `/responder/${survey.id}`,
+    link: survey.collectionChannel === 'whatsapp' ? null : `/responder/${survey.id}`,
     links
   };
 }

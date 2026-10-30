@@ -23,6 +23,8 @@ app.use((request, response, next) => {
   next();
 });
 const management = require('./routes/managementRoutes');
+// Webhook WhatsApp — público, sem autenticação de sessão (acesso por gateway externo)
+app.use('/api', require('./routes/whatsappRoutes'));
 app.post('/api/billing/webhook', management.webhook);
 app.use('/api', require('./routes/recoveryRoutes'));
 app.use('/api/management', management.createRouter(api.protectedRoute));
