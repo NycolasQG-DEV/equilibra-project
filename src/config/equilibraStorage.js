@@ -50,13 +50,17 @@ function read(name) {
 }
 
 function backup() {
-  const backupDirectory = path.join(directory, 'backups', new Date().toISOString().slice(0, 10));
-  if (fs.existsSync(path.join(backupDirectory, '.complete'))) return;
-  fs.mkdirSync(backupDirectory, { recursive: true, mode: 0o700 });
-  for (const filename of [...Object.values(files), path.join(directory, '.identity-key')]) {
-    if (fs.existsSync(filename)) fs.copyFileSync(filename, path.join(backupDirectory, path.basename(filename)));
+  try {
+    const backupDirectory = path.join(directory, 'backups', new Date().toISOString().slice(0, 10));
+    if (fs.existsSync(path.join(backupDirectory, '.complete'))) return;
+    fs.mkdirSync(backupDirectory, { recursive: true, mode: 0o700 });
+    for (const filename of [...Object.values(files), path.join(directory, '.identity-key')]) {
+      if (fs.existsSync(filename)) fs.copyFileSync(filename, path.join(backupDirectory, path.basename(filename)));
+    }
+    fs.writeFileSync(path.join(backupDirectory, '.complete'), new Date().toISOString(), { mode: 0o600 });
+  } catch (err) {
+    console.error('[Storage] Aviso de backup ignorado:', err.message);
   }
-  fs.writeFileSync(path.join(backupDirectory, '.complete'), new Date().toISOString(), { mode: 0o600 });
 }
 
 function rawWrite(name, value) {
