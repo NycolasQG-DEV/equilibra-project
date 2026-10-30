@@ -79,6 +79,7 @@ export function renderPeople({ state }) {
           <thead>
             <tr>
               <th>Nome</th>
+              <th>WhatsApp / Telefone</th>
               <th>E-mail</th>
               <th>Matrícula</th>
               <th>Grupos / Segmentos</th>
@@ -97,6 +98,7 @@ export function renderPeople({ state }) {
               return `
                 <tr data-member-id="${attr(m.id)}" data-member-name="${attr(m.name?.toLowerCase())}" data-member-email="${attr(m.email?.toLowerCase())}">
                   <td><strong>${esc(m.name)}</strong></td>
+                  <td><span class="num text-xs">${esc(m.phone || '—')}</span></td>
                   <td>${esc(m.email)}</td>
                   <td>${esc(m.registration || '—')}</td>
                   <td>
@@ -237,6 +239,7 @@ export function openAddMemberModal() {
   const content = `
     <form id="add-member-form">
       ${field({ id: 'm-name', name: 'name', label: 'Nome completo', required: true })}
+      ${field({ id: 'm-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', placeholder: '(11) 98765-4321', required: true, hint: 'Obrigatório para receber as pesquisas via WhatsApp.' })}
       ${field({ id: 'm-email', name: 'email', label: 'E-mail corporativo', type: 'email', required: true })}
       ${field({ id: 'm-reg', name: 'registration', label: 'Matrícula (opcional)' })}
       <div class="form-group">
@@ -266,6 +269,7 @@ export async function submitAddMember() {
   if (!form) return;
 
   const name = form.name.value.trim();
+  const phone = form.phone ? form.phone.value.trim() : '';
   const email = form.email.value.trim();
   const registration = form.registration.value.trim();
   const groupCheckboxes = form.querySelectorAll('input[name="groupIds"]:checked');
@@ -276,8 +280,21 @@ export async function submitAddMember() {
     return;
   }
 
+  if (!phone) {
+    showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
+    form.phone?.focus();
+    return;
+  }
+
+  const phoneDigits = phone.replace(/\D/g, '');
+  if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+    showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
+    form.phone?.focus();
+    return;
+  }
+
   try {
-    await post('/members', { name, email, registration, groupIds });
+    await post('/members', { name, email, phone, registration, groupIds });
     await store.loadOrganization();
     closeDialog();
     showToast('Colaborador adicionado com sucesso.', 'success');
@@ -304,7 +321,7 @@ export function openEditMemberModal(memberId) {
     <form id="edit-member-form">
       ${field({ id: 'em-name', name: 'name', label: 'Nome completo', value: member.name || '', required: true })}
       ${field({ id: 'em-email', name: 'email', label: 'E-mail corporativo', type: 'email', value: member.email || '', required: true })}
-      ${field({ id: 'em-phone', name: 'phone', label: 'Telefone (opcional)', value: member.phone || '' })}
+      ${field({ id: 'em-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', value: member.phone || '', placeholder: '(11) 98765-4321', required: true, hint: 'Obrigatório para receber as pesquisas via WhatsApp.' })}
       ${field({ id: 'em-reg', name: 'registration', label: 'Matrícula (opcional)', value: member.registration || '' })}
       <div class="form-group mb-2">
         <label class="form-label">Equipes / Grupos vinculados</label>
@@ -341,6 +358,19 @@ export async function submitEditMember(memberId) {
 
   if (!name || !email) {
     showToast('Preencha o nome e o e-mail.', 'error');
+    return;
+  }
+
+  if (!phone) {
+    showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
+    form.phone?.focus();
+    return;
+  }
+
+  const phoneDigits = phone.replace(/\D/g, '');
+  if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+    showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
+    form.phone?.focus();
     return;
   }
 

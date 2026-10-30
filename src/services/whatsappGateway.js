@@ -6,10 +6,13 @@
  * 3. Modo DRY-RUN (simulação segura se nenhum dos anteriores estiver ativo)
  */
 
-let localClient = null;
-try {
-  localClient = require('./whatsappLocalClient');
-} catch {}
+function getLocalClient() {
+  try {
+    return require('./whatsappLocalClient');
+  } catch {
+    return null;
+  }
+}
 
 const DRY_RUN = !process.env.WA_GATEWAY_URL;
 
@@ -40,10 +43,11 @@ async function sendText(phone, text) {
   if (!normalized) return { ok: false, error: 'phone_invalid' };
 
   // 1. Tenta envio pelo cliente direto (conectado via QR Code no terminal)
-  if (localClient) {
-    const localStatus = localClient.getStatus();
+  const client = getLocalClient();
+  if (client) {
+    const localStatus = client.getStatus();
     if (localStatus.connected) {
-      const res = await localClient.sendDirect(normalized, text);
+      const res = await client.sendDirect(normalized, text);
       if (res.ok) {
         return { ok: true, channel: 'direct_terminal_qr', messageId: res.messageId };
       }
@@ -125,8 +129,9 @@ function parseWebhook(body) {
  */
 async function healthCheck() {
   // Verifica cliente direto (QR Code)
-  if (localClient) {
-    const localStatus = localClient.getStatus();
+  const client = getLocalClient();
+  if (client) {
+    const localStatus = client.getStatus();
     if (localStatus.connected) {
       const phone = localStatus.user?.id ? localStatus.user.id.split(':')[0] : 'Conectado';
       return {

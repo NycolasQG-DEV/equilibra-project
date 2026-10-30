@@ -24,3 +24,4 @@ services:
       # Opcional: chave de criptografia de dados (32 bytes em base64)
       # - key: EQUILIBRA_DATA_KEY
       #   sync: false
+

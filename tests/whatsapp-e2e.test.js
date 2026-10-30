@@ -196,3 +196,4 @@ describe('Fluxo E2E: Pesquisa e Coleta via WhatsApp', () => {
     assert.strictEqual(usedCount, 1, 'Exatamente 1 convite deve constar como usado');
   });
 });
+

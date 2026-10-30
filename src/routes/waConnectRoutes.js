@@ -120,3 +120,4 @@ router.get('/wa/connect', async (req, res) => {
 });
 
 module.exports = router;
+

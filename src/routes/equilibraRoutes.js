@@ -278,7 +278,7 @@ router.post('/members', protectedRoute, (req, res) => {
   const name = clean(req.body.name, 120), address = req.body.email ? email(req.body.email) : '', phone = req.body.phone ? clean(req.body.phone, 22) : '';
   if (!name && !address) return fail(res, 400, 'Informe ao menos o nome ou e-mail da pessoa.');
   if (address && !validEmail(address)) return fail(res, 400, 'Informe um e-mail válido.');
-  if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido.');
+  if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido com DDD (ex: 11987654321).');
   const members = read('members');
   if (address && members.some((item) => item.accountId === req.account.id && item.email === address)) return fail(res, 409, 'Pessoa já cadastrada com este e-mail.');
   if (phone && members.some((item) => item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) return fail(res, 409, 'Pessoa já cadastrada com este telefone.');
@@ -300,7 +300,7 @@ router.put('/members/:id', protectedRoute, (req, res) => {
   const name = clean(req.body.name, 120), address = req.body.email ? email(req.body.email) : '', phone = req.body.phone ? clean(req.body.phone, 22) : '';
   if (!name && !address) return fail(res, 400, 'Informe ao menos o nome ou e-mail da pessoa.');
   if (address && !validEmail(address)) return fail(res, 400, 'Informe um e-mail válido.');
-  if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido.');
+  if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido com DDD (ex: 11987654321).');
   if (address && members.some((item) => item.id !== member.id && item.accountId === req.account.id && item.email === address)) return fail(res, 409, 'E-mail já cadastrado.');
   if (phone && members.some((item) => item.id !== member.id && item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) return fail(res, 409, 'Telefone já cadastrado.');
   const registration = clean(req.body.registration, 50);
