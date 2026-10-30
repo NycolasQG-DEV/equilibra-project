@@ -20,6 +20,10 @@ services:
         value: avancado
       # Preencha no painel do Render em Settings > Environment:
       - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false   # você digita no painel — nunca vai para o git
       # Opcional: chave de criptografia de dados (32 bytes em base64)
       # - key: EQUILIBRA_DATA_KEY
