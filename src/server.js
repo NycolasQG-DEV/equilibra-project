@@ -53,6 +53,18 @@ if (require.main === module) {
     console.log(`Equilibra: http://localhost:${port}`);
     const run = () => { try { scheduler.tick(); } catch (error) { console.error('Agendador indisponÃ­vel:', error.name); } };
     run(); setInterval(run, 60000).unref();
+
+    // Conexão nativa do WhatsApp (exibe QR Code no terminal para conectar aparelho)
+    if (process.env.WA_DISABLE_DIRECT !== 'true') {
+      try {
+        const { initWhatsAppClient } = require('./services/whatsappLocalClient');
+        initWhatsAppClient().catch((err) => {
+          console.error('[WhatsApp] Falha ao iniciar cliente:', err.message);
+        });
+      } catch (err) {
+        console.error('[WhatsApp] Cliente local indisponível:', err.message);
+      }
+    }
   });
 }
 module.exports = app;

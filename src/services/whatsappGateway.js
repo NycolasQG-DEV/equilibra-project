@@ -1,16 +1,15 @@
 /**
  * WhatsApp Gateway Client
- * Adapter HTTP para Evolution API (self-hosted) ou qualquer gateway
- * compatível com REST que aceite envio de texto e devolva webhooks.
- *
- * Variáveis de ambiente:
- *   WA_GATEWAY_URL   — URL base do gateway (ex: http://localhost:8080)
- *   WA_GATEWAY_KEY   — API key do gateway
- *   WA_INSTANCE_NAME — nome da instância no gateway (ex: equilibra)
- *
- * Se WA_GATEWAY_URL não estiver definida, o gateway opera em modo DRY-RUN:
- * todas as chamadas são logadas mas não enviadas.
+ * Suporta:
+ * 1. Conexão Direta Nativa (QR Code no Terminal com Baileys)
+ * 2. Evolution API (self-hosted REST)
+ * 3. Modo DRY-RUN (simulação segura se nenhum dos anteriores estiver ativo)
  */
+
+let localClient = null;
+try {
+  localClient = require('./whatsappLocalClient');
+} catch {}
 
 const DRY_RUN = !process.env.WA_GATEWAY_URL;
 
@@ -30,70 +29,80 @@ function normalizePhone(raw) {
 
 /**
  * Envia uma mensagem de texto para um número WhatsApp.
+ * Prioridade: 1) Conexão Direta (QR Code) 2) Gateway REST 3) DRY-RUN
+ *
  * @param {string} phone - número do destinatário (qualquer formato)
  * @param {string} text  - conteúdo da mensagem
- * @returns {Promise<{ ok: boolean, messageId?: string, dryRun?: boolean }>}
+ * @returns {Promise<{ ok: boolean, messageId?: string, dryRun?: boolean, channel?: string }>}
  */
 async function sendText(phone, text) {
   const normalized = normalizePhone(phone);
   if (!normalized) return { ok: false, error: 'phone_invalid' };
 
-  if (DRY_RUN) {
-    console.log(`[WA-DRY-RUN] → ${normalized}: ${text.slice(0, 80)}...`);
-    return { ok: true, dryRun: true, phone: normalized };
+  // 1. Tenta envio pelo cliente direto (conectado via QR Code no terminal)
+  if (localClient) {
+    const localStatus = localClient.getStatus();
+    if (localStatus.connected) {
+      const res = await localClient.sendDirect(normalized, text);
+      if (res.ok) {
+        return { ok: true, channel: 'direct_terminal_qr', messageId: res.messageId };
+      }
+      console.warn(`[WA-DIRECT] Falha ao enviar diretamente: ${res.error}. Tentando fallback...`);
+    }
   }
 
-  const url = process.env.WA_GATEWAY_URL.replace(/\/+$/, '');
-  const instance = process.env.WA_INSTANCE_NAME || 'equilibra';
-  const key = process.env.WA_GATEWAY_KEY || '';
+  // 2. Tenta gateway REST externo se configurado
+  if (!DRY_RUN) {
+    const url = process.env.WA_GATEWAY_URL.replace(/\/+$/, '');
+    const instance = process.env.WA_INSTANCE_NAME || 'equilibra';
+    const key = process.env.WA_GATEWAY_KEY || '';
 
-  let response;
-  try {
-    response = await fetch(`${url}/message/sendText/${instance}`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(15000),
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: key
-      },
-      body: JSON.stringify({
-        number: `${normalized}@s.whatsapp.net`,
-        text
-      })
-    });
-  } catch (err) {
-    console.error('[WA-GATEWAY] Erro de rede ao enviar:', err.message);
-    return { ok: false, error: 'network_error' };
+    let response;
+    try {
+      response = await fetch(`${url}/message/sendText/${instance}`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: key
+        },
+        body: JSON.stringify({
+          number: `${normalized}@s.whatsapp.net`,
+          text
+        })
+      });
+    } catch (err) {
+      console.error('[WA-GATEWAY] Erro de rede ao enviar:', err.message);
+      return { ok: false, error: 'network_error' };
+    }
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[WA-GATEWAY] Resposta ${response.status}: ${body.slice(0, 200)}`);
+      return { ok: false, error: `gateway_${response.status}` };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    return { ok: true, channel: 'rest_gateway', messageId: data.key?.id || data.id || null };
   }
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    console.error(`[WA-GATEWAY] Resposta ${response.status}: ${body.slice(0, 200)}`);
-    return { ok: false, error: `gateway_${response.status}` };
-  }
-
-  const data = await response.json().catch(() => ({}));
-  return { ok: true, messageId: data.key?.id || data.id || null };
+  // 3. Fallback: Modo DRY-RUN (simulação)
+  console.log(`[WA-DRY-RUN] → ${normalized}: ${text.slice(0, 80)}...`);
+  return { ok: true, dryRun: true, phone: normalized };
 }
 
 /**
- * Extrai a payload relevante de um webhook POST da Evolution API.
- * Retorna null se não for uma mensagem de texto recebida.
- *
- * @param {object} body - corpo da requisição HTTP do webhook
- * @returns {{ waId: string, phone: string, text: string } | null}
+ * Extrai a payload relevante de um webhook POST da Evolution API (caso usada).
  */
 function parseWebhook(body) {
   if (!body || typeof body !== 'object') return null;
 
-  // Evolution API v2 — evento MESSAGES_UPSERT
   const event = body.event || body.type;
   if (event && event !== 'messages.upsert' && event !== 'MESSAGES_UPSERT') return null;
 
   const msg = body.data?.message || body.message;
   if (!msg) return null;
 
-  // Ignora mensagens enviadas pelo próprio bot
   if (body.data?.key?.fromMe || body.key?.fromMe) return null;
 
   const remoteJid = body.data?.key?.remoteJid || body.key?.remoteJid || '';
@@ -106,18 +115,38 @@ function parseWebhook(body) {
   ).trim();
 
   if (!phone || !text) return null;
-
-  // waId é o remoteJid completo — identificador de sessão no ConversationEngine
   const waId = remoteJid;
 
   return { waId, phone, text };
 }
 
 /**
- * Verifica conectividade com o gateway.
- * @returns {Promise<{ connected: boolean, instance?: string, dryRun?: boolean }>}
+ * Verifica conectividade do WhatsApp (local Baileys ou Gateway REST).
  */
 async function healthCheck() {
+  // Verifica cliente direto (QR Code)
+  if (localClient) {
+    const localStatus = localClient.getStatus();
+    if (localStatus.connected) {
+      const phone = localStatus.user?.id ? localStatus.user.id.split(':')[0] : 'Conectado';
+      return {
+        connected: true,
+        mode: 'direct_terminal_qr',
+        phone,
+        user: localStatus.user?.name || 'Equilibra',
+        state: 'open'
+      };
+    }
+    if (localStatus.connecting) {
+      return {
+        connected: false,
+        mode: 'direct_terminal_qr',
+        state: 'connecting',
+        waitingQr: Boolean(localStatus.lastQr)
+      };
+    }
+  }
+
   if (DRY_RUN) return { connected: false, dryRun: true };
 
   const url = process.env.WA_GATEWAY_URL.replace(/\/+$/, '');
@@ -145,4 +174,3 @@ async function healthCheck() {
 }
 
 module.exports = { sendText, parseWebhook, healthCheck, normalizePhone };
-
