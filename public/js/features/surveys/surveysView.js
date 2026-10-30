@@ -188,6 +188,34 @@ export function renderSurveyDistribution({ params, state }) {
         ` : ''}
       </div>
 
+      <!-- ENVIO E COLETA VIA WHATSAPP -->
+      <div class="card mb-6 border-2 border-primary bg-surface p-5">
+        <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
+          <div>
+            <h2 class="card-title text-lg flex items-center gap-2 m-0">
+              <i class="fa-brands fa-whatsapp color-success" aria-hidden="true"></i> Envio e Coleta via WhatsApp
+            </h2>
+            <p class="table-subtext m-0 mt-1">
+              Dispare as perguntas diretamente no WhatsApp dos colaboradores cadastrados com telefone.
+            </p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <a href="/wa/connect" target="_blank" class="btn btn-secondary" title="Ver QR Code e status da conexão">
+              <i class="fa-solid fa-qrcode" aria-hidden="true"></i> Conectar Aparelho
+            </a>
+            ${!isViewer && survey.status === 'open' ? `
+              <button type="button" class="btn btn-primary" data-action="dispatch-survey-whatsapp" data-id="${attr(survey.id)}">
+                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Disparar Mensagens Agora
+              </button>
+            ` : ''}
+          </div>
+        </div>
+        <div class="card bg-subtle p-3 flex items-center justify-between text-sm flex-wrap gap-2">
+          <span>Canal configurado: <strong>${survey.collectionChannel === 'whatsapp' ? 'WhatsApp (Bot Interativo)' : 'Web (Links)'}</strong></span>
+          <span class="text-xs table-subtext"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Certifique-se de que o aparelho esteja conectado antes de disparar.</span>
+        </div>
+      </div>
+
       <!-- LINK ÚNICO DA PESQUISA (Destaque Principal) -->
       <div class="card mb-6 border-2 border-primary bg-surface p-5">
         <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">

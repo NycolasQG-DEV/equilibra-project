@@ -91,6 +91,14 @@ async function sendText(phone, text) {
   }
 
   // 3. Fallback: Modo DRY-RUN (simulação)
+  if (process.env.NODE_ENV === 'production') {
+    const client = getLocalClient();
+    const localStatus = client ? client.getStatus() : null;
+    if (!localStatus || !localStatus.connected) {
+      console.warn(`[WA-GATEWAY] Falha: WhatsApp não está conectado em produção para enviar para ${normalized}.`);
+      return { ok: false, error: 'whatsapp_not_connected', message: 'Aparelho WhatsApp não está conectado. Escaneie o QR Code em /wa/connect para ativar os envios.' };
+    }
+  }
   console.log(`[WA-DRY-RUN] → ${normalized}: ${text.slice(0, 80)}...`);
   return { ok: true, dryRun: true, phone: normalized };
 }

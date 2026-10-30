@@ -309,6 +309,47 @@ export function renderSurveyCreate({ state }) {
                   <input type="text" id="survey-title-input" name="title" class="input input-lg" value="${attr(defaultTitle)}" required />
                   <span class="form-help">Ex: "Diagnóstico Psicossocial - Outubro 2026" ou "Pesquisa de Clima e Condições de Trabalho".</span>
                 </div>
+                <div class="form-group mb-4">
+                  <label class="form-label font-bold text-base">Canal de Coleta e Envio <span class="form-required">*</span></label>
+                  <div class="grid grid-cols-2 gap-4 mt-2">
+                    <label class="channel-card cursor-pointer border-2 border-primary rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-whatsapp">
+                      <div class="flex items-start gap-3">
+                        <input type="radio" name="collectionChannel" value="whatsapp" checked class="mt-1" />
+                        <div>
+                          <div class="font-bold text-base flex items-center gap-2">
+                            <i class="fa-brands fa-whatsapp color-success text-xl" aria-hidden="true"></i> WhatsApp Bot Interativo
+                          </div>
+                          <p class="text-sm table-subtext mt-1 mb-0">
+                            Dispara as perguntas individualmente no WhatsApp de cada colaborador participante.
+                          </p>
+                        </div>
+                      </div>
+                      <div class="mt-3 pt-3 border-t text-xs flex items-center justify-between" id="wizard-wa-status-box">
+                        <span id="wizard-wa-status-badge"><i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Conectar Aparelho</span>
+                        <a href="/wa/connect" target="_blank" class="btn btn-ghost btn-xs">
+                          <i class="fa-solid fa-qrcode" aria-hidden="true"></i> Ver QR Code
+                        </a>
+                      </div>
+                    </label>
+
+                    <label class="channel-card cursor-pointer border-2 rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-web">
+                      <div class="flex items-start gap-3">
+                        <input type="radio" name="collectionChannel" value="web" class="mt-1" />
+                        <div>
+                          <div class="font-bold text-base flex items-center gap-2">
+                            <i class="fa-solid fa-globe color-primary text-xl" aria-hidden="true"></i> Link Web Anônimo
+                          </div>
+                          <p class="text-sm table-subtext mt-1 mb-0">
+                            Gera links únicos e link de acesso geral para preenchimento direto no navegador.
+                          </p>
+                        </div>
+                      </div>
+                      <div class="mt-3 pt-3 border-t text-xs table-subtext">
+                        Ideal para envio por e-mail ou totens na empresa.
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </section>
             </div>
           </div>
@@ -765,6 +806,7 @@ export async function submitSurveyCreation({ openImmediately = true } = {}) {
   }
 
   const payload = {
+    collectionChannel: (document.querySelector('input[name="collectionChannel"]:checked')?.value || 'whatsapp'),
     title,
     cycle,
     model,
@@ -783,7 +825,11 @@ export async function submitSurveyCreation({ openImmediately = true } = {}) {
 
     if (openImmediately) {
       if (btnLaunch) btnLaunch.textContent = 'Abrindo coleta e gerando links...';
-      await post(`/surveys/${survey.id}/open`, {});
+      const ch = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'whatsapp';
+      await post(`/surveys/${survey.id}/open`, { collectionChannel: ch });
+      if (ch === 'whatsapp') {
+        showToast('Ciclo iniciado! Convites sendo enviados pelo WhatsApp.', 'success');
+      }
       await store.loadSurveys();
       showToast('Ciclo de pesquisa iniciado com sucesso! Coleta aberta.', 'success');
       router.navigate(`pesquisas/${survey.id}/distribuicao`);

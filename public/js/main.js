@@ -460,6 +460,22 @@ document.addEventListener('click', async (e) => {
     prevReportSlide();
   } else if (action === 'report-next-slide') {
     nextReportSlide();
+  } else if (action === 'dispatch-survey-whatsapp') {
+    const surveyId = trigger.dataset.id;
+    if (!surveyId) return;
+    trigger.disabled = true;
+    const oldText = trigger.innerHTML;
+    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Disparando...';
+    try {
+      const res = await post(`/surveys/${surveyId}/dispatch-whatsapp`, {});
+      showToast(res.message || 'Disparo WhatsApp concluído!', res.errors > 0 ? 'warning' : 'success');
+      await store.loadSurveys();
+    } catch (err) {
+      showToast(err.message || 'Erro ao disparar mensagens pelo WhatsApp.', 'error');
+    } finally {
+      trigger.disabled = false;
+      trigger.innerHTML = oldText;
+    }
   } else if (action === 'copy-invite-template') {
     const pre = document.getElementById('invite-template-text');
     if (pre) {

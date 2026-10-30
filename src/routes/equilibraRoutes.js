@@ -453,6 +453,56 @@ router.get('/surveys/preflight', protectedRoute, (req, res) => {
   res.json(result);
 });
 
+router.get('/whatsapp/status', protectedRoute, async (_req, res) => {
+  try {
+    const { healthCheck } = require('../services/whatsappGateway');
+    const status = await healthCheck();
+    res.json(status);
+  } catch (err) {
+    res.json({ connected: false, error: err.message });
+  }
+});
+
+router.post('/surveys/:id/dispatch-whatsapp', protectedRoute, async (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem disparar pesquisas.');
+  const surveys = read('surveys');
+  const survey = surveys.find((s) => s.id === req.params.id && s.accountId === req.account.id);
+  if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
+  if (survey.status !== 'open') return fail(res, 409, 'Apenas pesquisas abertas podem ter mensagens enviadas.');
+
+  const invitations = scoped('invitations', req.account.id).filter((inv) => inv.surveyId === survey.id && !inv.used);
+  if (invitations.length === 0) return fail(res, 400, 'Não há convites pendentes para envio.');
+
+  const members = scoped('members', req.account.id);
+  const { dispatchSurveyViaWhatsApp } = require('../services/whatsappSurveyService');
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  const links = [];
+  for (const inv of invitations) {
+    const member = members.find((m) => m.id === inv.memberId);
+    if (member) {
+      links.push({
+        memberId: member.id,
+        name: member.name,
+        phone: member.phone || '',
+        segmentId: inv.segmentId,
+        token: inv.token || inv.tokenHash.slice(0, 24),
+        link: `${baseUrl}/responder/${inv.token || inv.tokenHash.slice(0, 24)}`
+      });
+    }
+  }
+
+  survey.collectionChannel = 'whatsapp';
+  write('surveys', surveys);
+
+  const result = await dispatchSurveyViaWhatsApp(survey, links);
+  res.json({
+    ok: true,
+    message: `Disparo concluído: ${result.dispatched} mensagens enviadas, ${result.skipped} ignoradas (sem telefone), ${result.errors} erros.`,
+    ...result
+  });
+});
+
 router.post('/surveys/:id/open', protectedRoute, (req, res) => {
   if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem abrir pesquisas.');
   const result = openSurvey({
