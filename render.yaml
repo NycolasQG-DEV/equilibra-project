@@ -1,0 +1,26 @@
+# render.yaml — Configuração de Deploy do Equilibra no Render
+# Docs: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: equilibra-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: BILLING_ENFORCE
+        value: false
+      - key: LOCAL_PLAN
+        value: avancado
+      # Preencha no painel do Render em Settings > Environment:
+      - key: GROQ_API_KEY
+        sync: false   # você digita no painel — nunca vai para o git
+      # Opcional: chave de criptografia de dados (32 bytes em base64)
+      # - key: EQUILIBRA_DATA_KEY
+      #   sync: false

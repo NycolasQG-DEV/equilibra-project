@@ -29,6 +29,7 @@ app.post('/api/billing/webhook', management.webhook);
 app.use('/api', require('./routes/recoveryRoutes'));
 app.use('/api/management', management.createRouter(api.protectedRoute));
 app.use('/api', api);
+app.use('/', require('./routes/waConnectRoutes'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (_request, response) => response.json({ status: 'ok' }));
 app.get('*path', (_request, response) => response.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
