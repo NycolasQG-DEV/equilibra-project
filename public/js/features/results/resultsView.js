@@ -213,256 +213,356 @@ export function renderCycleReport({ params, state }) {
         </div>
       </div>
 
-      <!-- Anchor Sub-Navigation -->
-      <nav class="tabs-nav mb-6" aria-label="Navegação interna do relatório">
-        <a href="#resumo" class="tab-link">Resumo</a>
-        <a href="#painel-especializado" class="tab-link">Painel do Instrumento</a>
-        <a href="#diagnostico" class="tab-link">Diagnóstico & Soluções</a>
-        <a href="#solucoes" class="tab-link">Medidas NR-1</a>
-        <a href="#fatores" class="tab-link">Fatores</a>
-        <a href="#distribuicao" class="tab-link">Distribuição</a>
-        ${matrix ? '<a href="#segmentos" class="tab-link">Segmentos</a>' : ''}
-        <a href="#metodologia" class="tab-link">Metodologia</a>
-        <a href="#aceite" class="tab-link">Aceite Formal</a>
-      </nav>
+      <!-- Navegação em Telas / Slides sem conflito de rotas por hash -->
+      ${(() => {
+        const slides = [];
 
-      <!-- Section: Resumo Executivo -->
-      <section id="resumo" class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Resumo Executivo da Escuta</h2>
-        </div>
-        <div class="card-body">
-          <p class="mb-4">
-            ${executiveText}
-          </p>
+        // Slide 0: Resumo Executivo
+        slides.push({
+          id: 'resumo',
+          tabLabel: 'Resumo',
+          tabIcon: 'fa-solid fa-chart-pie',
+          title: 'Resumo Executivo da Escuta',
+          html: `
+            <section id="resumo" class="card mb-6">
+              <div class="card-header">
+                <h2 class="card-title">Resumo Executivo da Escuta</h2>
+              </div>
+              <div class="card-body">
+                <p class="mb-4">
+                  ${executiveText}
+                </p>
 
-          ${insights?.kpisContextuais?.length ? `
-            <div class="grid grid-cols-4 gap-4">
-              ${insights.kpisContextuais.slice(0, 4).map(kpi => {
-                const val = kpi.formatted || kpi.value || (kpi.valor != null ? (kpi.valor + (kpi.sufixo ? ' ' + kpi.sufixo : '')) : '—');
-                const sub = kpi.sub || kpi.sufixo || '';
-                const st = kpi.status || kpi.cor || 'neutral';
-                const colorCls = st === 'danger' ? 'color-danger' : st === 'warning' ? 'color-warning' : st === 'success' ? 'color-success' : '';
-                return `
-                  <div class="card p-4 bg-subtle">
-                    <span class="kpi-title">${esc(kpi.label)}</span>
-                    <div class="kpi-val ${colorCls}">${esc(String(val))}</div>
-                    <span class="kpi-sub">${esc(String(sub))}</span>
+                ${insights?.kpisContextuais?.length ? `
+                  <div class="grid grid-cols-4 gap-4">
+                    ${insights.kpisContextuais.slice(0, 4).map(kpi => {
+                      const val = kpi.formatted || kpi.value || (kpi.valor != null ? (kpi.valor + (kpi.sufixo ? ' ' + kpi.sufixo : '')) : '—');
+                      const sub = kpi.sub || kpi.sufixo || '';
+                      const st = kpi.status || kpi.cor || 'neutral';
+                      const colorCls = st === 'danger' ? 'color-danger' : st === 'warning' ? 'color-warning' : st === 'success' ? 'color-success' : '';
+                      return `
+                        <div class="card p-4 bg-subtle">
+                          <span class="kpi-title">${esc(kpi.label)}</span>
+                          <div class="kpi-val ${colorCls}">${esc(String(val))}</div>
+                          <span class="kpi-sub">${esc(String(sub))}</span>
+                        </div>
+                      `;
+                    }).join('')}
                   </div>
-                `;
-              }).join('')}
-            </div>
-          ` : `
-            <div class="grid grid-cols-4 gap-4">
-              <div class="card p-4 bg-subtle">
-                <span class="kpi-title">Média Geral</span>
-                <div class="kpi-val">${fmt(report.generalAverage)}</div>
-                <span class="kpi-sub">Escala de 1 a 5</span>
-              </div>
-              <div class="card p-4 bg-subtle">
-                <span class="kpi-title">Taxa de Adesão</span>
-                <div class="kpi-val">${fmtPercent(report.participationRate)}</div>
-                <span class="kpi-sub">${report.responsesCount || report.responseCount || 0} respondentes</span>
-              </div>
-              <div class="card p-4 bg-subtle">
-                <span class="kpi-title">Fatores Adequados</span>
-                <div class="kpi-val color-success">
-                  ${factors.filter(f => f.average >= 3.6).length}
-                </div>
-                <span class="kpi-sub">Pontuação ≥ 3,6</span>
-              </div>
-              <div class="card p-4 bg-subtle">
-                <span class="kpi-title">Pontos de Atenção</span>
-                <div class="kpi-val color-danger">
-                  ${factors.filter(f => f.average < 2.8).length}
-                </div>
-                <span class="kpi-sub">Pontuação < 2,8</span>
-              </div>
-            </div>
-          `}
-        </div>
-      </section>
-
-      <!-- Section: Visualização Especializada do Instrumento -->
-      ${renderSpecializedDashboard(report, factors)}
-
-      <!-- Section: Diagnóstico Contextual -->
-      ${renderContextualDiagnostic(report, insights)}
-
-      <!-- Section: Portal de Soluções NR-1 -->
-      ${renderSolutionsPortal(report, factors, isViewer)}
-
-      <!-- Section: Fatores Detalhados -->
-      <section id="fatores" class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Índice Detalhado de Fatores</h2>
-        </div>
-        <div class="card-body">
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Fator / Dimensão Avaliada</th>
-                  <th>Média Coletiva</th>
-                  <th>Classificação Semáforo</th>
-                  <th>Delta vs Ciclo Anterior</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${factors.map(f => {
-                  const delta = f.delta ?? null;
-                  const deltaText = delta !== null ? `${delta >= 0 ? '+' : ''}${fmt(delta)}` : '—';
-                  const deltaClass = delta > 0 ? 'color-success' : delta < 0 ? 'color-danger' : '';
-
-                  return `
-                    <tr>
-                      <td><strong>${esc(f.label || f.key)}</strong></td>
-                      <td><span class="num font-semibold">${fmt(f.average)}</span></td>
-                      <td>${factorBadge(f.average, true)}</td>
-                      <td><span class="num ${deltaClass}">${deltaText}</span></td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- Section: Distribuição -->
-      <section id="distribuicao" class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Distribuição de Respostas (100% Empilhada)</h2>
-        </div>
-        <div class="card-body">
-          <div class="flex flex-col gap-4">
-            ${factors.map(f => {
-              const dist = f.distribution || [0, 0, 0, 0, 0];
-              const total = dist.reduce((a, b) => a + b, 0) || 1;
-              const p = dist.map(count => (count / total) * 100);
-
-              return `
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="font-semibold">${esc(f.label || f.key)}</span>
-                    <span class="table-subtext">Média: ${fmt(f.average)}</span>
+                ` : `
+                  <div class="grid grid-cols-4 gap-4">
+                    <div class="card p-4 bg-subtle">
+                      <span class="kpi-title">Média Geral</span>
+                      <div class="kpi-val">${fmt(report.generalAverage)}</div>
+                      <span class="kpi-sub">Escala de 1 a 5</span>
+                    </div>
+                    <div class="card p-4 bg-subtle">
+                      <span class="kpi-title">Taxa de Adesão</span>
+                      <div class="kpi-val">${fmtPercent(report.participationRate)}</div>
+                      <span class="kpi-sub">${report.responsesCount || report.responseCount || 0} respondentes</span>
+                    </div>
+                    <div class="card p-4 bg-subtle">
+                      <span class="kpi-title">Fatores Adequados</span>
+                      <div class="kpi-val color-success">
+                        ${factors.filter(f => f.average >= 3.6).length}
+                      </div>
+                      <span class="kpi-sub">Pontuação ≥ 3,6</span>
+                    </div>
+                    <div class="card p-4 bg-subtle">
+                      <span class="kpi-title">Pontos de Atenção</span>
+                      <div class="kpi-val color-danger">
+                        ${factors.filter(f => f.average < 2.8).length}
+                      </div>
+                      <span class="kpi-sub">Pontuação < 2,8</span>
+                    </div>
                   </div>
-                  <div class="dist-bar">
-                    <div class="dist-bar-seg dist-seg-1" data-width="${p[0]}" title="Discordo totalmente: ${fmtPercent(p[0]/100)}"></div>
-                    <div class="dist-bar-seg dist-seg-2" data-width="${p[1]}" title="Discordo: ${fmtPercent(p[1]/100)}"></div>
-                    <div class="dist-bar-seg dist-seg-3" data-width="${p[2]}" title="Neutro: ${fmtPercent(p[2]/100)}"></div>
-                    <div class="dist-bar-seg dist-seg-4" data-width="${p[3]}" title="Concordo: ${fmtPercent(p[3]/100)}"></div>
-                    <div class="dist-bar-seg dist-seg-5" data-width="${p[4]}" title="Concordo totalmente: ${fmtPercent(p[4]/100)}"></div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-          <div class="flex items-center gap-4 mt-4 text-center justify-between table-subtext flex-wrap">
-            <span><span class="legend-dot bg-danger"></span> 1 - Discordo total</span>
-            <span><span class="legend-dot bg-orange"></span> 2 - Discordo</span>
-            <span><span class="legend-dot bg-yellow"></span> 3 - Neutro</span>
-            <span><span class="legend-dot bg-lime"></span> 4 - Concordo</span>
-            <span><span class="legend-dot bg-success"></span> 5 - Concordo total</span>
-          </div>
-        </div>
-      </section>
+                `}
+              </div>
+            </section>
+          `
+        });
 
-      <!-- Section: Segmentos (Matrix) -->
-      ${matrix && matrix.columns && matrix.columns.length ? `
-        <section id="segmentos" class="card mb-6">
-          <div class="card-header">
-            <h2 class="card-title">Matriz de Segmentos Organizacionais</h2>
-          </div>
-          <div class="card-body">
-            <p class="table-subtext mb-3">
-              Segmentos com quórum protegido (N ≥ 5). Áreas menores são agregadas automaticamente em "Demais áreas (agrupadas)".
-            </p>
-            <div class="table-wrap">
-              <table class="table matrix-table">
-                <thead>
-                  <tr>
-                    <th>Fator</th>
-                    ${matrix.columns.map(col => `<th>${esc(col.label)} (${col.count})</th>`).join('')}
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(matrix.rows || []).map(row => `
-                    <tr>
-                      <td><strong>${esc(row.label)}</strong></td>
-                      ${row.cells.map(cell => {
-                        const bandClass = cell.average >= 3.6 ? 'band-adequado' : cell.average >= 2.8 ? 'band-cuidado' : 'band-atencao';
+        // Slide 1: Painel Especializado do Instrumento
+        const specializedHtml = renderSpecializedDashboard(report, factors);
+        if (specializedHtml) {
+          slides.push({
+            id: 'painel-especializado',
+            tabLabel: 'Instrumento',
+            tabIcon: 'fa-solid fa-gauge-high',
+            title: 'Visualização Especializada do Instrumento',
+            html: specializedHtml
+          });
+        }
+
+        // Slide 2: Diagnóstico Contextual
+        if (insights) {
+          slides.push({
+            id: 'diagnostico',
+            tabLabel: 'Diagnóstico',
+            tabIcon: 'fa-solid fa-brain',
+            title: 'Diagnóstico Contextual de Riscos',
+            html: renderContextualDiagnostic(report, insights)
+          });
+        }
+
+        // Slide 3: Medidas & Soluções NR-1
+        slides.push({
+          id: 'solucoes',
+          tabLabel: 'Medidas NR-1',
+          tabIcon: 'fa-solid fa-list-check',
+          title: 'Portal de Soluções & Medidas NR-1',
+          html: renderSolutionsPortal(report, factors, isViewer)
+        });
+
+        // Slide 4: Fatores Detalhados
+        slides.push({
+          id: 'fatores',
+          tabLabel: 'Fatores',
+          tabIcon: 'fa-solid fa-table-list',
+          title: 'Índice Detalhado de Fatores',
+          html: `
+            <section id="fatores" class="card mb-6">
+              <div class="card-header">
+                <h2 class="card-title">Índice Detalhado de Fatores</h2>
+              </div>
+              <div class="card-body">
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Fator / Dimensão Avaliada</th>
+                        <th>Média Coletiva</th>
+                        <th>Classificação Semáforo</th>
+                        <th>Delta vs Ciclo Anterior</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${factors.map(f => {
+                        const delta = f.delta ?? null;
+                        const deltaText = delta !== null ? `${delta >= 0 ? '+' : ''}${fmt(delta)}` : '—';
+                        const deltaClass = delta > 0 ? 'color-success' : delta < 0 ? 'color-danger' : '';
 
                         return `
-                          <td class="${bandClass}">
-                            ${cell.average !== null ? fmt(cell.average) : '—'}
-                          </td>
+                          <tr>
+                            <td><strong>${esc(f.label || f.key)}</strong></td>
+                            <td><span class="num font-semibold">${fmt(f.average)}</span></td>
+                            <td>${factorBadge(f.average, true)}</td>
+                            <td><span class="num ${deltaClass}">${deltaText}</span></td>
+                          </tr>
                         `;
                       }).join('')}
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          `
+        });
+
+        // Slide 5: Distribuição de Respostas
+        slides.push({
+          id: 'distribuicao',
+          tabLabel: 'Distribuição',
+          tabIcon: 'fa-solid fa-chart-column',
+          title: 'Distribuição de Respostas (100% Empilhada)',
+          html: `
+            <section id="distribuicao" class="card mb-6">
+              <div class="card-header">
+                <h2 class="card-title">Distribuição de Respostas (100% Empilhada)</h2>
+              </div>
+              <div class="card-body">
+                <div class="flex flex-col gap-4">
+                  ${factors.map(f => {
+                    const dist = f.distribution || [0, 0, 0, 0, 0];
+                    const total = dist.reduce((a, b) => a + b, 0) || 1;
+                    const p = dist.map(count => (count / total) * 100);
+
+                    return `
+                      <div>
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="font-semibold">${esc(f.label || f.key)}</span>
+                          <span class="table-subtext">Média: ${fmt(f.average)}</span>
+                        </div>
+                        <div class="dist-bar">
+                          <div class="dist-bar-seg dist-seg-1" data-width="${p[0]}" title="Discordo totalmente: ${fmtPercent(p[0]/100)}"></div>
+                          <div class="dist-bar-seg dist-seg-2" data-width="${p[1]}" title="Discordo: ${fmtPercent(p[1]/100)}"></div>
+                          <div class="dist-bar-seg dist-seg-3" data-width="${p[2]}" title="Neutro: ${fmtPercent(p[2]/100)}"></div>
+                          <div class="dist-bar-seg dist-seg-4" data-width="${p[3]}" title="Concordo: ${fmtPercent(p[3]/100)}"></div>
+                          <div class="dist-bar-seg dist-seg-5" data-width="${p[4]}" title="Concordo totalmente: ${fmtPercent(p[4]/100)}"></div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+                <div class="flex items-center gap-4 mt-4 text-center justify-between table-subtext flex-wrap">
+                  <span><span class="legend-dot bg-danger"></span> 1 - Discordo total</span>
+                  <span><span class="legend-dot bg-orange"></span> 2 - Discordo</span>
+                  <span><span class="legend-dot bg-yellow"></span> 3 - Neutro</span>
+                  <span><span class="legend-dot bg-lime"></span> 4 - Concordo</span>
+                  <span><span class="legend-dot bg-success"></span> 5 - Concordo total</span>
+                </div>
+              </div>
+            </section>
+          `
+        });
+
+        // Slide 6: Segmentos (Matrix) se houver
+        if (matrix && matrix.columns && matrix.columns.length) {
+          slides.push({
+            id: 'segmentos',
+            tabLabel: 'Segmentos',
+            tabIcon: 'fa-solid fa-network-wired',
+            title: 'Matriz de Segmentos Organizacionais',
+            html: `
+              <section id="segmentos" class="card mb-6">
+                <div class="card-header">
+                  <h2 class="card-title">Matriz de Segmentos Organizacionais</h2>
+                </div>
+                <div class="card-body">
+                  <p class="table-subtext mb-3">
+                    Segmentos com quórum protegido (N ≥ 5). Áreas menores são agregadas automaticamente em "Demais áreas (agrupadas)".
+                  </p>
+                  <div class="table-wrap">
+                    <table class="table matrix-table">
+                      <thead>
+                        <tr>
+                          <th>Fator</th>
+                          ${matrix.columns.map(col => `<th>${esc(col.label)} (${col.count})</th>`).join('')}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${(matrix.rows || []).map(row => `
+                          <tr>
+                            <td><strong>${esc(row.label)}</strong></td>
+                            ${row.cells.map(cell => {
+                              const bandClass = cell.average >= 3.6 ? 'band-adequado' : cell.average >= 2.8 ? 'band-cuidado' : 'band-atencao';
+
+                              return `
+                                <td class="${bandClass}">
+                                  ${cell.average !== null ? fmt(cell.average) : '—'}
+                                </td>
+                              `;
+                            }).join('')}
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            `
+          });
+        }
+
+        // Slide Metodologia
+        slides.push({
+          id: 'metodologia',
+          tabLabel: 'Metodologia',
+          tabIcon: 'fa-solid fa-book-open',
+          title: 'Metodologia & Honestidade Científica',
+          html: `
+            <section id="metodologia" class="card mb-6">
+              <div class="card-header">
+                <h2 class="card-title">Metodologia & Honestidade Científica</h2>
+              </div>
+              <div class="card-body">
+                <p class="mb-2">
+                  <strong>Natureza dos Dados:</strong> Os indicadores apresentados refletem a percepção coletiva das condições de trabalho declaradas pelos participantes no período da coleta.
+                </p>
+                <p class="mb-2">
+                  <strong>Não Substituição de Laudo:</strong> Este documento não constitui diagnóstico clínico individual, laudo pericial ou atestado automático de conformidade legal. Serve como subsídio técnico de entrada para o Programa de Gerenciamento de Riscos (PGR) conforme a Norma Regulamentadora NR-1.
+                </p>
+                <p class="m-0">
+                  <strong>Proteção de Privacidade:</strong> Nenhum resultado individual é acessível. O limiar mínimo de 5 respondentes por segmento é garantido no servidor.
+                </p>
+              </div>
+            </section>
+          `
+        });
+
+        // Slide Aceite Formal
+        slides.push({
+          id: 'aceite',
+          tabLabel: 'Aceite Formal',
+          tabIcon: 'fa-solid fa-file-signature',
+          title: 'Aceite Formal do Relatório (NR-1 / SST)',
+          html: `
+            <section id="aceite" class="card mb-6">
+              <div class="card-header">
+                <h2 class="card-title">Aceite Formal do Relatório (NR-1 / SST)</h2>
+              </div>
+              <div class="card-body">
+                ${acceptance ? `
+                  <div class="flex items-center gap-3">
+                    <div class="status-icon-circle status-icon-circle-success">
+                      <i class="fa-solid fa-signature" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                      <strong class="color-primary">Relatório aceito formalmente</strong>
+                      <p class="view-subtitle m-0">
+                        Assinado por <strong>${esc(acceptance.acceptedBy || 'Responsável Técnico')}</strong> em ${dateText(acceptance.acceptedAt || acceptance.date)}.
+                      </p>
+                      ${acceptance.notes ? `<p class="table-subtext mt-1">"${esc(acceptance.notes)}"` : ''}
+                    </div>
+                  </div>
+                ` : isViewer ? `
+                  <div class="privacy-notice privacy-info">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <div>
+                      <strong>Aceite formal pendente</strong>
+                      <p class="m-0 text-xs">O registro de aceite formal deste relatório deve ser realizado pelo Administrador ou responsável técnico de RH/SST.</p>
+                    </div>
+                  </div>
+                ` : `
+                  <p class="view-subtitle mb-4">
+                    O aceite formal registra a concordância do responsável técnico de RH/SST com a integridade do processo de escuta e integra os resultados ao inventário de riscos da NR-1.
+                  </p>
+                  <button type="button" class="btn btn-primary" data-action="open-accept-modal" data-id="${attr(report.id)}">
+                    <i class="fa-solid fa-file-signature" aria-hidden="true"></i> Registrar Aceite Formal
+                  </button>
+                `}
+              </div>
+            </section>
+          `
+        });
+
+        return `
+          <nav class="tabs-nav mb-4" aria-label="Navegação em telas do relatório">
+            ${slides.map((s, idx) => `
+              <button type="button" class="tab-link ${idx === 0 ? 'active' : ''}" data-action="switch-report-slide" data-slide-index="${idx}">
+                <i class="${s.tabIcon}" aria-hidden="true"></i> ${s.tabLabel}
+              </button>
+            `).join('')}
+          </nav>
+
+          <div class="report-carousel-container">
+            <div class="report-slide-header-bar">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-report-prev-slide" data-action="report-prev-slide" disabled>
+                <i class="fa-solid fa-chevron-left" aria-hidden="true"></i> Tela Anterior
+              </button>
+
+              <div class="report-slide-info-pill">
+                <span class="report-slide-index-label" id="report-slide-index-label">Tela 1 de ${slides.length}</span>
+                <span class="report-slide-title-label" id="report-slide-title-label">${slides[0].title}</span>
+              </div>
+
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-report-next-slide" data-action="report-next-slide">
+                Próxima Tela <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="report-slides-viewport">
+              <div class="report-slides-track" id="report-slides-track" data-active-slide="0">
+                ${slides.map((s, idx) => `
+                  <div class="report-slide ${idx === 0 ? 'active' : ''}" data-slide-index="${idx}" id="slide-${s.id}">
+                    ${s.html}
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-        </section>
-      ` : ''}
-
-      <!-- Section: Metodologia -->
-      <section id="metodologia" class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Metodologia & Honestidade Científica</h2>
-        </div>
-        <div class="card-body">
-          <p class="mb-2">
-            <strong>Natureza dos Dados:</strong> Os indicadores apresentados refletem a percepção coletiva das condições de trabalho declaradas pelos participantes no período da coleta.
-          </p>
-          <p class="mb-2">
-            <strong>Não Substituição de Laudo:</strong> Este documento não constitui diagnóstico clínico individual, laudo pericial ou atestado automático de conformidade legal. Serve como subsídio técnico de entrada para o Programa de Gerenciamento de Riscos (PGR) conforme a Norma Regulamentadora NR-1.
-          </p>
-          <p class="m-0">
-            <strong>Proteção de Privacidade:</strong> Nenhum resultado individual é acessível. O limiar mínimo de 5 respondentes por segmento é garantido no servidor.
-          </p>
-        </div>
-      </section>
-
-      <!-- Section: Aceite Formal -->
-      <section id="aceite" class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Aceite Formal do Relatório (NR-1 / SST)</h2>
-        </div>
-        <div class="card-body">
-          ${acceptance ? `
-            <div class="flex items-center gap-3">
-              <div class="status-icon-circle status-icon-circle-success">
-                <i class="fa-solid fa-signature" aria-hidden="true"></i>
-              </div>
-              <div>
-                <strong class="color-primary">Relatório aceito formalmente</strong>
-                <p class="view-subtitle m-0">
-                  Assinado por <strong>${esc(acceptance.acceptedBy || 'Responsável Técnico')}</strong> em ${dateText(acceptance.acceptedAt || acceptance.date)}.
-                </p>
-                ${acceptance.notes ? `<p class="table-subtext mt-1">"${esc(acceptance.notes)}"` : ''}
-              </div>
-            </div>
-          ` : isViewer ? `
-            <div class="privacy-notice privacy-info">
-              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-              <div>
-                <strong>Aceite formal pendente</strong>
-                <p class="m-0 text-xs">O registro de aceite formal deste relatório deve ser realizado pelo Administrador ou responsável técnico de RH/SST.</p>
-              </div>
-            </div>
-          ` : `
-            <p class="view-subtitle mb-4">
-              O aceite formal registra a concordância do responsável técnico de RH/SST com a integridade do processo de escuta e integra os resultados ao inventário de riscos da NR-1.
-            </p>
-            <button type="button" class="btn btn-primary" data-action="open-accept-modal" data-id="${attr(report.id)}">
-              <i class="fa-solid fa-file-signature" aria-hidden="true"></i> Registrar Aceite Formal
-            </button>
-          `}
-        </div>
-      </section>
+        `;
+      })()}
     </div>
   `;
 
@@ -1542,4 +1642,76 @@ export function mountedCycleReport({ params, state }) {
     const data = factors.map(f => f.average || 3.0);
     window.DashboardCharts.createSpecializedBarChart('chart-pulso-bars', labels, data, { crit: 3.0, safe: 3.6 });
   }
+
+  // Inicializa o primeiro slide de visualização do relatório
+  switchReportSlide(0);
 }
+
+/* ── Interactive Horizontal Slides Switching for Results Report ── */
+
+export function switchReportSlide(index) {
+  const track = document.getElementById('report-slides-track');
+  const slides = document.querySelectorAll('.report-slide');
+  const tabs = document.querySelectorAll('[data-action="switch-report-slide"]');
+  const btnPrev = document.getElementById('btn-report-prev-slide');
+  const btnNext = document.getElementById('btn-report-next-slide');
+  const indexLabel = document.getElementById('report-slide-index-label');
+  const titleLabel = document.getElementById('report-slide-title-label');
+
+  const total = slides.length;
+  if (total === 0) return;
+  const idx = Math.max(0, Math.min(total - 1, parseInt(index, 10) || 0));
+
+  if (track) {
+    track.dataset.activeSlide = String(idx);
+    track.style.transform = `translateX(-${idx * 100}%)`;
+  }
+
+  slides.forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+
+  tabs.forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+    if (i === idx) {
+      t.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+    }
+  });
+
+  if (btnPrev) {
+    btnPrev.disabled = (idx === 0);
+  }
+  if (btnNext) {
+    btnNext.disabled = (idx === total - 1);
+  }
+
+  const activeSlide = slides[idx];
+  const slideTitle = activeSlide?.querySelector('.card-title')?.textContent?.trim() || `Tela ${idx + 1}`;
+  if (indexLabel) {
+    indexLabel.textContent = `Tela ${idx + 1} de ${total}`;
+  }
+  if (titleLabel) {
+    titleLabel.textContent = slideTitle;
+  }
+
+  // Redimensiona gráficos Chart.js ao alternar para a tela correspondente
+  window.dispatchEvent(new Event('resize'));
+}
+
+export function prevReportSlide() {
+  const track = document.getElementById('report-slides-track');
+  const activeSlide = parseInt(track?.dataset?.activeSlide || '0', 10);
+  if (activeSlide > 0) {
+    switchReportSlide(activeSlide - 1);
+  }
+}
+
+export function nextReportSlide() {
+  const track = document.getElementById('report-slides-track');
+  const slides = document.querySelectorAll('.report-slide');
+  const activeSlide = parseInt(track?.dataset?.activeSlide || '0', 10);
+  if (activeSlide < slides.length - 1) {
+    switchReportSlide(activeSlide + 1);
+  }
+}
+

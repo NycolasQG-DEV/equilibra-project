@@ -65,7 +65,7 @@ export function renderSurveyCreate({ state }) {
 
   const content = `
     <div class="survey-wizard-container">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 class="view-title">Novo Ciclo de Pesquisa & Diagnóstico</h1>
           <p class="view-subtitle">
@@ -79,220 +79,273 @@ export function renderSurveyCreate({ state }) {
         </div>
       </div>
 
+      <!-- Stepper Nav Superior -->
+      <nav class="wizard-stepper" aria-label="Etapas de criação da pesquisa">
+        <button type="button" class="wizard-stepper-item active" data-action="wizard-goto-step" data-step="1">
+          <span class="wizard-stepper-num">1</span>
+          <span class="wizard-stepper-label">Instrumento & Modelo</span>
+        </button>
+        <div class="wizard-stepper-divider"></div>
+        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="2">
+          <span class="wizard-stepper-num">2</span>
+          <span class="wizard-stepper-label">Periodicidade & Ciclo</span>
+        </button>
+        <div class="wizard-stepper-divider"></div>
+        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="3">
+          <span class="wizard-stepper-num">3</span>
+          <span class="wizard-stepper-label">Público & Quórum</span>
+        </button>
+        <div class="wizard-stepper-divider"></div>
+        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="4">
+          <span class="wizard-stepper-num">4</span>
+          <span class="wizard-stepper-label">Título & Lançamento</span>
+        </button>
+      </nav>
+
       <form id="create-survey-form" data-action="submit-create-survey">
         <input type="hidden" id="selected-model-input" name="model" value="${attr(defaultModelName)}" />
 
-        <!-- ETAPA 1: ESCOLHA DO INSTRUMENTO / MODELO -->
-        <section class="wizard-section">
-          <div class="wizard-section-header">
-            <h2 class="wizard-section-title">
-              <span class="wizard-step-badge">1</span>
-              Modelos de Pesquisa & Instrumentos Psicossociais
-            </h2>
-            <p class="wizard-section-subtitle">
-              Selecione o instrumento adequado à finalidade do ciclo. Você pode pré-visualizar todas as afirmações antes de decidir.
-            </p>
-          </div>
+        <div class="wizard-slider-viewport">
+          <div class="wizard-slider-track" id="survey-wizard-track" data-current-step="1">
+            <!-- SLIDE / ETAPA 1: ESCOLHA DO INSTRUMENTO / MODELO -->
+            <div class="wizard-slide active" data-slide-step="1">
+              <section class="wizard-section">
+                <div class="wizard-section-header">
+                  <h2 class="wizard-section-title">
+                    <span class="wizard-step-badge">1</span>
+                    Modelos de Pesquisa & Instrumentos Psicossociais
+                  </h2>
+                  <p class="wizard-section-subtitle">
+                    Selecione o instrumento adequado à finalidade do ciclo. Você pode pré-visualizar todas as afirmações antes de decidir.
+                  </p>
+                </div>
 
-          <div class="models-grid" id="survey-models-grid">
-            ${templates.map((tpl, idx) => {
-              const isSelected = tpl.name === defaultModelName || idx === 0;
-              const iconClass = MODEL_ICONS[tpl.id] || 'fa-solid fa-clipboard-question';
-              const itemCount = tpl.factors ? tpl.factors.length : (tpl.questions ? tpl.questions.length : 8);
-              const estMinutes = Math.max(1, Math.round(itemCount * 0.35));
+                <div class="models-grid" id="survey-models-grid">
+                  ${templates.map((tpl, idx) => {
+                    const isSelected = tpl.name === defaultModelName || idx === 0;
+                    const iconClass = MODEL_ICONS[tpl.id] || 'fa-solid fa-clipboard-question';
+                    const itemCount = tpl.factors ? tpl.factors.length : (tpl.questions ? tpl.questions.length : 8);
+                    const estMinutes = Math.max(1, Math.round(itemCount * 0.35));
 
-              return `
-                <div class="model-card ${isSelected ? 'active' : ''}" data-action="select-model-card" data-model="${attr(tpl.name)}" tabindex="0" role="button" aria-pressed="${isSelected}">
-                  <input type="radio" name="model" value="${attr(tpl.name)}" ${isSelected ? 'checked' : ''} class="sr-only model-radio-input" />
-                  <div>
-                    <div class="model-card-header">
-                      <div class="model-card-icon">
-                        <i class="${iconClass}" aria-hidden="true"></i>
+                    return `
+                      <div class="model-card ${isSelected ? 'active' : ''}" data-action="select-model-card" data-model="${attr(tpl.name)}" tabindex="0" role="button" aria-pressed="${isSelected}">
+                        <input type="radio" name="model" value="${attr(tpl.name)}" ${isSelected ? 'checked' : ''} class="sr-only model-radio-input" />
+                        <div>
+                          <div class="model-card-header">
+                            <div class="model-card-icon">
+                              <i class="${iconClass}" aria-hidden="true"></i>
+                            </div>
+                            <div class="model-card-info">
+                              <div class="model-card-category">${esc(tpl.category || 'Catálogo')}</div>
+                              <h3 class="model-card-title">${esc(tpl.name)}</h3>
+                            </div>
+                          </div>
+
+                          <div class="model-card-badges">
+                            <span class="badge badge-neutral">
+                              <i class="fa-solid fa-list-check" aria-hidden="true"></i> ${itemCount} afirmações
+                            </span>
+                            <span class="badge badge-subtle">
+                              <i class="fa-regular fa-clock" aria-hidden="true"></i> ~${estMinutes} min
+                            </span>
+                          </div>
+
+                          <p class="model-card-desc">${esc(tpl.description || '')}</p>
+                        </div>
+
+                        <div class="model-card-actions">
+                          <button type="button" class="btn btn-ghost btn-sm" data-action="preview-model-questions" data-model="${attr(tpl.name)}">
+                            <i class="fa-regular fa-eye" aria-hidden="true"></i> Ver Afirmações
+                          </button>
+                          
+                          <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm model-select-btn" data-action="select-model-card" data-model="${attr(tpl.name)}">
+                            ${isSelected ? '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Selecionado' : 'Selecionar'}
+                          </button>
+                        </div>
                       </div>
-                      <div class="model-card-info">
-                        <div class="model-card-category">${esc(tpl.category || 'Catálogo')}</div>
-                        <h3 class="model-card-title">${esc(tpl.name)}</h3>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+            </div>
+
+            <!-- SLIDE / ETAPA 2: PERIODICIDADE & CICLO -->
+            <div class="wizard-slide" data-slide-step="2">
+              <section class="wizard-section">
+                <div class="wizard-section-header">
+                  <h2 class="wizard-section-title">
+                    <span class="wizard-step-badge">2</span>
+                    Periodicidade & Ciclo de Escuta
+                  </h2>
+                  <p class="wizard-section-subtitle">
+                    Defina a cadência temporal do acompanhamento e a janela de coleta das respostas.
+                  </p>
+                </div>
+
+                <div class="mb-4">
+                  <label class="form-label font-semibold mb-2">Cadência do Ciclo:</label>
+                  <div class="periodicity-pills" id="periodicity-selector">
+                    <button type="button" class="periodicity-btn active" data-action="set-periodicity" data-period="mensal" data-days="30">
+                      <i class="fa-regular fa-calendar-check" aria-hidden="true"></i> Mensal (30 dias)
+                    </button>
+                    <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="trimestral" data-days="90">
+                      <i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Trimestral (90 dias)
+                    </button>
+                    <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="semestral" data-days="180">
+                      <i class="fa-solid fa-business-time" aria-hidden="true"></i> Semestral (6 meses)
+                    </button>
+                    <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="anual" data-days="365">
+                      <i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Anual (12 meses)
+                    </button>
+                    <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="personalizado" data-days="0">
+                      <i class="fa-solid fa-sliders" aria-hidden="true"></i> Personalizado / Evento
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                  <div class="form-group">
+                    <label for="survey-cycle-input" class="form-label">Identificador do Ciclo <span class="form-required">*</span></label>
+                    <input type="text" id="survey-cycle-input" name="cycle" class="input" value="${attr(defaultCycle)}" required />
+                    <span class="form-help">Nome de referência para relatórios comparativos.</span>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="survey-start-input" class="form-label">Data de Início da Coleta</label>
+                    <input type="datetime-local" id="survey-start-input" name="startsAt" class="input" value="${attr(startStr)}" />
+                    <span class="form-help">Início imediato ou agendamento futuro.</span>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="survey-end-input" class="form-label">Encerramento da Coleta <span class="form-required">*</span></label>
+                    <input type="datetime-local" id="survey-end-input" name="endsAt" class="input" value="${attr(endStr)}" required />
+                    <span class="form-help">Calculado pela cadência (ajustável).</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- SLIDE / ETAPA 3: PÚBLICO-ALVO & CONFIDENCIALIDADE -->
+            <div class="wizard-slide" data-slide-step="3">
+              <section class="wizard-section">
+                <div class="wizard-section-header">
+                  <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h2 class="wizard-section-title">
+                        <span class="wizard-step-badge">3</span>
+                        Público Participante & Equipes
+                      </h2>
+                      <p class="wizard-section-subtitle">
+                        Selecione os grupos e verifique a conformidade com a regra de anonimato psicossocial (N ≥ 5).
+                      </p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button type="button" class="btn btn-secondary btn-sm" data-action="select-all-wizard-groups">
+                        Selecionar Todos
+                      </button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-action="select-general-wizard-group">
+                        Apenas Geral
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="group-picker-grid" id="wizard-groups-container">
+                  ${groups.length === 0 ? `
+                    <div class="empty-state p-4">
+                      <p class="empty-text">Nenhum grupo cadastrado. O grupo Geral será utilizado automaticamente.</p>
+                    </div>
+                  ` : groups.map(g => {
+                    const isChecked = initialSelectedGroupIds.includes(g.id);
+                    const count = g.memberIds ? g.memberIds.length : 0;
+
+                    return `
+                      <label class="group-picker-card ${isChecked ? 'selected' : ''}" data-group-card-id="${attr(g.id)}">
+                        <input type="checkbox" name="groupIds" value="${attr(g.id)}" class="group-picker-checkbox" ${isChecked ? 'checked' : ''} data-member-count="${count}" data-action="toggle-wizard-group" />
+                        <div class="group-picker-info">
+                          <div class="group-picker-name">${esc(g.name)}</div>
+                          <div class="group-picker-count"><span class="num">${count}</span> pessoas vinculadas</div>
+                        </div>
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
+
+                <div id="wizard-privacy-note">
+                  ${initialMembersCount >= 5 ? `
+                    <div class="privacy-note privacy-success">
+                      <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                      <div>
+                        <strong>Quórum Protegido:</strong> <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores nos grupos selecionados. Atende plenamente à diretriz de anonimato psicossocial (mínimo de 5 respostas para emissão de relatório).
                       </div>
                     </div>
-
-                    <div class="model-card-badges">
-                      <span class="badge badge-neutral">
-                        <i class="fa-solid fa-list-check" aria-hidden="true"></i> ${itemCount} afirmações
-                      </span>
-                      <span class="badge badge-subtle">
-                        <i class="fa-regular fa-clock" aria-hidden="true"></i> ~${estMinutes} min
-                      </span>
+                  ` : `
+                    <div class="privacy-note privacy-warning">
+                      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                      <div>
+                        <strong>Atenção ao Quórum:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores selecionados. Para proteger o anonimato dos respondentes, a plataforma só consolida resultados com ao menos 5 participantes respondentes.
+                      </div>
                     </div>
-
-                    <p class="model-card-desc">${esc(tpl.description || '')}</p>
-                  </div>
-
-                  <div class="model-card-actions">
-                    <button type="button" class="btn btn-ghost btn-sm" data-action="preview-model-questions" data-model="${attr(tpl.name)}">
-                      <i class="fa-regular fa-eye" aria-hidden="true"></i> Ver Afirmações
-                    </button>
-                    
-                    <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm model-select-btn" data-action="select-model-card" data-model="${attr(tpl.name)}">
-                      ${isSelected ? '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Selecionado' : 'Selecionar'}
-                    </button>
-                  </div>
+                  `}
                 </div>
-              `;
-            }).join('')}
-          </div>
-        </section>
-
-        <!-- ETAPA 2: PERIODICIDADE & CICLO -->
-        <section class="wizard-section">
-          <div class="wizard-section-header">
-            <h2 class="wizard-section-title">
-              <span class="wizard-step-badge">2</span>
-              Periodicidade & Ciclo de Escuta
-            </h2>
-            <p class="wizard-section-subtitle">
-              Defina a cadência temporal do acompanhamento e a janela de coleta das respostas.
-            </p>
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label font-semibold mb-2">Cadência do Ciclo:</label>
-            <div class="periodicity-pills" id="periodicity-selector">
-              <button type="button" class="periodicity-btn active" data-action="set-periodicity" data-period="mensal" data-days="30">
-                <i class="fa-regular fa-calendar-check" aria-hidden="true"></i> Mensal (30 dias)
-              </button>
-              <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="trimestral" data-days="90">
-                <i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Trimestral (90 dias)
-              </button>
-              <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="semestral" data-days="180">
-                <i class="fa-solid fa-business-time" aria-hidden="true"></i> Semestral (6 meses)
-              </button>
-              <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="anual" data-days="365">
-                <i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Anual (12 meses)
-              </button>
-              <button type="button" class="periodicity-btn" data-action="set-periodicity" data-period="personalizado" data-days="0">
-                <i class="fa-solid fa-sliders" aria-hidden="true"></i> Personalizado / Evento
-              </button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 gap-4">
-            <div class="form-group">
-              <label for="survey-cycle-input" class="form-label">Identificador do Ciclo <span class="form-required">*</span></label>
-              <input type="text" id="survey-cycle-input" name="cycle" class="input" value="${attr(defaultCycle)}" required />
-              <span class="form-help">Nome de referência para relatórios comparativos.</span>
+              </section>
             </div>
 
-            <div class="form-group">
-              <label for="survey-start-input" class="form-label">Data de Início da Coleta</label>
-              <input type="datetime-local" id="survey-start-input" name="startsAt" class="input" value="${attr(startStr)}" />
-              <span class="form-help">Início imediato ou agendamento futuro.</span>
-            </div>
-
-            <div class="form-group">
-              <label for="survey-end-input" class="form-label">Encerramento da Coleta <span class="form-required">*</span></label>
-              <input type="datetime-local" id="survey-end-input" name="endsAt" class="input" value="${attr(endStr)}" required />
-              <span class="form-help">Calculado pela cadência (ajustável).</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- ETAPA 3: PÚBLICO-ALVO & CONFIDENCIALIDADE -->
-        <section class="wizard-section">
-          <div class="wizard-section-header">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="wizard-section-title">
-                  <span class="wizard-step-badge">3</span>
-                  Público Participante & Equipes
-                </h2>
-                <p class="wizard-section-subtitle">
-                  Selecione os grupos e verifique a conformidade com a regra de anonimato psicossocial (N ≥ 5).
-                </p>
-              </div>
-              <div class="flex gap-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-action="select-all-wizard-groups">
-                  Selecionar Todos
-                </button>
-                <button type="button" class="btn btn-ghost btn-sm" data-action="select-general-wizard-group">
-                  Apenas Geral
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="group-picker-grid" id="wizard-groups-container">
-            ${groups.length === 0 ? `
-              <div class="empty-state p-4">
-                <p class="empty-text">Nenhum grupo cadastrado. O grupo Geral será utilizado automaticamente.</p>
-              </div>
-            ` : groups.map(g => {
-              const isChecked = initialSelectedGroupIds.includes(g.id);
-              const count = g.memberIds ? g.memberIds.length : 0;
-
-              return `
-                <label class="group-picker-card ${isChecked ? 'selected' : ''}" data-group-card-id="${attr(g.id)}">
-                  <input type="checkbox" name="groupIds" value="${attr(g.id)}" class="group-picker-checkbox" ${isChecked ? 'checked' : ''} data-member-count="${count}" data-action="toggle-wizard-group" />
-                  <div class="group-picker-info">
-                    <div class="group-picker-name">${esc(g.name)}</div>
-                    <div class="group-picker-count"><span class="num">${count}</span> pessoas vinculadas</div>
-                  </div>
-                </label>
-              `;
-            }).join('')}
-          </div>
-
-          <div id="wizard-privacy-note">
-            ${initialMembersCount >= 5 ? `
-              <div class="privacy-note privacy-success">
-                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-                <div>
-                  <strong>Quórum Protegido:</strong> <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores nos grupos selecionados. Atende plenamente à diretriz de anonimato psicossocial (mínimo de 5 respostas para emissão de relatório).
+            <!-- SLIDE / ETAPA 4: TÍTULO & LANÇAMENTO -->
+            <div class="wizard-slide" data-slide-step="4">
+              <section class="wizard-section">
+                <div class="wizard-section-header">
+                  <h2 class="wizard-section-title">
+                    <span class="wizard-step-badge">4</span>
+                    Título & Lançamento do Ciclo
+                  </h2>
+                  <p class="wizard-section-subtitle">
+                    Revise o título que será exibido aos colaboradores no convite de participação.
+                  </p>
                 </div>
-              </div>
-            ` : `
-              <div class="privacy-note privacy-warning">
-                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                <div>
-                  <strong>Atenção ao Quórum:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores selecionados. Para proteger o anonimato dos respondentes, a plataforma só consolida resultados com ao menos 5 participantes respondentes.
+
+                <div class="form-group mb-6">
+                  <label for="survey-title-input" class="form-label">Título da Pesquisa <span class="form-required">*</span></label>
+                  <input type="text" id="survey-title-input" name="title" class="input input-lg" value="${attr(defaultTitle)}" required />
+                  <span class="form-help">Ex: "Diagnóstico Psicossocial - Outubro 2026" ou "Pesquisa de Clima e Condições de Trabalho".</span>
                 </div>
-              </div>
-            `}
+              </section>
+            </div>
           </div>
-        </section>
+        </div>
 
-        <!-- ETAPA 4: TÍTULO & LANÇAMENTO -->
-        <section class="wizard-section">
-          <div class="wizard-section-header">
-            <h2 class="wizard-section-title">
-              <span class="wizard-step-badge">4</span>
-              Título & Lançamento do Ciclo
-            </h2>
-            <p class="wizard-section-subtitle">
-              Revise o título que será exibido aos colaboradores no convite de participação.
-            </p>
-          </div>
-
-          <div class="form-group mb-6">
-            <label for="survey-title-input" class="form-label">Título da Pesquisa <span class="form-required">*</span></label>
-            <input type="text" id="survey-title-input" name="title" class="input input-lg" value="${attr(defaultTitle)}" required />
-            <span class="form-help">Ex: "Diagnóstico Psicossocial - Outubro 2026" ou "Pesquisa de Clima e Condições de Trabalho".</span>
-          </div>
-
-          <div class="flex items-center justify-between pt-4 border-t">
-            <a href="#pesquisas" class="btn btn-secondary">
-              Cancelar
-            </a>
-
-            <div class="flex gap-3">
-              <button type="button" class="btn btn-secondary" data-action="submit-create-draft">
-                <i class="fa-regular fa-bookmark" aria-hidden="true"></i> Salvar Rascunho
+        <!-- FOOTER FIXO COM PROGRESS BAR CENTRALIZADA E BOTÕES VOLTAR / CONTINUAR -->
+        <footer class="wizard-fixed-footer" id="survey-wizard-footer" data-step="1">
+          <div class="wizard-footer-inner">
+            <div class="wizard-footer-left">
+              <button type="button" class="btn btn-secondary" id="btn-wizard-back" data-action="wizard-prev-step">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Cancelar
               </button>
-              <button type="submit" class="btn btn-primary btn-lg" id="btn-launch-survey" data-action="submit-create-survey-btn">
+            </div>
+
+            <div class="wizard-footer-center">
+              <div class="wizard-progress-info">
+                <span class="wizard-step-title" id="wizard-step-title">Etapa 1 de 4: Instrumento & Modelo</span>
+                <span class="wizard-step-pct" id="wizard-step-pct">25%</span>
+              </div>
+              <div class="wizard-progress-track" aria-hidden="true">
+                <div class="wizard-progress-fill" id="wizard-progress-fill"></div>
+              </div>
+            </div>
+
+            <div class="wizard-footer-right">
+              <button type="button" class="btn btn-ghost btn-sm" data-action="submit-create-draft" title="Salvar rascunho sem abrir coleta">
+                <i class="fa-regular fa-bookmark" aria-hidden="true"></i> Rascunho
+              </button>
+              <button type="button" class="btn btn-primary" id="btn-wizard-next" data-action="wizard-next-step">
+                <span>Continuar</span> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="btn btn-primary btn-lg wizard-launch-btn hidden" id="btn-wizard-launch" data-action="submit-create-survey-btn">
                 <i class="fa-solid fa-rocket" aria-hidden="true"></i> Iniciar Ciclo & Abrir Coleta
               </button>
             </div>
           </div>
-        </section>
+        </footer>
       </form>
     </div>
   `;
@@ -307,6 +360,165 @@ export function renderSurveyCreate({ state }) {
     state
   });
 }
+
+const STEP_TITLES = {
+  1: 'Etapa 1 de 4: Instrumento & Modelo',
+  2: 'Etapa 2 de 4: Periodicidade & Ciclo',
+  3: 'Etapa 3 de 4: Público & Quórum',
+  4: 'Etapa 4 de 4: Título & Lançamento'
+};
+
+const STEP_PCTS = {
+  1: '25%',
+  2: '50%',
+  3: '75%',
+  4: '100%'
+};
+
+export function updateWizardValidation() {
+  const track = document.getElementById('survey-wizard-track');
+  const currentStep = parseInt(track?.dataset?.currentStep || '1', 10);
+  const btnNext = document.getElementById('btn-wizard-next');
+  const btnLaunch = document.getElementById('btn-wizard-launch');
+
+  let isValid = false;
+
+  if (currentStep === 1) {
+    const hiddenModel = document.getElementById('selected-model-input')?.value;
+    const checkedModel = document.querySelector('input[name="model"]:checked')?.value;
+    isValid = Boolean(hiddenModel || checkedModel);
+  } else if (currentStep === 2) {
+    const cycle = document.getElementById('survey-cycle-input')?.value?.trim();
+    const endsAt = document.getElementById('survey-end-input')?.value;
+    const endsAtTime = endsAt ? new Date(endsAt).getTime() : 0;
+    isValid = Boolean(cycle && endsAt && !isNaN(endsAtTime) && endsAtTime > Date.now());
+  } else if (currentStep === 3) {
+    const checked = document.querySelectorAll('#wizard-groups-container input[name="groupIds"]:checked');
+    isValid = checked.length > 0;
+  } else if (currentStep === 4) {
+    const title = document.getElementById('survey-title-input')?.value?.trim();
+    isValid = Boolean(title);
+  }
+
+  if (btnNext) {
+    btnNext.disabled = !isValid;
+    btnNext.classList.toggle('disabled', !isValid);
+  }
+  if (btnLaunch) {
+    btnLaunch.disabled = !isValid;
+    btnLaunch.classList.toggle('disabled', !isValid);
+  }
+
+  return isValid;
+}
+
+export function goToWizardStep(step) {
+  const s = Math.max(1, Math.min(4, parseInt(step, 10) || 1));
+  const track = document.getElementById('survey-wizard-track');
+  const footer = document.getElementById('survey-wizard-footer');
+  const stepTitle = document.getElementById('wizard-step-title');
+  const stepPct = document.getElementById('wizard-step-pct');
+  const btnBack = document.getElementById('btn-wizard-back');
+  const btnNext = document.getElementById('btn-wizard-next');
+  const btnLaunch = document.getElementById('btn-wizard-launch');
+
+  if (track) {
+    track.dataset.currentStep = String(s);
+  }
+  if (footer) {
+    footer.dataset.step = String(s);
+  }
+  if (stepTitle) {
+    stepTitle.textContent = STEP_TITLES[s] || `Etapa ${s} de 4`;
+  }
+  if (stepPct) {
+    stepPct.textContent = STEP_PCTS[s] || `${s * 25}%`;
+  }
+
+  // Update slide classes
+  document.querySelectorAll('.wizard-slide').forEach(slide => {
+    const slideStep = parseInt(slide.dataset.slideStep, 10);
+    slide.classList.toggle('active', slideStep === s);
+  });
+
+  // Update stepper buttons
+  document.querySelectorAll('.wizard-stepper-item').forEach(item => {
+    const itemStep = parseInt(item.dataset.step, 10);
+    item.classList.toggle('active', itemStep === s);
+    item.classList.toggle('completed', itemStep < s);
+  });
+
+  // Toggle Next vs Launch button
+  if (btnNext && btnLaunch) {
+    if (s === 4) {
+      btnNext.classList.add('hidden');
+      btnLaunch.classList.remove('hidden');
+    } else {
+      btnNext.classList.remove('hidden');
+      btnLaunch.classList.add('hidden');
+    }
+  }
+
+  // Toggle Back button text
+  if (btnBack) {
+    if (s === 1) {
+      btnBack.innerHTML = '<i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Cancelar';
+    } else {
+      btnBack.innerHTML = '<i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar';
+    }
+  }
+
+  updateWizardValidation();
+
+  // Scroll smoothly to start of wizard container
+  const container = document.querySelector('.survey-wizard-container');
+  if (container) {
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+export function nextWizardStep() {
+  const track = document.getElementById('survey-wizard-track');
+  const currentStep = parseInt(track?.dataset?.currentStep || '1', 10);
+  if (!updateWizardValidation()) {
+    if (currentStep === 1) {
+      showToast('Selecione um modelo psicossocial para prosseguir.', 'warning');
+    } else if (currentStep === 2) {
+      showToast('Preencha o identificador do ciclo e uma data válida futura para prosseguir.', 'warning');
+    } else if (currentStep === 3) {
+      showToast('Selecione ao menos um grupo participante.', 'warning');
+    }
+    return;
+  }
+  if (currentStep < 4) {
+    goToWizardStep(currentStep + 1);
+  }
+}
+
+export function prevWizardStep() {
+  const track = document.getElementById('survey-wizard-track');
+  const currentStep = parseInt(track?.dataset?.currentStep || '1', 10);
+  if (currentStep > 1) {
+    goToWizardStep(currentStep - 1);
+  } else {
+    router.navigate('pesquisas');
+  }
+}
+
+export function mountedSurveyCreate() {
+  goToWizardStep(1);
+
+  // Setup input listeners for dynamic validation
+  const cycleInput = document.getElementById('survey-cycle-input');
+  const endInput = document.getElementById('survey-end-input');
+  const titleInput = document.getElementById('survey-title-input');
+
+  const onInputHandler = () => updateWizardValidation();
+  if (cycleInput) cycleInput.addEventListener('input', onInputHandler);
+  if (endInput) endInput.addEventListener('change', onInputHandler);
+  if (titleInput) titleInput.addEventListener('input', onInputHandler);
+}
+
 
 // ── Model Selection & Preview Logic ──
 
@@ -347,6 +559,7 @@ export function selectModel(modelName) {
     titleInput.value = `${modelName} - ${cycleVal || 'Novo Ciclo'}`;
   }
 
+  updateWizardValidation();
   showToast(`Modelo selecionado: ${modelName}`, 'info');
 }
 
@@ -442,6 +655,8 @@ export function setPeriodicity(period, days) {
       cycleInput.value = `Ciclo Especial - ${m}/${y}`;
     }
   }
+
+  updateWizardValidation();
 }
 
 // ── Groups & Quorum Logic ──
@@ -484,6 +699,8 @@ export function updateWizardQuorum() {
       `;
     }
   }
+
+  updateWizardValidation();
 }
 
 export function selectAllWizardGroups() {

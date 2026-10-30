@@ -53,14 +53,21 @@ import {
   updateWizardQuorum,
   selectAllWizardGroups,
   selectGeneralWizardGroup,
-  submitSurveyCreation
+  submitSurveyCreation,
+  goToWizardStep,
+  nextWizardStep,
+  prevWizardStep,
+  mountedSurveyCreate
 } from './features/surveys/surveyCreateView.js';
 import {
   renderCyclesList,
   renderCycleReport,
   mountedCycleReport,
   openAcceptModal,
-  submitAcceptReport
+  submitAcceptReport,
+  switchReportSlide,
+  prevReportSlide,
+  nextReportSlide
 } from './features/results/resultsView.js';
 import {
   renderActionsList,
@@ -136,7 +143,8 @@ router.register({
       store.loadSurveys()
     ]);
   },
-  render: renderSurveyCreate
+  render: renderSurveyCreate,
+  mounted: mountedSurveyCreate
 });
 
 router.register({
@@ -440,6 +448,18 @@ document.addEventListener('click', async (e) => {
   } else if (action === 'submit-create-survey-btn') {
     e.preventDefault();
     await submitSurveyCreation({ openImmediately: true });
+  } else if (action === 'wizard-goto-step') {
+    goToWizardStep(trigger.dataset.step);
+  } else if (action === 'wizard-next-step') {
+    nextWizardStep();
+  } else if (action === 'wizard-prev-step') {
+    prevWizardStep();
+  } else if (action === 'switch-report-slide') {
+    switchReportSlide(trigger.dataset.slideIndex);
+  } else if (action === 'report-prev-slide') {
+    prevReportSlide();
+  } else if (action === 'report-next-slide') {
+    nextReportSlide();
   } else if (action === 'copy-invite-template') {
     const pre = document.getElementById('invite-template-text');
     if (pre) {
