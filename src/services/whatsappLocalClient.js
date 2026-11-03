@@ -227,7 +227,8 @@ async function initWhatsAppClient() {
       let resolvedPn = null;
       if (cleanJid.endsWith('@lid')) {
         try {
-          resolvedPn = sock.signalRepository?.lidMapping?.getPNForLID?.(cleanJid);
+          const res = await sock.signalRepository?.lidMapping?.getPNForLID?.(cleanJid);
+          if (typeof res === 'string') resolvedPn = res;
         } catch { }
       }
 

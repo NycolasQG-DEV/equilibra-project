@@ -111,7 +111,7 @@ async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = nul
   let result = engine.processMessage(waId, text);
 
   // Se não achou por LID mas temos o número de telefone (PN), tenta pelo PN e associa o LID
-  if (result.state === 'NO_SESSION' && resolvedPn) {
+  if (result.state === 'NO_SESSION' && typeof resolvedPn === 'string' && resolvedPn.length > 0) {
     const pnResult = engine.processMessage(resolvedPn, text);
     if (pnResult.state !== 'NO_SESSION') {
       result = pnResult;

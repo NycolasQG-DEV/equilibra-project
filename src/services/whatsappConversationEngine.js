@@ -85,8 +85,9 @@ function getCandidateKeys(waId) {
 }
 
 function findSession(waId) {
-  if (!waId || typeof waId !== 'string') return { key: waId, session: null };
-  const cleanJid = waId.replace(/:\d+@/, '@');
+  const safeWaId = typeof waId === 'string' ? waId : (waId ? String(waId) : '');
+  if (!safeWaId) return { key: '', session: null };
+  const cleanJid = safeWaId.replace(/:\d+@/, '@');
   const candidates = getCandidateKeys(cleanJid);
 
   for (const k of candidates) {
@@ -270,16 +271,17 @@ function startSession(waId, token, segmentId, instrument, surveyTitle, aliases =
  * }}
  */
 function processMessage(waId, text) {
-  let { key: activeKey, session } = findSession(waId);
+  const safeWaId = typeof waId === 'string' ? waId : (waId ? String(waId) : '');
+  let { key: activeKey, session } = findSession(safeWaId);
 
   // Fallback: se houver exatamente UMA sessão ativa esperando consentimento e a mensagem veio de LID
-  if (!session && waId && waId.includes('@lid')) {
+  if (!session && safeWaId && safeWaId.includes('@lid')) {
     const waitingSessions = Array.from(sessions.entries()).filter(
       ([, s]) => s && s.state === 'WAITING_CONSENT'
     );
     if (waitingSessions.length === 1) {
       const [origKey, onlySession] = waitingSessions[0];
-      sessions.set(waId.replace(/:\d+@/, '@'), onlySession);
+      sessions.set(safeWaId.replace(/:\d+@/, '@'), onlySession);
       session = onlySession;
       activeKey = origKey;
       saveSessions();
@@ -287,8 +289,8 @@ function processMessage(waId, text) {
   }
 
   if (!session) {
-    const isLid = waId.includes('@lid');
-    const cleanPhone = isLid ? '' : waId.replace(/@.+/, '').replace(/\D/g, '');
+    const isLid = safeWaId.includes('@lid');
+    const cleanPhone = isLid ? '' : safeWaId.replace(/@.+/, '').replace(/\D/g, '');
     const phoneDisplay = cleanPhone ? ` (+${cleanPhone})` : '';
     return {
       reply: `Olá! Não encontrei nenhuma pesquisa de clima ativa pendente para o seu número${phoneDisplay}.\n\nSe você foi convidado recentemente, aguarde o disparo da sua empresa ou acerte seu cadastro com o administrador.`,

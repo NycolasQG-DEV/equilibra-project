@@ -42,7 +42,7 @@ router.get('/wa/connect', async (req, res) => {
 
   // Se o cliente não estiver conectado nem conectando, tenta iniciar
   if (client && !client.getStatus().connected && !client.getStatus().connecting) {
-    client.initWhatsAppClient().catch(() => {});
+    client.initWhatsAppClient().catch(() => { });
   }
 
   const status = client ? client.getStatus() : { connected: false };
@@ -99,7 +99,7 @@ router.get('/wa/connect', async (req, res) => {
         margin: 2,
         color: { dark: '#111827', light: '#ffffff' }
       });
-    } catch {}
+    } catch { }
   }
 
   res.send(`<!DOCTYPE html>
