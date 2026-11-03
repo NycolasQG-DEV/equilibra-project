@@ -11,15 +11,83 @@
  *                   ↘ ABANDONED (N, timeout, 3 erros)
  */
 
+const path = require('node:path');
+const fs = require('node:fs');
+
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 const MAX_RETRIES = 3;
 
+const SESSIONS_DIR = process.env.EQUILIBRA_DATA_DIR || path.join(__dirname, '..', '..', 'data');
+const SESSIONS_FILE = path.join(SESSIONS_DIR, '.wa-sessions.json');
+
 /**
- * Map<waId, SessionState> — NUNCA persistido em disco.
+ * Map<waId, SessionState> com persistência tolerante a reinícios.
  * waId é o remoteJid do WhatsApp (ex: "5511999990000@s.whatsapp.net")
- * que identifica APENAS a sessão de conversa, não é gravado com as respostas.
+ * que identifica APENAS a sessão de conversa, nunca gravado com as respostas finais.
  */
 const sessions = new Map();
+
+function saveSessions() {
+  try {
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+    const serialized = Object.fromEntries(sessions.entries());
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(serialized, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[WA-ENGINE] Erro ao persistir sessões:', err.message);
+  }
+}
+
+function loadSessions() {
+  try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const raw = fs.readFileSync(SESSIONS_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      const now = Date.now();
+      for (const [waId, session] of Object.entries(parsed)) {
+        if (session && now - session.createdAt <= SESSION_TTL_MS) {
+          sessions.set(waId, session);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[WA-ENGINE] Erro ao carregar sessões salvas:', err.message);
+  }
+}
+
+// Carrega sessões pré-existentes na inicialização
+loadSessions();
+
+/**
+ * Gera variantes do JID para acomodar a variação do 9º dígito no Brasil.
+ */
+function getCandidateKeys(waId) {
+  if (!waId || typeof waId !== 'string') return [];
+  const keys = [waId];
+  const digits = waId.replace(/@.+/, '').replace(/\D/g, '');
+  const domain = waId.includes('@') ? waId.slice(waId.indexOf('@')) : '@s.whatsapp.net';
+
+  if (digits.startsWith('55')) {
+    const local = digits.slice(2);
+    if (local.length === 11 && local[2] === '9') {
+      const withoutNine = `55${local.slice(0, 2)}${local.slice(3)}`;
+      keys.push(`${withoutNine}${domain}`);
+    } else if (local.length === 10) {
+      const withNine = `55${local.slice(0, 2)}9${local.slice(2)}`;
+      keys.push(`${withNine}${domain}`);
+    }
+  }
+  return keys;
+}
+
+function findSession(waId) {
+  const candidates = getCandidateKeys(waId);
+  for (const k of candidates) {
+    if (sessions.has(k)) {
+      return { key: k, session: sessions.get(k) };
+    }
+  }
+  return { key: waId, session: null };
+}
 
 /**
  * Normaliza a resposta do usuário para um número 1-5 ou null.
@@ -103,6 +171,7 @@ function startSession(waId, token, segmentId, instrument, surveyTitle) {
     createdAt: Date.now()
   };
   sessions.set(waId, session);
+  saveSessions();
 
   return { introMessage: buildIntroMessage(surveyTitle, instrument) };
 }
@@ -122,7 +191,7 @@ function startSession(waId, token, segmentId, instrument, surveyTitle) {
  * }}
  */
 function processMessage(waId, text) {
-  const session = sessions.get(waId);
+  const { key: activeKey, session } = findSession(waId);
 
   if (!session) {
     // Sem sessão ativa — ignora silenciosamente
@@ -131,7 +200,8 @@ function processMessage(waId, text) {
 
   // Verificar expiração
   if (Date.now() - session.createdAt > SESSION_TTL_MS) {
-    sessions.delete(waId);
+    sessions.delete(activeKey);
+    saveSessions();
     return {
       reply: '⏰ Sua sessão expirou. Caso queira participar, solicite um novo convite.',
       done: true,
@@ -150,6 +220,7 @@ function processMessage(waId, text) {
       session.state = 'ASKING';
       session.questionIndex = 0;
       session.retries = 0;
+      saveSessions();
       const [, , question] = session.instrument.factors[0];
       return {
         reply: buildQuestionMessage(0, session.instrument.factors.length, question),
@@ -159,7 +230,8 @@ function processMessage(waId, text) {
     }
 
     if (no) {
-      sessions.delete(waId);
+      sessions.delete(activeKey);
+      saveSessions();
       return {
         reply: 'Tudo bem! Sua participação é voluntária. Se mudar de ideia, solicite um novo convite.',
         done: true,
@@ -181,8 +253,10 @@ function processMessage(waId, text) {
 
     if (answer === null) {
       session.retries++;
+      saveSessions();
       if (session.retries >= MAX_RETRIES) {
-        sessions.delete(waId);
+        sessions.delete(activeKey);
+        saveSessions();
         return {
           reply: '❌ Não consegui registrar sua resposta após várias tentativas. Sessão encerrada. Solicite um novo convite se desejar participar.',
           done: true,
@@ -201,6 +275,7 @@ function processMessage(waId, text) {
     const [key] = session.instrument.factors[session.questionIndex];
     session.answers[key] = answer;
     session.questionIndex++;
+    saveSessions();
 
     const total = session.instrument.factors.length;
 
@@ -215,7 +290,8 @@ function processMessage(waId, text) {
         answers: { ...session.answers },
         segmentId: session.segmentId
       };
-      sessions.delete(waId); // destroi sessão imediatamente
+      sessions.delete(activeKey); // destroi sessão imediatamente
+      saveSessions();
       return result;
     }
 
@@ -233,12 +309,12 @@ function processMessage(waId, text) {
 }
 
 /**
- * Verifica se há uma sessão ativa para o waId.
+ * Verifica se há uma sessão ativa para o waId (com resolução flexível de 9º dígito).
  * @param {string} waId
  * @returns {boolean}
  */
 function hasSession(waId) {
-  return sessions.has(waId);
+  return Boolean(findSession(waId).session);
 }
 
 /**
@@ -254,6 +330,7 @@ function expireSessions() {
       removed++;
     }
   }
+  if (removed > 0) saveSessions();
   return removed;
 }
 

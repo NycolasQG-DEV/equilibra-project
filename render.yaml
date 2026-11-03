@@ -28,4 +28,11 @@ services:
       # Opcional: chave de criptografia de dados (32 bytes em base64)
       # - key: EQUILIBRA_DATA_KEY
       #   sync: false
+      # WhatsApp Gateway REST (Opcional - Evolution API ou Z-API):
+      - key: WA_GATEWAY_URL
+        sync: false
+      - key: WA_GATEWAY_KEY
+        sync: false
+      - key: WA_INSTANCE_NAME
+        value: equilibra
 

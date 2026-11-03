@@ -75,6 +75,9 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
 
       if (result.ok) {
         dispatched++;
+        if (result.targetJid && result.targetJid !== waId && !engine.hasSession(result.targetJid)) {
+          engine.startSession(result.targetJid, link.token, link.segmentId, instrument, surveyTitle);
+        }
       } else {
         // Falha no envio — remove sessão criada para evitar sessão órfã
         engine.processMessage(waId, 'N');

@@ -50,7 +50,10 @@ function toJid(phone) {
 async function submitAnswersDirect({ token, answers, segmentId }) {
   const tokenH = HASH(token);
   const invitations = read('invitations');
-  const invitation = invitations.find((inv) => inv.tokenHash === tokenH && !inv.used);
+  let invitation = invitations.find((inv) => inv.tokenHash === tokenH && !inv.used);
+  if (!invitation) {
+    invitation = invitations.find((inv) => (inv.tokenHash === token || inv.id === token) && !inv.used);
+  }
 
   if (!invitation) {
     throw new Error('Convite inválido ou já utilizado.');
@@ -211,8 +214,18 @@ async function sendDirect(phone, text) {
   }
   const jid = toJid(phone);
   try {
-    const sent = await sock.sendMessage(jid, { text });
-    return { ok: true, messageId: sent.key.id };
+    let targetJid = jid;
+    try {
+      if (typeof sock.onWhatsApp === 'function') {
+        const results = await sock.onWhatsApp(jid);
+        if (results && results.length > 0 && results[0]?.exists && results[0]?.jid) {
+          targetJid = results[0].jid;
+        }
+      }
+    } catch {}
+
+    const sent = await sock.sendMessage(targetJid, { text });
+    return { ok: true, messageId: sent.key.id, targetJid };
   } catch (err) {
     return { ok: false, error: err.message };
   }

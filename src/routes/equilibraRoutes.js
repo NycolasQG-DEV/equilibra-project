@@ -224,7 +224,7 @@ router.post('/auth/register', (req, res) => {
     workspace = read('management').find(row => (row.invitations || []).some(item => item.tokenHash === hash(req.body.invitationToken) && !item.usedAt && item.expiresAt > Date.now() && item.email === address));
     invitation = workspace?.invitations.find(item => item.tokenHash === hash(req.body.invitationToken) && item.email === address && !item.usedAt && item.expiresAt > Date.now());
     if (!invitation) return fail(res, 400, 'Convite inválido ou expirado.');
-    try { require('../services/entitlementService').checkUserLimit(workspace.id); } catch(error) { return fail(res, error.status || 400, error.message); }
+    try { require('../services/entitlementService').checkUserLimit(workspace.id); } catch (error) { return fail(res, error.status || 400, error.message); }
     if (!company && workspace) {
       const org = accounts.find(a => a.id === workspace.id);
       company = org?.company || 'Equilibra';
@@ -356,7 +356,7 @@ router.post('/members/import', protectedRoute, async (req, res) => {
     const existingNames = new Set(groups.filter(row => row.accountId === accountId).map(row => row.name.toLocaleLowerCase('pt-BR')));
     const addedNames = new Set(review.rows.map(row => row.group.toLocaleLowerCase('pt-BR')).filter(name => name !== 'geral' && !existingNames.has(name)));
     limits.limit(accountId, 'groups', addedNames.size);
-  } catch(error) { return fail(res, error.status || 400, error.message); }
+  } catch (error) { return fail(res, error.status || 400, error.message); }
   let groupsCreated = 0;
   for (const row of review.rows) {
     const member = { id: id(), accountId, name: row.name, email: row.email, phone: encryptPhone(row.phone), createdAt: new Date().toISOString() };
@@ -427,16 +427,16 @@ router.delete('/surveys/:id', protectedRoute, (req, res) => {
   if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem excluir pesquisas.');
   const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
-  
+
   // Remove a pesquisa da lista
   write('surveys', surveys.filter((item) => item.id !== survey.id));
-  
+
   // Limpa convites e respostas associados à pesquisa excluída
   const invitations = read('invitations').filter((item) => item.surveyId !== survey.id);
   write('invitations', invitations);
   const responses = read('responses').filter((item) => item.surveyId !== survey.id);
   write('responses', responses);
-  
+
   res.status(204).end();
 });
 
@@ -477,28 +477,40 @@ router.post('/surveys/:id/dispatch-whatsapp', protectedRoute, async (req, res) =
   const { dispatchSurveyViaWhatsApp } = require('../services/whatsappSurveyService');
   const baseUrl = `${req.protocol}://${req.get('host')}`;
 
+  const allInvitations = read('invitations');
   const links = [];
   for (const inv of invitations) {
     const member = members.find((m) => m.id === inv.memberId);
     if (member) {
+      // Gera token seguro e atualiza o hash do convite pendente para permitir a submissão correta
+      const token = crypto.randomBytes(24).toString('hex');
+      const invInStore = allInvitations.find((item) => item.id === inv.id);
+      if (invInStore) {
+        invInStore.tokenHash = hash(token);
+      }
       links.push({
         memberId: member.id,
         name: member.name,
         phone: member.phone || '',
         segmentId: inv.segmentId,
-        token: inv.token || inv.tokenHash.slice(0, 24),
-        link: `${baseUrl}/responder/${inv.token || inv.tokenHash.slice(0, 24)}`
+        token,
+        link: `${baseUrl}/responder/${token}`
       });
     }
   }
 
+  write('invitations', allInvitations);
   survey.collectionChannel = 'whatsapp';
   write('surveys', surveys);
 
   const result = await dispatchSurveyViaWhatsApp(survey, links);
+  const userMessage = (result.dispatched === 0 && result.errors > 0)
+    ? `Falha no envio: WhatsApp não está conectado ou houve erro nos números. Acesse "Conectar Aparelho" para verificar o status.`
+    : `Disparo concluído: ${result.dispatched} mensagens enviadas, ${result.skipped} ignoradas (sem telefone), ${result.errors} erros.`;
+
   res.json({
-    ok: true,
-    message: `Disparo concluído: ${result.dispatched} mensagens enviadas, ${result.skipped} ignoradas (sem telefone), ${result.errors} erros.`,
+    ok: result.dispatched > 0,
+    message: userMessage,
     ...result
   });
 });
