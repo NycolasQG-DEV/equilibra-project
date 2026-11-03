@@ -49,7 +49,13 @@ async function sendText(phone, text) {
     if (localStatus.connected) {
       const res = await client.sendDirect(normalized, text);
       if (res.ok) {
-        return { ok: true, channel: 'direct_terminal_qr', messageId: res.messageId, targetJid: res.targetJid };
+        return {
+          ok: true,
+          channel: 'direct_terminal_qr',
+          messageId: res.messageId,
+          targetJid: res.targetJid,
+          targetLid: res.targetLid
+        };
       }
       console.warn(`[WA-DIRECT] Falha ao enviar diretamente: ${res.error}. Tentando fallback...`);
     }

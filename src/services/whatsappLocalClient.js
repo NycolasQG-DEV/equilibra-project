@@ -145,13 +145,13 @@ async function initWhatsAppClient() {
     auth: state,
     browser: ['Equilibra Pesquisas', 'Chrome', '1.0.0'],
     syncFullHistory: false,
-    // CRÍTICO: sem getMessage, o Baileys descarta silenciosamente mensagens
-    // que o WhatsApp pede para retransmitir (ex: após reconexão).
+    keepAliveIntervalMs: 25000,
+    defaultQueryTimeoutMs: 60000,
+    markOnlineOnConnect: true,
+    // CRÍTICO: getMessage deve retornar a mensagem ou undefined se não encontrada
     getMessage: async (key) => {
       const cached = msgCache.get(key.id);
-      if (cached) return cached;
-      // Fallback: retorna mensagem vazia para que o Baileys não descarte o evento
-      return { conversation: '' };
+      return cached || undefined;
     }
   });
 
@@ -200,10 +200,14 @@ async function initWhatsAppClient() {
       console.log(`   Número: +${phone} (${sock.user?.name || 'Equilibra'})`);
       console.log(`   Pronto para despachar e receber pesquisas.`);
       console.log('━'.repeat(64) + '\n');
+
+      try {
+        await sock.sendPresenceUpdate('available');
+      } catch { }
     }
   });
 
-  // Escuta mensagens recebidas dos colaboradores
+  // Escuta mensagens recebidas dos colaboradores em tempo real
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (!messages || !Array.isArray(messages)) return;
 
@@ -212,42 +216,51 @@ async function initWhatsAppClient() {
     for (const msg of messages) {
       // Ignora mensagens enviadas pelo próprio bot ou de grupos (@g.us) / status
       if (msg.key?.fromMe) continue;
-      let remoteJid = msg.key?.remoteJid || '';
-      if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
+      const rawRemoteJid = msg.key?.remoteJid || '';
+      if (!rawRemoteJid || rawRemoteJid.endsWith('@g.us') || rawRemoteJid === 'status@broadcast') continue;
 
-      // Limpa JID removendo sufixo de device (:1@s.whatsapp.net -> @s.whatsapp.net)
-      remoteJid = remoteJid.replace(/:\d+@/, '@');
-      if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
+      // Limpa JID removendo sufixo de device (:1@s.whatsapp.net -> @s.whatsapp.net ou :1@lid -> @lid)
+      const cleanJid = rawRemoteJid.replace(/:\d+@/, '@');
+      if (!cleanJid.endsWith('@s.whatsapp.net') && !cleanJid.endsWith('@lid')) continue;
+
+      // Se for @lid, tenta obter o número de telefone (PN) correspondente do repositório Baileys
+      let resolvedPn = null;
+      if (cleanJid.endsWith('@lid')) {
+        try {
+          resolvedPn = sock.signalRepository?.lidMapping?.getPNForLID?.(cleanJid);
+        } catch { }
+      }
 
       // Log de diagnóstico — mostra estrutura da mensagem para depuração
       const msgType = msg.message ? Object.keys(msg.message)[0] : 'null';
-      console.log(`📩 [WhatsApp] Mensagem de ${remoteJid} | tipo: ${msgType} | fromMe: ${msg.key?.fromMe}`);
+      console.log(`📩 [WhatsApp] Mensagem de ${cleanJid} (PN: ${resolvedPn || 'n/a'}) | tipo: ${msgType}`);
 
       const text = extractMessageText(msg.message);
       if (!text) {
-        console.log(`⚠️ [WhatsApp] Texto vazio para mensagem tipo "${msgType}" de ${remoteJid} — ignorando.`);
+        console.log(`⚠️ [WhatsApp] Texto vazio para mensagem tipo "${msgType}" de ${cleanJid} — ignorando.`);
         continue;
       }
 
-      console.log(`\n💬 [WhatsApp Recebido] De: ${remoteJid} | Mensagem: "${text}"`);
+      console.log(`\n💬 [WhatsApp Recebido] De: ${cleanJid} | Mensagem: "${text}"`);
 
       try {
         const { reply, submitted } = await handleIncomingMessage(
-          remoteJid,
+          cleanJid,
           text,
-          submitAnswersDirect
+          submitAnswersDirect,
+          resolvedPn
         );
 
         if (reply) {
-          console.log(`🤖 [WhatsApp Resposta] Enviando para ${remoteJid}: "${reply.slice(0, 50)}..."`);
-          await sock.sendMessage(remoteJid, { text: reply });
-          console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${remoteJid}`);
+          console.log(`🤖 [WhatsApp Resposta] Enviando para ${rawRemoteJid}: "${reply.slice(0, 50)}..."`);
+          await sock.sendMessage(rawRemoteJid, { text: reply });
+          console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${rawRemoteJid}`);
         } else {
-          console.log(`ℹ️ [WhatsApp] Nenhuma resposta gerada para ${remoteJid}.`);
+          console.log(`ℹ️ [WhatsApp] Nenhuma resposta gerada para ${cleanJid}.`);
         }
 
         if (submitted) {
-          console.log(`🎉 [WhatsApp] Resposta coletada e armazenada de forma 100% anônima para ${remoteJid}.`);
+          console.log(`🎉 [WhatsApp] Resposta coletada e armazenada de forma 100% anônima para ${cleanJid}.`);
         }
       } catch (err) {
         console.error('❌ [WhatsApp] Erro ao processar mensagem do colaborador:', err.message);
@@ -268,11 +281,13 @@ async function sendDirect(phone, text) {
   const jid = toJid(phone);
   try {
     let targetJid = jid;
+    let targetLid = null;
     try {
       if (typeof sock.onWhatsApp === 'function') {
         const results = await sock.onWhatsApp(jid);
-        if (results && results.length > 0 && results[0]?.exists && results[0]?.jid) {
-          targetJid = results[0].jid;
+        if (results && results.length > 0 && results[0]?.exists) {
+          if (results[0].jid) targetJid = results[0].jid;
+          if (results[0].lid) targetLid = results[0].lid;
         }
       }
     } catch { }
@@ -287,7 +302,11 @@ async function sendDirect(phone, text) {
         msgCache.delete(firstKey);
       }
     }
-    return { ok: true, messageId: sent.key.id, targetJid };
+    return { ok: true, messageId: sent.key.id, targetJid, targetLid };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
   } catch (err) {
     return { ok: false, error: err.message };
   }

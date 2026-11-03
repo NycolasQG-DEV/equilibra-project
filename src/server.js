@@ -72,6 +72,18 @@ if (require.main === module) {
         console.error('[WhatsApp] Cliente local indisponível:', err.message);
       }
     }
+
+    // Keep-alive para Render: evita que a instância hiberne e desconecte o WebSocket do WhatsApp
+    const renderExternalUrl = process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://equilibra-app.onrender.com' : null);
+    if (renderExternalUrl) {
+      const pingInterval = 8 * 60 * 1000;
+      setInterval(async () => {
+        try {
+          await fetch(renderExternalUrl + '/health', { signal: AbortSignal.timeout(10000) });
+        } catch { }
+      }, pingInterval).unref();
+      console.log('[KeepAlive] Ativo para manter o bot WhatsApp escutando em tempo real: ' + renderExternalUrl);
+    }
   });
 }
 module.exports = app;

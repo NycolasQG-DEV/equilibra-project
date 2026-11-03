@@ -75,8 +75,11 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
 
       if (result.ok) {
         dispatched++;
-        if (result.targetJid && result.targetJid !== waId && !engine.hasSession(result.targetJid)) {
-          engine.startSession(result.targetJid, link.token, link.segmentId, instrument, surveyTitle);
+        if (result.targetJid && result.targetJid !== waId) {
+          engine.addSessionAlias(waId, result.targetJid);
+        }
+        if (result.targetLid) {
+          engine.addSessionAlias(waId, result.targetLid);
         }
       } else {
         // Falha no envio — remove sessão criada para evitar sessão órfã
@@ -101,10 +104,20 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
  * @param {string} waId  - remoteJid do WhatsApp
  * @param {string} text  - texto da mensagem recebida
  * @param {Function} submitAnswers - função para submeter respostas (injetada para testabilidade)
+ * @param {string} [resolvedPn] - número de telefone real caso waId seja um @lid
  * @returns {Promise<{ reply: string | null, submitted: boolean }>}
  */
-async function handleIncomingMessage(waId, text, submitAnswers) {
-  const result = engine.processMessage(waId, text);
+async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = null) {
+  let result = engine.processMessage(waId, text);
+
+  // Se não achou por LID mas temos o número de telefone (PN), tenta pelo PN e associa o LID
+  if (result.state === 'NO_SESSION' && resolvedPn) {
+    const pnResult = engine.processMessage(resolvedPn, text);
+    if (pnResult.state !== 'NO_SESSION') {
+      result = pnResult;
+      engine.addSessionAlias(resolvedPn, waId);
+    }
+  }
 
   let submitted = false;
 

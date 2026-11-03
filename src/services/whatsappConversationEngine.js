@@ -195,6 +195,28 @@ function buildQuestionMessage(index, total, question) {
   );
 }
 
+function destroySession(sessionToDestroy) {
+  if (!sessionToDestroy) return;
+  let deleted = false;
+  for (const [k, s] of sessions.entries()) {
+    if (s === sessionToDestroy || (sessionToDestroy.token && s.token === sessionToDestroy.token)) {
+      sessions.delete(k);
+      deleted = true;
+    }
+  }
+  if (deleted) saveSessions();
+}
+
+function addSessionAlias(primaryWaId, aliasJid) {
+  if (!aliasJid || typeof aliasJid !== 'string') return;
+  const cleanAlias = aliasJid.replace(/:\d+@/, '@');
+  const { session } = findSession(primaryWaId);
+  if (session && !sessions.has(cleanAlias)) {
+    sessions.set(cleanAlias, session);
+    saveSessions();
+  }
+}
+
 /**
  * Inicia uma sessão de conversa para um membro.
  * @param {string} waId       - remoteJid do WhatsApp (identificador temporário)
@@ -202,9 +224,10 @@ function buildQuestionMessage(index, total, question) {
  * @param {string} segmentId  - segmento do membro (para relatório agregado)
  * @param {object} instrument - instrumento da pesquisa com .factors
  * @param {string} surveyTitle
+ * @param {string[]} [aliases] - JIDs alternativos (ex: targetJid, LID)
  * @returns {{ introMessage: string }}
  */
-function startSession(waId, token, segmentId, instrument, surveyTitle) {
+function startSession(waId, token, segmentId, instrument, surveyTitle, aliases = []) {
   const session = {
     token,
     segmentId,
@@ -217,6 +240,16 @@ function startSession(waId, token, segmentId, instrument, surveyTitle) {
     createdAt: Date.now()
   };
   sessions.set(waId, session);
+
+  if (Array.isArray(aliases)) {
+    for (const a of aliases) {
+      if (a && typeof a === 'string') {
+        const clean = a.replace(/:\d+@/, '@');
+        sessions.set(clean, session);
+      }
+    }
+  }
+
   saveSessions();
 
   return { introMessage: buildIntroMessage(surveyTitle, instrument) };
@@ -237,12 +270,28 @@ function startSession(waId, token, segmentId, instrument, surveyTitle) {
  * }}
  */
 function processMessage(waId, text) {
-  const { key: activeKey, session } = findSession(waId);
+  let { key: activeKey, session } = findSession(waId);
+
+  // Fallback: se houver exatamente UMA sessão ativa esperando consentimento e a mensagem veio de LID
+  if (!session && waId && waId.includes('@lid')) {
+    const waitingSessions = Array.from(sessions.entries()).filter(
+      ([, s]) => s && s.state === 'WAITING_CONSENT'
+    );
+    if (waitingSessions.length === 1) {
+      const [origKey, onlySession] = waitingSessions[0];
+      sessions.set(waId.replace(/:\d+@/, '@'), onlySession);
+      session = onlySession;
+      activeKey = origKey;
+      saveSessions();
+    }
+  }
 
   if (!session) {
-    const cleanPhone = waId.replace(/@.+/, '').replace(/\D/g, '');
+    const isLid = waId.includes('@lid');
+    const cleanPhone = isLid ? '' : waId.replace(/@.+/, '').replace(/\D/g, '');
+    const phoneDisplay = cleanPhone ? ` (+${cleanPhone})` : '';
     return {
-      reply: `Olá! Não encontrei nenhuma pesquisa de clima ativa pendente para o seu número (+${cleanPhone}).\n\nSe você foi convidado recentemente, aguarde o disparo da sua empresa ou acerte seu cadastro com o administrador.`,
+      reply: `Olá! Não encontrei nenhuma pesquisa de clima ativa pendente para o seu número${phoneDisplay}.\n\nSe você foi convidado recentemente, aguarde o disparo da sua empresa ou acerte seu cadastro com o administrador.`,
       done: false,
       state: 'NO_SESSION'
     };
@@ -250,8 +299,7 @@ function processMessage(waId, text) {
 
   // Verificar expiração
   if (Date.now() - session.createdAt > SESSION_TTL_MS) {
-    sessions.delete(activeKey);
-    saveSessions();
+    destroySession(session);
     return {
       reply: '⏰ Sua sessão expirou. Caso queira participar, solicite um novo convite.',
       done: true,
@@ -287,8 +335,7 @@ function processMessage(waId, text) {
     }
 
     if (no) {
-      sessions.delete(activeKey);
-      saveSessions();
+      destroySession(session);
       return {
         reply: 'Tudo bem! Sua participação é voluntária. Se mudar de ideia, solicite um novo convite.',
         done: true,
@@ -312,8 +359,7 @@ function processMessage(waId, text) {
       session.retries++;
       saveSessions();
       if (session.retries >= MAX_RETRIES) {
-        sessions.delete(activeKey);
-        saveSessions();
+        destroySession(session);
         return {
           reply: '❌ Não consegui registrar sua resposta após várias tentativas. Sessão encerrada. Solicite um novo convite se desejar participar.',
           done: true,
@@ -347,8 +393,7 @@ function processMessage(waId, text) {
         answers: { ...session.answers },
         segmentId: session.segmentId
       };
-      sessions.delete(activeKey); // destroi sessão imediatamente
-      saveSessions();
+      destroySession(session); // destroi sessão imediatamente em todas as chaves
       return result;
     }
 
@@ -402,6 +447,7 @@ function sessionStats() {
 
 module.exports = {
   startSession,
+  addSessionAlias,
   processMessage,
   hasSession,
   expireSessions,
