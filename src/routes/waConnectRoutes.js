@@ -12,13 +12,40 @@ const QRCode = require('qrcode');
 const router = express.Router();
 
 // Importa o cliente local (Baileys) — armazena o último QR recebido
-let localClient = null;
-try {
-  localClient = require('../services/whatsappLocalClient');
-} catch {}
+function getLocalClient() {
+  try {
+    return require('../services/whatsappLocalClient');
+  } catch (err) {
+    console.error('[WA-CONNECT] Falha ao carregar whatsappLocalClient:', err.message);
+    return null;
+  }
+}
+
+// Rota para resetar credenciais e forçar emissão de um novo QR Code
+router.get('/wa/reset', async (req, res) => {
+  const client = getLocalClient();
+  if (client && client.resetAuth) {
+    await client.resetAuth();
+  }
+  return res.redirect('/wa/connect');
+});
 
 router.get('/wa/connect', async (req, res) => {
-  const status = localClient ? localClient.getStatus() : { connected: false };
+  const client = getLocalClient();
+
+  if (req.query.reset === '1') {
+    if (client && client.resetAuth) {
+      await client.resetAuth();
+    }
+    return res.redirect('/wa/connect');
+  }
+
+  // Se o cliente não estiver conectado nem conectando, tenta iniciar
+  if (client && !client.getStatus().connected && !client.getStatus().connecting) {
+    client.initWhatsAppClient().catch(() => {});
+  }
+
+  const status = client ? client.getStatus() : { connected: false };
 
   if (status.connected) {
     const phone = status.user?.id ? status.user.id.split(':')[0] : '';
@@ -40,6 +67,9 @@ router.get('/wa/connect', async (req, res) => {
     .phone { font-size: 20px; font-weight: bold; color: #111; margin-top: 12px; }
     .badge { display: inline-block; background: #dcfce7; color: #15803d; padding: 6px 16px;
              border-radius: 99px; font-size: 13px; font-weight: 600; margin-top: 16px; }
+    .btn-reset { display: inline-block; margin-top: 20px; padding: 8px 16px; background: #f3f4f6;
+                 color: #4b5563; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 500; }
+    .btn-reset:hover { background: #e5e7eb; color: #111; }
   </style>
 </head>
 <body>
@@ -49,6 +79,9 @@ router.get('/wa/connect', async (req, res) => {
     <p>O Equilibra está pronto para enviar e receber pesquisas.</p>
     ${phone ? `<div class="phone">+${phone}</div>` : ''}
     <div class="badge">Sessão ativa</div>
+    <div>
+      <a href="/wa/reset" class="btn-reset" onclick="return confirm('Deseja realmente desconectar e trocar de aparelho?')">Desconectar / Trocar Aparelho</a>
+    </div>
     <p style="margin-top:24px;font-size:13px;color:#9ca3af;">Esta página atualiza automaticamente a cada 10 segundos.</p>
   </div>
 </body>
@@ -74,7 +107,7 @@ router.get('/wa/connect', async (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="8">
+  <meta http-equiv="refresh" content="6">
   <title>Conectar WhatsApp — Equilibra</title>
   <style>
     body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center;
@@ -85,14 +118,18 @@ router.get('/wa/connect', async (req, res) => {
     h1 { font-size: 20px; color: #111; margin: 0 0 6px; }
     p { color: #6b7280; font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
     .qr-box { border: 2px dashed #e5e7eb; border-radius: 12px; padding: 20px;
-              display: inline-block; margin: 0 0 24px; }
+              display: inline-block; margin: 0 0 20px; }
     .qr-box img { display: block; border-radius: 8px; }
-    .waiting { color: #9ca3af; font-size: 36px; margin: 24px 0; animation: pulse 1.5s infinite; }
+    .waiting { color: #9ca3af; font-size: 36px; margin: 20px 0; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
     .steps { text-align: left; background: #f9fafb; border-radius: 10px; padding: 16px 20px; }
     .steps li { font-size: 14px; color: #374151; margin-bottom: 8px; }
     .steps li:last-child { margin-bottom: 0; }
-    .refresh-note { font-size: 12px; color: #d1d5db; margin-top: 20px; }
+    .btn-reset { display: inline-block; margin-top: 14px; padding: 10px 16px; background: #fef2f2;
+                 border: 1px solid #fecaca; color: #dc2626; text-decoration: none; border-radius: 8px;
+                 font-size: 13px; font-weight: 600; }
+    .btn-reset:hover { background: #fee2e2; }
+    .refresh-note { font-size: 12px; color: #9ca3af; margin-top: 18px; }
   </style>
 </head>
 <body>
@@ -103,7 +140,8 @@ router.get('/wa/connect', async (req, res) => {
 
     ${qrImageUrl
       ? `<div class="qr-box"><img src="${qrImageUrl}" width="240" height="240" alt="QR Code WhatsApp"></div>`
-      : `<div class="waiting">⏳</div><p style="color:#9ca3af">Gerando QR Code... aguarde alguns segundos.<br>A página atualiza sozinha.</p>`
+      : `<div class="waiting">⏳</div><p style="color:#6b7280;font-size:14px;">Gerando novo QR Code... aguarde alguns segundos.<br>A página atualiza sozinha.</p>
+         <div><a href="/wa/reset" class="btn-reset">🔄 Forçar Novo QR Code</a></div>`
     }
 
     <ul class="steps">
@@ -113,11 +151,10 @@ router.get('/wa/connect', async (req, res) => {
       <li>📷 Aponte a câmera para o QR Code acima</li>
     </ul>
 
-    <p class="refresh-note">Página atualiza automaticamente a cada 8 segundos · QR Code expira em ~60s</p>
+    <p class="refresh-note">Página atualiza automaticamente a cada 6 segundos · QR Code expira em ~60s</p>
   </div>
 </body>
 </html>`);
 });
 
 module.exports = router;
-

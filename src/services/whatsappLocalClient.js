@@ -307,9 +307,32 @@ async function sendDirect(phone, text) {
     return { ok: false, error: err.message };
   }
 }
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+
+/**
+ * Reseta as credenciais e reinicia o socket para forçar geração de novo QR Code
+ */
+async function resetAuth() {
+  status.connected = false;
+  status.connecting = false;
+  status.lastQr = null;
+  status.user = null;
+  try {
+    if (sock) {
+      sock.end();
+      sock = null;
+    }
+  } catch { }
+
+  try {
+    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+    console.log('🗑️ [WhatsApp] Credenciais resetadas. Novo QR Code será gerado.');
+  } catch { }
+
+  setTimeout(() => {
+    initWhatsAppClient().catch((err) => {
+      console.error('[WhatsApp] Falha ao reiniciar após reset:', err.message);
+    });
+  }, 1000);
 }
 
 function getStatus() {
@@ -319,6 +342,7 @@ function getStatus() {
 module.exports = {
   initWhatsAppClient,
   sendDirect,
-  getStatus
+  getStatus,
+  resetAuth
 };
 
