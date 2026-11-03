@@ -283,14 +283,8 @@ function processMessage(waId, text) {
   }
 
   if (!session) {
-    const isLid = safeWaId.includes('@lid');
-    const cleanPhone = isLid ? '' : safeWaId.replace(/@.+/, '').replace(/\D/g, '');
-    const phoneDisplay = cleanPhone ? ` (+${cleanPhone})` : '';
-    return {
-      reply: `Olá! Não identificamos nenhuma pesquisa pendente para este número${phoneDisplay}.\n\nSe você recebeu um convite recente, consulte o RH da sua empresa.`,
-      done: false,
-      state: 'NO_SESSION'
-    };
+    // Número sem pesquisa ativa ou contato já finalizado: silêncio absoluto
+    return { reply: null, done: false, state: 'NO_SESSION' };
   }
 
   // Verificar expiração

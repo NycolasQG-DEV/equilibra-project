@@ -165,11 +165,10 @@ describe('ConversationEngine — máquina de estados', () => {
     assert.strictEqual(engine.hasSession(waId), false);
   });
 
-  it('mensagem sem sessão ativa retorna NO_SESSION com mensagem amigável', () => {
+  it('mensagem sem sessão ativa retorna NO_SESSION com reply null (silêncio total)', () => {
     const res = engine.processMessage('99999@s.whatsapp.net', '3');
     assert.strictEqual(res.state, 'NO_SESSION');
-        assert.ok(typeof res.reply === 'string' && res.reply.length > 0, 'deve retornar mensagem amigavel');
-    assert.ok(res.reply.includes('99999'), 'deve incluir o numero');
+    assert.strictEqual(res.reply, null);
     assert.strictEqual(res.done, false);
   });
 

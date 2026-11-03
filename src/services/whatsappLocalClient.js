@@ -257,7 +257,7 @@ async function initWhatsAppClient() {
           await sock.sendMessage(rawRemoteJid, { text: reply });
           console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${rawRemoteJid}`);
         } else {
-          console.log(`ℹ️ [WhatsApp] Nenhuma resposta gerada para ${cleanJid}.`);
+          console.log(`🔇 [WhatsApp] Nenhuma pesquisa ativa para ${cleanJid} — ignorado silenciosamente.`);
         }
 
         if (submitted) {
