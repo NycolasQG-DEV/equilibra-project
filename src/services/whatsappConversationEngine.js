@@ -58,13 +58,18 @@ function loadSessions() {
 loadSessions();
 
 /**
- * Gera variantes do JID para acomodar a variação do 9º dígito no Brasil.
+ * Gera variantes do JID para acomodar a variação do 9º dígito no Brasil
+ * e remove identificadores de dispositivo (ex: :1@s.whatsapp.net).
  */
 function getCandidateKeys(waId) {
   if (!waId || typeof waId !== 'string') return [];
-  const keys = [waId];
-  const digits = waId.replace(/@.+/, '').replace(/\D/g, '');
-  const domain = waId.includes('@') ? waId.slice(waId.indexOf('@')) : '@s.whatsapp.net';
+  const cleanJid = waId.replace(/:\d+@/, '@');
+  const userPart = cleanJid.split('@')[0];
+  const digits = userPart.replace(/\D/g, '');
+  const domain = cleanJid.includes('@') ? cleanJid.slice(cleanJid.indexOf('@')) : '@s.whatsapp.net';
+
+  const keys = [cleanJid];
+  if (waId !== cleanJid) keys.push(waId);
 
   if (digits.startsWith('55')) {
     const local = digits.slice(2);
@@ -76,17 +81,42 @@ function getCandidateKeys(waId) {
       keys.push(`${withNine}${domain}`);
     }
   }
-  return keys;
+  return Array.from(new Set(keys));
 }
 
 function findSession(waId) {
-  const candidates = getCandidateKeys(waId);
+  if (!waId || typeof waId !== 'string') return { key: waId, session: null };
+  const cleanJid = waId.replace(/:\d+@/, '@');
+  const candidates = getCandidateKeys(cleanJid);
+
   for (const k of candidates) {
     if (sessions.has(k)) {
       return { key: k, session: sessions.get(k) };
     }
   }
-  return { key: waId, session: null };
+
+  // Fallback: busca por dígitos exatos do número
+  const targetDigits = cleanJid.split('@')[0].replace(/\D/g, '');
+  if (targetDigits) {
+    for (const [key, session] of sessions.entries()) {
+      const sessionDigits = key.split('@')[0].replace(/\D/g, '');
+      if (sessionDigits === targetDigits) {
+        return { key, session };
+      }
+      if (targetDigits.startsWith('55') && sessionDigits.startsWith('55')) {
+        const tLocal = targetDigits.slice(2);
+        const sLocal = sessionDigits.slice(2);
+        if (
+          (tLocal.length === 11 && tLocal[2] === '9' && `${tLocal.slice(0, 2)}${tLocal.slice(3)}` === sLocal) ||
+          (sLocal.length === 11 && sLocal[2] === '9' && `${sLocal.slice(0, 2)}${sLocal.slice(3)}` === tLocal)
+        ) {
+          return { key, session };
+        }
+      }
+    }
+  }
+
+  return { key: cleanJid, session: null };
 }
 
 /**
@@ -103,10 +133,26 @@ const WORD_MAP = {
 };
 
 function parseAnswer(text) {
-  const clean = text.trim().toLowerCase().replace(/[.,!?]/g, '');
-  const num = parseInt(clean, 10);
-  if (Number.isInteger(num) && num >= 1 && num <= 5) return num;
-  return WORD_MAP[clean] || null;
+  if (!text || typeof text !== 'string') return null;
+  const clean = text.trim().toLowerCase().replace(/[.,!?*]/g, '');
+
+  // 1. Número direto ou início (ex: "4", "5.", "3 - neutro")
+  const directNum = parseInt(clean, 10);
+  if (Number.isInteger(directNum) && directNum >= 1 && directNum <= 5) return directNum;
+
+  // 2. Mapeamento direto de palavras e emojis
+  if (WORD_MAP[clean]) return WORD_MAP[clean];
+
+  // 3. Procura primeiro dígito 1 a 5 isolado no texto (ex: "nota 4", "opção 3")
+  const match = clean.match(/\b([1-5])\b/);
+  if (match) return parseInt(match[1], 10);
+
+  // 4. Procura palavras isoladas (ex: "acho que cinco")
+  for (const [word, val] of Object.entries(WORD_MAP)) {
+    if (new RegExp(`\\b${word}\\b`).test(clean)) return val;
+  }
+
+  return null;
 }
 
 /**
@@ -194,7 +240,7 @@ function processMessage(waId, text) {
   const { key: activeKey, session } = findSession(waId);
 
   if (!session) {
-    // Sem sessão ativa — ignora silenciosamente
+    // Sem sessão ativa — ignora silenciosamente para não responder spam de terceiros
     return { reply: null, done: false, state: 'NO_SESSION' };
   }
 
@@ -210,11 +256,18 @@ function processMessage(waId, text) {
   }
 
   const normalized = text.trim().toLowerCase();
+  const cleanNormalized = normalized.replace(/[.,!?:;*]/g, '').trim();
 
   // ── ESTADO: WAITING_CONSENT ─────────────────────────────────────────────
   if (session.state === 'WAITING_CONSENT') {
-    const yes = ['s', 'sim', 'yes', 'y', 'ok', 'pode', 'vamos', 'claro', 'quero'].includes(normalized);
-    const no = ['n', 'não', 'nao', 'no', 'sair', 'exit', 'cancel', 'cancelar'].includes(normalized);
+    const yes = [
+      's', 'sim', 'yes', 'y', 'ok', 'pode', 'vamos', 'claro', 'quero',
+      'bora', 'iniciar', 'comecar', 'começar', '1', 'positivo', 'posso', 'topo', 'aceito', 'partiu'
+    ].includes(cleanNormalized) || cleanNormalized.startsWith('sim') || cleanNormalized.startsWith('vamos');
+
+    const no = [
+      'n', 'não', 'nao', 'no', 'sair', 'exit', 'cancel', 'cancelar', 'recusar', 'dispensar', '2'
+    ].includes(cleanNormalized);
 
     if (yes) {
       session.state = 'ASKING';

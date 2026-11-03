@@ -36,6 +36,33 @@ let status = {
 };
 
 /**
+ * Extrai texto da mensagem do Baileys tratando wrappers de mensagem
+ * (ephemeralMessage, viewOnce, quoted message, etc.)
+ */
+function extractMessageText(message) {
+  if (!message) return '';
+  let m = message;
+  while (m && (m.ephemeralMessage || m.viewOnceMessage || m.viewOnceMessageV2 || m.documentWithCaptionMessage)) {
+    m = m.ephemeralMessage?.message ||
+        m.viewOnceMessage?.message ||
+        m.viewOnceMessageV2?.message ||
+        m.documentWithCaptionMessage?.message ||
+        m;
+  }
+
+  return (
+    m?.conversation ||
+    m?.extendedTextMessage?.text ||
+    m?.imageMessage?.caption ||
+    m?.videoMessage?.caption ||
+    m?.buttonsResponseMessage?.selectedButtonId ||
+    m?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+    m?.templateButtonReplyMessage?.selectedId ||
+    ''
+  ).trim();
+}
+
+/**
  * Normaliza número para remoteJid do WhatsApp
  */
 function toJid(phone) {
@@ -166,21 +193,22 @@ async function initWhatsAppClient() {
 
   // Escuta mensagens recebidas dos colaboradores
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
+    if (!messages || !Array.isArray(messages)) return;
 
     for (const msg of messages) {
-      // Ignora mensagens enviadas pelo próprio bot ou de grupos (@g.us)
-      if (msg.key.fromMe) continue;
-      const remoteJid = msg.key.remoteJid || '';
+      // Ignora mensagens enviadas pelo próprio bot ou de grupos (@g.us) / status
+      if (msg.key?.fromMe) continue;
+      let remoteJid = msg.key?.remoteJid || '';
+      if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') continue;
+
+      // Limpa JID removendo sufixo de device (:1@s.whatsapp.net -> @s.whatsapp.net)
+      remoteJid = remoteJid.replace(/:\d+@/, '@');
       if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
 
-      const text = (
-        msg.message?.conversation ||
-        msg.message?.extendedTextMessage?.text ||
-        ''
-      ).trim();
-
+      const text = extractMessageText(msg.message);
       if (!text) continue;
+
+      console.log(`\n💬 [WhatsApp Recebido] De: ${remoteJid} | Mensagem: "${text}"`);
 
       try {
         const { reply, submitted } = await handleIncomingMessage(
@@ -190,14 +218,18 @@ async function initWhatsAppClient() {
         );
 
         if (reply) {
+          console.log(`🤖 [WhatsApp Resposta] Enviando para ${remoteJid}: "${reply.slice(0, 50)}..."`);
           await sock.sendMessage(remoteJid, { text: reply });
+          console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${remoteJid}`);
+        } else {
+          console.log(`ℹ️ [WhatsApp] Nenhuma resposta gerada para ${remoteJid}.`);
         }
 
         if (submitted) {
-          console.log(`[WhatsApp] Resposta coletada e armazenada de forma 100% anônima.`);
+          console.log(`🎉 [WhatsApp] Resposta coletada e armazenada de forma 100% anônima para ${remoteJid}.`);
         }
       } catch (err) {
-        console.error('[WhatsApp] Erro ao processar mensagem do colaborador:', err.message);
+        console.error('❌ [WhatsApp] Erro ao processar mensagem do colaborador:', err.message);
       }
     }
   });
