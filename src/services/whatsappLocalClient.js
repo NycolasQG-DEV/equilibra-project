@@ -35,6 +35,10 @@ let status = {
   lastQr: null
 };
 
+// Cache mínimo de mensagens enviadas — necessário para Baileys processar
+// retransmissões do WhatsApp sem descartar mensagens silenciosamente.
+const msgCache = new Map();
+
 /**
  * Extrai texto da mensagem do Baileys tratando wrappers de mensagem
  * (ephemeralMessage, viewOnce, quoted message, etc.)
@@ -140,7 +144,15 @@ async function initWhatsAppClient() {
     printQRInTerminal: false, // Controlamos a exibição manualmente para layout limpo
     auth: state,
     browser: ['Equilibra Pesquisas', 'Chrome', '1.0.0'],
-    syncFullHistory: false
+    syncFullHistory: false,
+    // CRÍTICO: sem getMessage, o Baileys descarta silenciosamente mensagens
+    // que o WhatsApp pede para retransmitir (ex: após reconexão).
+    getMessage: async (key) => {
+      const cached = msgCache.get(key.id);
+      if (cached) return cached;
+      // Fallback: retorna mensagem vazia para que o Baileys não descarte o evento
+      return { conversation: '' };
+    }
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -195,6 +207,8 @@ async function initWhatsAppClient() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (!messages || !Array.isArray(messages)) return;
 
+    console.log(`📥 [WhatsApp] messages.upsert type="${type}" count=${messages.length}`);
+
     for (const msg of messages) {
       // Ignora mensagens enviadas pelo próprio bot ou de grupos (@g.us) / status
       if (msg.key?.fromMe) continue;
@@ -205,8 +219,15 @@ async function initWhatsAppClient() {
       remoteJid = remoteJid.replace(/:\d+@/, '@');
       if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
 
+      // Log de diagnóstico — mostra estrutura da mensagem para depuração
+      const msgType = msg.message ? Object.keys(msg.message)[0] : 'null';
+      console.log(`📩 [WhatsApp] Mensagem de ${remoteJid} | tipo: ${msgType} | fromMe: ${msg.key?.fromMe}`);
+
       const text = extractMessageText(msg.message);
-      if (!text) continue;
+      if (!text) {
+        console.log(`⚠️ [WhatsApp] Texto vazio para mensagem tipo "${msgType}" de ${remoteJid} — ignorando.`);
+        continue;
+      }
 
       console.log(`\n💬 [WhatsApp Recebido] De: ${remoteJid} | Mensagem: "${text}"`);
 
@@ -257,6 +278,15 @@ async function sendDirect(phone, text) {
     } catch {}
 
     const sent = await sock.sendMessage(targetJid, { text });
+    // Armazena no cache para getMessage() do Baileys
+    if (sent?.key?.id) {
+      msgCache.set(sent.key.id, { conversation: text });
+      // Limita tamanho do cache a 200 mensagens
+      if (msgCache.size > 200) {
+        const firstKey = msgCache.keys().next().value;
+        msgCache.delete(firstKey);
+      }
+    }
     return { ok: true, messageId: sent.key.id, targetJid };
   } catch (err) {
     return { ok: false, error: err.message };
