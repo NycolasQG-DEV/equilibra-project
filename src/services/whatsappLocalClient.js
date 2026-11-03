@@ -48,10 +48,10 @@ function extractMessageText(message) {
   let m = message;
   while (m && (m.ephemeralMessage || m.viewOnceMessage || m.viewOnceMessageV2 || m.documentWithCaptionMessage)) {
     m = m.ephemeralMessage?.message ||
-        m.viewOnceMessage?.message ||
-        m.viewOnceMessageV2?.message ||
-        m.documentWithCaptionMessage?.message ||
-        m;
+      m.viewOnceMessage?.message ||
+      m.viewOnceMessageV2?.message ||
+      m.documentWithCaptionMessage?.message ||
+      m;
   }
 
   return (
@@ -134,7 +134,7 @@ async function initWhatsAppClient() {
   try {
     const v = await fetchLatestBaileysVersion();
     if (v?.version) version = v.version;
-  } catch {}
+  } catch { }
 
   const logger = pino({ level: 'silent' });
 
@@ -183,7 +183,7 @@ async function initWhatsAppClient() {
         console.log('⚠️ [WhatsApp] Sessão encerrada no celular. Limpando credenciais antigas...');
         try {
           fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-        } catch {}
+        } catch { }
         setTimeout(initWhatsAppClient, 2000);
       } else if (shouldReconnect) {
         console.log('🔄 [WhatsApp] Reconectando ao WhatsApp...');
@@ -275,7 +275,7 @@ async function sendDirect(phone, text) {
           targetJid = results[0].jid;
         }
       }
-    } catch {}
+    } catch { }
 
     const sent = await sock.sendMessage(targetJid, { text });
     // Armazena no cache para getMessage() do Baileys
