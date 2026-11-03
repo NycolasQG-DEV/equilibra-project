@@ -240,8 +240,12 @@ function processMessage(waId, text) {
   const { key: activeKey, session } = findSession(waId);
 
   if (!session) {
-    // Sem sessão ativa — ignora silenciosamente para não responder spam de terceiros
-    return { reply: null, done: false, state: 'NO_SESSION' };
+    const cleanPhone = waId.replace(/@.+/, '').replace(/\D/g, '');
+    return {
+      reply: `Olá! Não encontrei nenhuma pesquisa de clima ativa pendente para o seu número (+${cleanPhone}).\n\nSe você foi convidado recentemente, aguarde o disparo da sua empresa ou acerte seu cadastro com o administrador.`,
+      done: false,
+      state: 'NO_SESSION'
+    };
   }
 
   // Verificar expiração
