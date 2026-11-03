@@ -164,14 +164,13 @@ function parseAnswer(text) {
  */
 function buildIntroMessage(surveyTitle, instrument) {
   const n = instrument.factors.length;
+  const timeEst = Math.max(1, Math.ceil(n * 0.5));
   return (
-    `📋 *${surveyTitle}*\n\n` +
-    `Você foi convidado para participar de uma pesquisa de clima organizacional.\n\n` +
-    `🔒 *Suas respostas são anônimas* — nenhum dado pessoal será registrado.\n` +
-    `São *${n} perguntas*, levando cerca de ${Math.ceil(n * 0.5)} minutos.\n\n` +
-    `Responda de *1 a 5*:\n` +
-    `1 = Discordo totalmente  |  5 = Concordo totalmente\n\n` +
-    `Digite *S* para começar ou *N* para sair.`
+    `Olá! Sua empresa está realizando a pesquisa interna:\n` +
+    `*${surveyTitle}*\n\n` +
+    `• Suas respostas são anônimas (nenhum dado pessoal é salvo)\n` +
+    `• Leva cerca de ${timeEst} min (${n} perguntas rápidas)\n\n` +
+    `Podemos começar? Responda *SIM* (ou *NÃO* caso prefira não participar).`
   );
 }
 
@@ -185,14 +184,9 @@ function buildIntroMessage(surveyTitle, instrument) {
 function buildQuestionMessage(index, total, question) {
   const progress = `${index + 1}/${total}`;
   return (
-    `❓ *Pergunta ${progress}*\n\n` +
+    `*Pergunta ${progress}*\n\n` +
     `${question}\n\n` +
-    `_Responda com um número de 1 a 5:_\n` +
-    `1 – Discordo totalmente\n` +
-    `2 – Discordo parcialmente\n` +
-    `3 – Neutro\n` +
-    `4 – Concordo parcialmente\n` +
-    `5 – Concordo totalmente`
+    `_Responda de 1 a 5 (1 = discordo totalmente | 5 = concordo totalmente)_`
   );
 }
 
@@ -293,7 +287,7 @@ function processMessage(waId, text) {
     const cleanPhone = isLid ? '' : safeWaId.replace(/@.+/, '').replace(/\D/g, '');
     const phoneDisplay = cleanPhone ? ` (+${cleanPhone})` : '';
     return {
-      reply: `Olá! Não encontrei nenhuma pesquisa de clima ativa pendente para o seu número${phoneDisplay}.\n\nSe você foi convidado recentemente, aguarde o disparo da sua empresa ou acerte seu cadastro com o administrador.`,
+      reply: `Olá! Não identificamos nenhuma pesquisa pendente para este número${phoneDisplay}.\n\nSe você recebeu um convite recente, consulte o RH da sua empresa.`,
       done: false,
       state: 'NO_SESSION'
     };
@@ -303,7 +297,7 @@ function processMessage(waId, text) {
   if (Date.now() - session.createdAt > SESSION_TTL_MS) {
     destroySession(session);
     return {
-      reply: '⏰ Sua sessão expirou. Caso queira participar, solicite um novo convite.',
+      reply: 'O prazo desta pesquisa já foi encerrado. Agradecemos sua atenção!',
       done: true,
       state: 'EXPIRED'
     };
@@ -339,7 +333,7 @@ function processMessage(waId, text) {
     if (no) {
       destroySession(session);
       return {
-        reply: 'Tudo bem! Sua participação é voluntária. Se mudar de ideia, solicite um novo convite.',
+        reply: 'Entendido. Sua participação foi dispensada e você não receberá novas mensagens desta pesquisa. Obrigado!',
         done: true,
         state: 'ABANDONED'
       };
@@ -347,7 +341,7 @@ function processMessage(waId, text) {
 
     // Não entendeu — pede de novo
     return {
-      reply: 'Por favor, responda *S* para iniciar a pesquisa ou *N* para sair.',
+      reply: 'Para participar, responda *SIM*. Se não desejar responder agora, digite *NÃO*.',
       done: false,
       state: 'WAITING_CONSENT'
     };
@@ -363,13 +357,13 @@ function processMessage(waId, text) {
       if (session.retries >= MAX_RETRIES) {
         destroySession(session);
         return {
-          reply: '❌ Não consegui registrar sua resposta após várias tentativas. Sessão encerrada. Solicite um novo convite se desejar participar.',
+          reply: 'Não conseguimos identificar sua resposta. A sessão foi encerrada para não incomodar. Se desejar responder depois, contate o RH.',
           done: true,
           state: 'ABANDONED'
         };
       }
       return {
-        reply: `⚠️ Resposta inválida. Por favor, envie um número de *1 a 5* (tentativa ${session.retries}/${MAX_RETRIES}).`,
+        reply: 'Por favor, envie apenas um número de *1 a 5* (onde 1 é discordo totalmente e 5 é concordo totalmente).',
         done: false,
         state: 'ASKING'
       };
@@ -388,7 +382,7 @@ function processMessage(waId, text) {
       // Última pergunta respondida — submeter
       session.state = 'SUBMITTING';
       const result = {
-        reply: '✅ *Obrigado!* Sua participação foi registrada de forma anônima.\n\nSeus dados contribuem para melhorar o ambiente de trabalho sem identificar você.',
+        reply: 'Pesquisa concluída! Suas respostas foram registradas com sucesso e com total anonimato.\n\nMuito obrigado pela sua contribuição!',
         done: true,
         state: 'DONE',
         token: session.token,
