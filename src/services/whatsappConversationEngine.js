@@ -13,6 +13,12 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
+const {
+  MAYA_PERSONA,
+  buildPersonaIntro,
+  parseQuickScore,
+  processPersonaTurn
+} = require('./whatsappPersona');
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 const MAX_RETRIES = 3;
@@ -220,9 +226,10 @@ function addSessionAlias(primaryWaId, aliasJid) {
  * @param {object} instrument - instrumento da pesquisa com .factors
  * @param {string} surveyTitle
  * @param {string[]} [aliases] - JIDs alternativos (ex: targetJid, LID)
- * @returns {{ introMessage: string }}
+ * @returns {{ introMessage: string, introBubbles: string[] }}
  */
 function startSession(waId, token, segmentId, instrument, surveyTitle, aliases = []) {
+  const introBubbles = buildPersonaIntro(surveyTitle, instrument);
   const session = {
     token,
     segmentId,
@@ -231,6 +238,7 @@ function startSession(waId, token, segmentId, instrument, surveyTitle, aliases =
     state: 'WAITING_CONSENT',
     questionIndex: 0,
     answers: {},
+    history: [],
     retries: 0,
     createdAt: Date.now()
   };
@@ -247,24 +255,28 @@ function startSession(waId, token, segmentId, instrument, surveyTitle, aliases =
 
   saveSessions();
 
-  return { introMessage: buildIntroMessage(surveyTitle, instrument) };
+  return {
+    introMessage: introBubbles.join('\n\n'),
+    introBubbles
+  };
 }
 
 /**
- * Processa uma mensagem recebida do colaborador.
+ * Processa uma mensagem recebida do colaborador com a Persona Maya (Groq AI).
  *
  * @param {string} waId  - remoteJid (identificador de sessão temporária)
  * @param {string} text  - texto da mensagem
- * @returns {{
+ * @returns {Promise<{
  *   reply: string | null,
+ *   bubbles?: string[],
  *   done: boolean,
  *   state: string,
  *   token?: string,
  *   answers?: object,
  *   segmentId?: string
- * }}
+ * }>}
  */
-function processMessage(waId, text) {
+async function processMessage(waId, text) {
   const safeWaId = typeof waId === 'string' ? waId : (waId ? String(waId) : '');
   let { key: activeKey, session } = findSession(safeWaId);
 
@@ -284,14 +296,16 @@ function processMessage(waId, text) {
 
   if (!session) {
     // Número sem pesquisa ativa ou contato já finalizado: silêncio absoluto
-    return { reply: null, done: false, state: 'NO_SESSION' };
+    return { reply: null, bubbles: [], done: false, state: 'NO_SESSION' };
   }
 
   // Verificar expiração
   if (Date.now() - session.createdAt > SESSION_TTL_MS) {
     destroySession(session);
+    const expireMsg = 'O prazo desta pesquisa já foi encerrado. Agradecemos sua atenção!';
     return {
-      reply: 'O prazo desta pesquisa já foi encerrado. Agradecemos sua atenção!',
+      reply: expireMsg,
+      bubbles: [expireMsg],
       done: true,
       state: 'EXPIRED'
     };
@@ -316,9 +330,16 @@ function processMessage(waId, text) {
       session.questionIndex = 0;
       session.retries = 0;
       saveSessions();
-      const [, , question] = session.instrument.factors[0];
+      const [, label, question] = session.instrument.factors[0];
+      const bubbles = [
+        'Ótimo! Vamos começar nossa escuta rápida. 😊',
+        `Pensando no seu dia a dia (Pergunta 1/${session.instrument.factors.length}) — *${label}*:\n\n${question}\n\n_Numa escala de 1 a 5, que nota você daria?_`
+      ];
+      if (!Array.isArray(session.history)) session.history = [];
+      session.history.push({ role: 'assistant', content: bubbles.join('\n\n') });
       return {
-        reply: buildQuestionMessage(0, session.instrument.factors.length, question),
+        reply: bubbles.join('\n\n'),
+        bubbles,
         done: false,
         state: 'ASKING'
       };
@@ -326,16 +347,20 @@ function processMessage(waId, text) {
 
     if (no) {
       destroySession(session);
+      const exitMsg = 'Entendido. Sua participação foi dispensada e você não receberá novas mensagens desta pesquisa. Obrigado!';
       return {
-        reply: 'Entendido. Sua participação foi dispensada e você não receberá novas mensagens desta pesquisa. Obrigado!',
+        reply: exitMsg,
+        bubbles: [exitMsg],
         done: true,
         state: 'ABANDONED'
       };
     }
 
     // Não entendeu — pede de novo
+    const helpMsg = 'Para participar, responda *SIM*. Se não desejar responder agora, digite *NÃO*.';
     return {
-      reply: 'Para participar, responda *SIM*. Se não desejar responder agora, digite *NÃO*.',
+      reply: helpMsg,
+      bubbles: [helpMsg],
       done: false,
       state: 'WAITING_CONSENT'
     };
@@ -343,32 +368,28 @@ function processMessage(waId, text) {
 
   // ── ESTADO: ASKING ───────────────────────────────────────────────────────
   if (session.state === 'ASKING') {
-    const answer = parseAnswer(text);
+    const turnResult = await processPersonaTurn(session, text);
 
-    if (answer === null) {
+    if (turnResult.extractedScore !== null) {
+      session.retries = 0;
+      const [key] = session.instrument.factors[session.questionIndex];
+      session.answers[key] = turnResult.extractedScore;
+      session.questionIndex++;
+      saveSessions();
+    } else {
       session.retries++;
       saveSessions();
       if (session.retries >= MAX_RETRIES) {
         destroySession(session);
+        const abandonMsg = 'Não conseguimos identificar sua resposta. A sessão foi encerrada para não incomodar. Se desejar responder depois, contate o RH.';
         return {
-          reply: 'Não conseguimos identificar sua resposta. A sessão foi encerrada para não incomodar. Se desejar responder depois, contate o RH.',
+          reply: abandonMsg,
+          bubbles: [abandonMsg],
           done: true,
           state: 'ABANDONED'
         };
       }
-      return {
-        reply: 'Por favor, envie apenas um número de *1 a 5* (onde 1 é discordo totalmente e 5 é concordo totalmente).',
-        done: false,
-        state: 'ASKING'
-      };
     }
-
-    // Resposta válida — registra
-    session.retries = 0;
-    const [key] = session.instrument.factors[session.questionIndex];
-    session.answers[key] = answer;
-    session.questionIndex++;
-    saveSessions();
 
     const total = session.instrument.factors.length;
 
@@ -376,28 +397,28 @@ function processMessage(waId, text) {
       // Última pergunta respondida — submeter
       session.state = 'SUBMITTING';
       const result = {
-        reply: 'Pesquisa concluída! Suas respostas foram registradas com sucesso e com total anonimato.\n\nObrigado! Sua contribuição é muito importante.',
+        reply: turnResult.messages.join('\n\n'),
+        bubbles: turnResult.messages,
         done: true,
         state: 'DONE',
         token: session.token,
         answers: { ...session.answers },
         segmentId: session.segmentId
       };
-      destroySession(session); // destroi sessão imediatamente em todas as chaves
+      destroySession(session);
       return result;
     }
 
-    // Próxima pergunta
-    const [, , nextQuestion] = session.instrument.factors[session.questionIndex];
     return {
-      reply: buildQuestionMessage(session.questionIndex, total, nextQuestion),
+      reply: turnResult.messages.join('\n\n'),
+      bubbles: turnResult.messages,
       done: false,
       state: 'ASKING'
     };
   }
 
   // Estado desconhecido
-  return { reply: null, done: false, state: session.state };
+  return { reply: null, bubbles: [], done: false, state: session.state };
 }
 
 /**

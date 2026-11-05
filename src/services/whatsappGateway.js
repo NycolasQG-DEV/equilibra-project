@@ -39,6 +39,19 @@ function normalizePhone(raw) {
  * @returns {Promise<{ ok: boolean, messageId?: string, dryRun?: boolean, channel?: string }>}
  */
 async function sendText(phone, text) {
+  if (Array.isArray(text)) {
+    let lastResult = { ok: true };
+    for (let i = 0; i < text.length; i++) {
+      const bubble = text[i];
+      if (!bubble) continue;
+      lastResult = await sendText(phone, bubble);
+      if (i < text.length - 1) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    }
+    return lastResult;
+  }
+
   const normalized = normalizePhone(phone);
   if (!normalized) return { ok: false, error: 'phone_invalid' };
 

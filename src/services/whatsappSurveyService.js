@@ -62,7 +62,7 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
         continue;
       }
 
-      const { introMessage } = engine.startSession(
+      const { introMessage, introBubbles } = engine.startSession(
         waId,
         link.token,
         link.segmentId,
@@ -70,8 +70,9 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
         surveyTitle
       );
 
-      // Envia pelo gateway — rawPhone sai de escopo após isso
-      const result = await gateway.sendText(rawPhone, introMessage);
+      // Envia pelo gateway — suporta envio em bolhas encadeadas
+      const payloadToSend = Array.isArray(introBubbles) && introBubbles.length > 0 ? introBubbles : introMessage;
+      const result = await gateway.sendText(rawPhone, payloadToSend);
 
       if (result.ok) {
         dispatched++;
@@ -108,11 +109,11 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
  * @returns {Promise<{ reply: string | null, submitted: boolean }>}
  */
 async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = null) {
-  let result = engine.processMessage(waId, text);
+  let result = await engine.processMessage(waId, text);
 
   // Se não achou por LID mas temos o número de telefone (PN), tenta pelo PN e associa o LID
   if (result.state === 'NO_SESSION' && typeof resolvedPn === 'string' && resolvedPn.length > 0) {
-    const pnResult = engine.processMessage(resolvedPn, text);
+    const pnResult = await engine.processMessage(resolvedPn, text);
     if (pnResult.state !== 'NO_SESSION') {
       result = pnResult;
       engine.addSessionAlias(resolvedPn, waId);
@@ -134,7 +135,8 @@ async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = nul
       console.error('[WA-SUBMIT] Erro ao submeter respostas:', err.message);
       // Resposta de fallback — mesmo com erro, não re-tentamos para preservar anonimato
       return {
-        reply: '✅ Pesquisa finalizada. Obrigado pela participação!',
+        reply: '✅ Pesquisa finalizada. Obrigado! pela participação!',
+        bubbles: ['✅ Pesquisa finalizada. Obrigado! pela participação!'],
         submitted: false
       };
     }
@@ -142,6 +144,7 @@ async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = nul
 
   return {
     reply: result.reply,
+    bubbles: result.bubbles || (Array.isArray(result.reply) ? result.reply : (result.reply ? [result.reply] : [])),
     submitted
   };
 }

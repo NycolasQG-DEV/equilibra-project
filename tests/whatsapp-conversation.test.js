@@ -100,40 +100,40 @@ describe('ConversationEngine — máquina de estados', () => {
     assert.strictEqual(engine.hasSession(waId), true);
   });
 
-  it('estado WAITING_CONSENT: "S" inicia a primeira pergunta', () => {
+  it('estado WAITING_CONSENT: "S" inicia a primeira pergunta', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    const res = engine.processMessage(waId, 'S');
+    const res = await engine.processMessage(waId, 'S');
     assert.strictEqual(res.state, 'ASKING');
     assert.ok(res.reply.includes('Pergunta 1/3'));
     assert.strictEqual(res.done, false);
   });
 
-  it('estado WAITING_CONSENT: "N" abandona e destrói sessão', () => {
+  it('estado WAITING_CONSENT: "N" abandona e destrói sessão', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    const res = engine.processMessage(waId, 'N');
+    const res = await engine.processMessage(waId, 'N');
     assert.strictEqual(res.state, 'ABANDONED');
     assert.strictEqual(res.done, true);
     assert.strictEqual(engine.hasSession(waId), false);
   });
 
-  it('estado WAITING_CONSENT: resposta inválida pede confirmação novamente', () => {
+  it('estado WAITING_CONSENT: resposta inválida pede confirmação novamente', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    const res = engine.processMessage(waId, 'talvez');
+    const res = await engine.processMessage(waId, 'talvez');
     assert.strictEqual(res.state, 'WAITING_CONSENT');
     assert.strictEqual(res.done, false);
   });
 
-  it('fluxo completo: S + 3 respostas válidas → DONE com token e answers', () => {
+  it('fluxo completo: S + 3 respostas válidas → DONE com token e answers', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
 
-    engine.processMessage(waId, 'S');         // consent
-    engine.processMessage(waId, '4');         // fator1
-    engine.processMessage(waId, '3');         // fator2
-    const last = engine.processMessage(waId, '5'); // fator3 — último
+    await engine.processMessage(waId, 'S');         // consent
+    await engine.processMessage(waId, '4');         // fator1
+    await engine.processMessage(waId, '3');         // fator2
+    const last = await engine.processMessage(waId, '5'); // fator3 — último
 
     assert.strictEqual(last.state, 'DONE');
     assert.strictEqual(last.done, true);
@@ -142,48 +142,48 @@ describe('ConversationEngine — máquina de estados', () => {
     assert.strictEqual(last.segmentId, SEGMENT);
   });
 
-  it('sessão é destruída após DONE', () => {
+  it('sessão é destruída após DONE', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    engine.processMessage(waId, 'S');
-    engine.processMessage(waId, '2');
-    engine.processMessage(waId, '2');
-    engine.processMessage(waId, '2');
+    await engine.processMessage(waId, 'S');
+    await engine.processMessage(waId, '2');
+    await engine.processMessage(waId, '2');
+    await engine.processMessage(waId, '2');
     // Após DONE, sessão não deve mais existir
     assert.strictEqual(engine.hasSession(waId), false);
   });
 
-  it('ABANDONED após 3 respostas inválidas consecutivas', () => {
+  it('ABANDONED após 3 respostas inválidas consecutivas', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    engine.processMessage(waId, 'S'); // consent
-    engine.processMessage(waId, 'ruim'); // retry 1
-    engine.processMessage(waId, 'ótimo'); // retry 2
-    const res = engine.processMessage(waId, 'excelente'); // retry 3 → abandon
+    await engine.processMessage(waId, 'S'); // consent
+    await engine.processMessage(waId, 'ruim'); // retry 1
+    await engine.processMessage(waId, 'ótimo'); // retry 2
+    const res = await engine.processMessage(waId, 'excelente'); // retry 3 → abandon
     assert.strictEqual(res.state, 'ABANDONED');
     assert.strictEqual(res.done, true);
     assert.strictEqual(engine.hasSession(waId), false);
   });
 
-  it('mensagem sem sessão ativa retorna NO_SESSION com reply null (silêncio total)', () => {
-    const res = engine.processMessage('99999@s.whatsapp.net', '3');
+  it('mensagem sem sessão ativa retorna NO_SESSION com reply null (silêncio total)', async () => {
+    const res = await engine.processMessage('99999@s.whatsapp.net', '3');
     assert.strictEqual(res.state, 'NO_SESSION');
     assert.strictEqual(res.reply, null);
     assert.strictEqual(res.done, false);
   });
 
-  it('progresso é exibido corretamente: Pergunta 2/3', () => {
+  it('progresso é exibido corretamente: Pergunta 2/3', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    engine.processMessage(waId, 'S');
-    engine.processMessage(waId, '3'); // fator1
-    const res = engine.processMessage(waId, '4'); // fator2 respondido → mostra pergunta 3
+    await engine.processMessage(waId, 'S');
+    await engine.processMessage(waId, '3'); // fator1
+    const res = await engine.processMessage(waId, '4'); // fator2 respondido → mostra pergunta 3
     // Pergunta 3/3 não é mostrada após a última resposta — o DONE vem depois de 3
     // Aqui verificamos que após fator2, chegamos à pergunta 3
     assert.ok(res.reply && res.reply.includes('3/3'));
   });
 
-  it('expireSessions remove sessões com >24h', () => {
+  it('expireSessions remove sessões com >24h', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
     // Manipula tempo de criação diretamente via sessão
@@ -194,20 +194,20 @@ describe('ConversationEngine — máquina de estados', () => {
     assert.ok(typeof removed === 'number');
     assert.strictEqual(engine.hasSession(waId), true);
     // Limpeza
-    engine.processMessage(waId, 'N');
+    await engine.processMessage(waId, 'N');
   });
 });
 
 // ── Testes de Privacidade ─────────────────────────────────────────────────────
 
 describe('Privacidade — sem dados identificadores nas respostas', () => {
-  it('resultado DONE não contém phone, nome ou memberId', () => {
+  it('resultado DONE não contém phone, nome ou memberId', async () => {
     const waId = uniqueWaId();
     freshSession(waId);
-    engine.processMessage(waId, 'S');
-    engine.processMessage(waId, '3');
-    engine.processMessage(waId, '3');
-    const res = engine.processMessage(waId, '3');
+    await engine.processMessage(waId, 'S');
+    await engine.processMessage(waId, '3');
+    await engine.processMessage(waId, '3');
+    const res = await engine.processMessage(waId, '3');
 
     // Garante que nenhum campo identificador está presente no resultado
     assert.ok(!('phone' in res), 'phone não deve estar no resultado');
