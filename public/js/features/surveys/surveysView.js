@@ -21,7 +21,7 @@ export function renderSurveysList({ state }) {
         <div>
           <h1 class="view-title">Pesquisas de Clima & Fatores Psicossociais</h1>
           <p class="view-subtitle">
-            Ciclos de escuta confidencial para mapeamento coletivo das condições de trabalho
+            Escutas coletivas e mapeamento de fatores psicossociais
           </p>
         </div>
         <div>
@@ -33,10 +33,35 @@ export function renderSurveysList({ state }) {
         </div>
       </div>
 
+      <!-- Barra de Ações em Massa (visível ao selecionar 1 ou mais pesquisas) -->
+      <div id="surveys-bulk-toolbar" class="surveys-bulk-toolbar hidden mb-4">
+        <div class="flex items-center gap-3">
+          <span class="badge badge-primary font-semibold" id="surveys-bulk-count-label">0 pesquisas selecionadas</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-select-all-surveys">
+            <i class="fa-solid fa-check-double" aria-hidden="true"></i> Marcar todas
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="clear-survey-selection">
+            Desmarcar todas
+          </button>
+          ${!isViewer ? `
+            <button type="button" class="btn btn-danger btn-sm" data-action="open-bulk-delete-surveys-modal">
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir selecionadas
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
       <div class="table-wrap">
-        <table class="table">
+        <table class="table" id="surveys-table">
           <thead>
             <tr>
+              ${!isViewer ? `
+                <th class="survey-select-col">
+                  <input type="checkbox" id="select-all-surveys" class="survey-checkbox" title="Marcar todas as pesquisas" aria-label="Marcar todas as pesquisas">
+                </th>
+              ` : ''}
               <th>Título / Instrumento</th>
               <th>Ciclo</th>
               <th>Status</th>
@@ -49,19 +74,24 @@ export function renderSurveysList({ state }) {
           <tbody>
             ${surveys.length === 0 ? `
               <tr>
-                <td colspan="7" class="table-empty-cell">
+                <td colspan="${!isViewer ? '8' : '7'}" class="table-empty-cell">
                   Nenhuma pesquisa cadastrada.
                 </td>
               </tr>
             ` : surveys.map(s => {
               const statusLabel = surveyStatusLabels[s.status] || s.status;
               const statusClass = s.status === 'open' ? 'badge-success' : s.status === 'closed' ? 'badge-neutral' : 'badge-warning';
-              const invitedCount = s.memberIds?.length || 0;
-              const responsesCount = s.responsesCount || 0;
-              const rate = invitedCount > 0 ? responsesCount / invitedCount : 0;
+              const invitedCount = s.invitedCount || s.groupSize || s.memberIds?.length || 0;
+              const responsesCount = s.responsesCount || s.responseCount || 0;
+              const rate = s.participationRate != null ? s.participationRate : (invitedCount > 0 ? responsesCount / invitedCount : 0);
 
               return `
-                <tr>
+                <tr data-survey-row-id="${attr(s.id)}">
+                  ${!isViewer ? `
+                    <td class="survey-select-col">
+                      <input type="checkbox" class="survey-checkbox survey-row-checkbox" value="${attr(s.id)}" data-survey-id="${attr(s.id)}" aria-label="Selecionar ${attr(s.title)}">
+                    </td>
+                  ` : ''}
                   <td>
                     <strong>${esc(s.title)}</strong>
                     <div class="table-subtext"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Modelo: <strong>${esc(s.model || 'Diagnóstico')}</strong></div>
@@ -77,24 +107,24 @@ export function renderSurveysList({ state }) {
                   </td>
                   <td>${date(s.endsAt)}</td>
                   <td class="text-right table-actions-cell">
-                    <div class="table-actions-inline">
+                    <div class="table-actions-inline survey-row-actions">
                       ${s.status === 'open' ? `
-                        <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm">
+                        <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm survey-open-link" data-survey-open="true">
                           <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais informações
                         </a>
                       ` : s.status === 'closed' ? `
-                        <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm">
+                        <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm survey-open-link" data-survey-open="true">
                           <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
                         </a>
                       ` : !isViewer ? `
-                        <button type="button" class="btn btn-primary btn-sm" data-action="open-survey-direct" data-id="${attr(s.id)}">
+                        <button type="button" class="btn btn-primary btn-sm survey-open-link" data-action="open-survey-direct" data-id="${attr(s.id)}" data-survey-open="true">
                           Abrir Coleta
                         </button>
                       ` : `
                         <span class="badge badge-neutral">Rascunho</span>
                       `}
                       ${!isViewer ? `
-                        <button type="button" class="btn btn-ghost color-danger btn-sm btn-icon" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir pesquisa">
+                        <button type="button" class="btn btn-ghost color-danger btn-sm btn-icon survey-row-delete-btn" data-action="open-delete-survey-modal" data-id="${attr(s.id)}" data-title="${attr(s.title)}" title="Excluir pesquisa">
                           <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
                         </button>
                       ` : ''}
@@ -131,9 +161,9 @@ export function renderSurveyDistribution({ params, state }) {
     });
   }
 
-  const invitedCount = survey.memberIds?.length || 0;
+  const invitedCount = survey.invitedCount || survey.groupSize || survey.memberIds?.length || 0;
   const responsesCount = survey.responsesCount || survey.responseCount || 0;
-  const rate = invitedCount > 0 ? responsesCount / invitedCount : 0;
+  const rate = survey.participationRate != null ? survey.participationRate : (invitedCount > 0 ? responsesCount / invitedCount : 0);
 
   const baseUrl = window.location.origin;
   const surveyDirectUrl = `${baseUrl}/responder/${survey.id}`;
@@ -409,14 +439,92 @@ export async function submitCloseEarly(surveyId) {
 
 let deleteCountdownTimer = null;
 
-export function openDeleteSurveyModal(surveyId, title) {
-  // Limpa timer anterior se houver
+function startDeleteCountdown({
+  duration = 10,
+  containerId = 'delete-timer-container',
+  badgeId = 'delete-timer-badge',
+  secondsId = 'delete-seconds-count',
+  progressId = 'delete-progress-bar',
+  messageId = 'delete-timer-msg',
+  consentRowId = 'delete-consent-label',
+  consentCheckboxId = 'delete-survey-consent-checkbox',
+  confirmBtnId = 'btn-confirm-delete-survey'
+} = {}) {
   if (deleteCountdownTimer) {
     clearInterval(deleteCountdownTimer);
     deleteCountdownTimer = null;
   }
 
-  let secondsLeft = 10;
+  let secondsLeft = duration;
+  const timerContainer = document.getElementById(containerId);
+  const timerBadge = document.getElementById(badgeId);
+  const secondsSpan = document.getElementById(secondsId);
+  const progressBar = document.getElementById(progressId);
+  const timerMsg = document.getElementById(messageId);
+  const consentLabel = document.getElementById(consentRowId);
+  const consentCheckbox = document.getElementById(consentCheckboxId);
+  const confirmBtn = document.getElementById(confirmBtnId);
+
+  // Animação suave e contínua da barra de progresso (transição de 10s linear)
+  if (progressBar) {
+    progressBar.style.width = '100%';
+    progressBar.style.transition = 'none';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressBar.style.transition = `width ${duration}s linear`;
+        progressBar.style.width = '0%';
+      });
+    });
+  }
+
+  deleteCountdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+
+    if (secondsSpan) {
+      secondsSpan.textContent = String(Math.max(0, secondsLeft));
+    }
+
+    if (secondsLeft <= 0) {
+      clearInterval(deleteCountdownTimer);
+      deleteCountdownTimer = null;
+
+      if (timerContainer) {
+        timerContainer.classList.add('timer-completed');
+      }
+      if (timerMsg) {
+        timerMsg.innerHTML = '<i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Tempo de leitura concluído. Você já pode marcar a confirmação abaixo:';
+      }
+      if (timerBadge) {
+        timerBadge.style.display = 'none';
+      }
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+
+      // Libera a checkbox
+      if (consentCheckbox && consentLabel) {
+        consentCheckbox.disabled = false;
+        consentLabel.classList.remove('disabled');
+      }
+    }
+  }, 1000);
+
+  // Escuta alteração da checkbox para liberar o botão de exclusão
+  if (consentCheckbox && confirmBtn) {
+    consentCheckbox.addEventListener('change', (e) => {
+      confirmBtn.disabled = !e.target.checked;
+      if (e.target.checked) {
+        confirmBtn.focus();
+      }
+    });
+  }
+}
+
+export function openDeleteSurveyModal(surveyId, title) {
+  if (deleteCountdownTimer) {
+    clearInterval(deleteCountdownTimer);
+    deleteCountdownTimer = null;
+  }
 
   const content = `
     <div class="delete-survey-modal-content">
@@ -477,64 +585,7 @@ export function openDeleteSurveyModal(surveyId, title) {
     }
   });
 
-  // Elementos do diálogo aberto
-  const timerContainer = document.getElementById('delete-timer-container');
-  const timerBadge = document.getElementById('delete-timer-badge');
-  const secondsSpan = document.getElementById('delete-seconds-count');
-  const progressBar = document.getElementById('delete-progress-bar');
-  const timerMsg = document.getElementById('delete-timer-msg');
-  const consentLabel = document.getElementById('delete-consent-label');
-  const consentCheckbox = document.getElementById('delete-survey-consent-checkbox');
-  const deleteBtn = document.getElementById('btn-confirm-delete-survey');
-
-  // Inicializa temporizador de 10 segundos
-  deleteCountdownTimer = setInterval(() => {
-    secondsLeft -= 1;
-
-    if (secondsSpan) {
-      secondsSpan.textContent = String(Math.max(0, secondsLeft));
-    }
-
-    if (progressBar) {
-      progressBar.style.width = `${Math.max(0, (secondsLeft / 10) * 100)}%`;
-    }
-
-    if (secondsLeft <= 0) {
-      clearInterval(deleteCountdownTimer);
-      deleteCountdownTimer = null;
-
-      if (timerContainer) {
-        timerContainer.classList.add('timer-completed');
-      }
-      if (timerMsg) {
-        timerMsg.innerHTML = '<i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Tempo de leitura concluído. Você já pode marcar a confirmação abaixo:';
-      }
-      if (timerBadge) {
-        timerBadge.style.display = 'none';
-      }
-      if (progressBar) {
-        progressBar.style.width = '0%';
-      }
-
-      // Libera a checkbox
-      if (consentCheckbox && consentLabel) {
-        consentCheckbox.disabled = false;
-        consentLabel.classList.remove('disabled');
-      }
-    }
-  }, 1000);
-
-  // Escuta alteração da checkbox para liberar o botão de exclusão
-  if (consentCheckbox && deleteBtn) {
-    consentCheckbox.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        deleteBtn.disabled = false;
-        deleteBtn.focus();
-      } else {
-        deleteBtn.disabled = true;
-      }
-    });
-  }
+  startDeleteCountdown();
 }
 
 export async function submitDeleteSurvey(surveyId) {
@@ -546,14 +597,187 @@ export async function submitDeleteSurvey(surveyId) {
 
   try {
     await del(`/surveys/${surveyId}`);
-    await store.loadSurveys();
     closeDialog();
+    await store.loadSurveys();
+    router.refresh();
     showToast('Pesquisa excluída com sucesso.', 'success');
     if (window.location.hash.includes(surveyId)) {
       router.navigate('pesquisas');
     }
   } catch (err) {
     showToast(err.message || 'Erro ao excluir pesquisa.', 'error');
+  }
+}
+
+export function getSelectedSurveyIds() {
+  const checkboxes = document.querySelectorAll('.survey-row-checkbox:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+export function updateSurveySelectionUI() {
+  const rowCheckboxes = Array.from(document.querySelectorAll('.survey-row-checkbox'));
+  const checkedCheckboxes = rowCheckboxes.filter(cb => cb.checked);
+  const selectedCount = checkedCheckboxes.length;
+  const totalCount = rowCheckboxes.length;
+
+  const selectAllCheckbox = document.getElementById('select-all-surveys');
+  const bulkToolbar = document.getElementById('surveys-bulk-toolbar');
+  const bulkCountLabel = document.getElementById('surveys-bulk-count-label');
+  const table = document.getElementById('surveys-table');
+
+  if (selectAllCheckbox) {
+    if (totalCount > 0 && selectedCount === totalCount) {
+      selectAllCheckbox.checked = true;
+      selectAllCheckbox.indeterminate = false;
+    } else if (selectedCount > 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = true;
+    } else {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    }
+  }
+
+  // Visual highlight for selected rows
+  rowCheckboxes.forEach(cb => {
+    const row = cb.closest('tr');
+    if (row) {
+      if (cb.checked) {
+        row.classList.add('survey-row-selected');
+      } else {
+        row.classList.remove('survey-row-selected');
+      }
+    }
+  });
+
+  if (selectedCount > 0) {
+    if (table) table.classList.add('selection-active');
+    if (bulkToolbar) bulkToolbar.classList.remove('hidden');
+    if (bulkCountLabel) {
+      bulkCountLabel.textContent = `${selectedCount} ${selectedCount === 1 ? 'pesquisa selecionada' : 'pesquisas selecionadas'}`;
+    }
+  } else {
+    if (table) table.classList.remove('selection-active');
+    if (bulkToolbar) bulkToolbar.classList.add('hidden');
+  }
+}
+
+export function openBulkDeleteSurveysModal() {
+  const ids = getSelectedSurveyIds();
+  const count = ids.length;
+  if (count === 0) {
+    showToast('Nenhuma pesquisa selecionada para exclusão.', 'warning');
+    return;
+  }
+
+  if (deleteCountdownTimer) {
+    clearInterval(deleteCountdownTimer);
+    deleteCountdownTimer = null;
+  }
+
+  const content = `
+    <div class="delete-survey-modal-content">
+      <div class="delete-survey-warning">
+        <div class="delete-survey-warning__header">
+          <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+          <span>Atenção: Ação irreversível de exclusão (${count} ${count === 1 ? 'pesquisa' : 'pesquisas'})</span>
+        </div>
+        <p class="delete-survey-warning__body">
+          Você está prestes a excluir permanentemente <strong>${count}</strong> ${count === 1 ? 'pesquisa selecionada' : 'pesquisas selecionadas'}.
+        </p>
+        <ul class="delete-survey-warning__list">
+          <li>Todos os questionários e links únicos de resposta das ${count} pesquisas serão desativados.</li>
+          <li>Respostas já enviadas e métricas vinculadas a estes ciclos serão excluídas.</li>
+          <li>Os grupos vinculados serão liberados para novos ciclos de pesquisa.</li>
+        </ul>
+
+        <div class="delete-survey-timer-box" id="bulk-delete-timer-container">
+          <div class="delete-survey-timer-text">
+            <span id="bulk-delete-timer-msg">
+              <i class="fa-regular fa-clock" aria-hidden="true"></i> Leia o aviso com atenção antes de confirmar:
+            </span>
+            <span class="delete-survey-timer-badge" id="bulk-delete-timer-badge">
+              <span id="bulk-delete-seconds-count">10</span>s
+            </span>
+          </div>
+          <div class="delete-survey-progress">
+            <div class="delete-survey-progress-bar" id="bulk-delete-progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <label class="delete-survey-consent-row disabled" id="bulk-delete-consent-label">
+        <input type="checkbox" id="bulk-delete-consent-checkbox" disabled />
+        <span class="delete-survey-consent-label">
+          Compreendo que a exclusão de todas as <strong>${count}</strong> pesquisas selecionadas é irreversível e desejo prosseguir.
+        </span>
+      </label>
+    </div>
+  `;
+
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-danger" id="btn-confirm-bulk-delete" data-action="confirm-bulk-delete-surveys" disabled>
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Apagar ${count} ${count === 1 ? 'Pesquisa' : 'Pesquisas'}
+    </button>
+  `;
+
+  openDialog({
+    title: `Excluir ${count} ${count === 1 ? 'Pesquisa' : 'Pesquisas'}`,
+    content,
+    footer,
+    onClose: () => {
+      if (deleteCountdownTimer) {
+        clearInterval(deleteCountdownTimer);
+        deleteCountdownTimer = null;
+      }
+    }
+  });
+
+  startDeleteCountdown({
+    containerId: 'bulk-delete-timer-container',
+    badgeId: 'bulk-delete-timer-badge',
+    secondsId: 'bulk-delete-seconds-count',
+    progressId: 'bulk-delete-progress-bar',
+    messageId: 'bulk-delete-timer-msg',
+    consentRowId: 'bulk-delete-consent-label',
+    consentCheckboxId: 'bulk-delete-consent-checkbox',
+    confirmBtnId: 'btn-confirm-bulk-delete'
+  });
+}
+
+export async function submitBulkDeleteSurveys() {
+  const consentCheckbox = document.getElementById('bulk-delete-consent-checkbox');
+  if (consentCheckbox && !consentCheckbox.checked) {
+    showToast('Você precisa marcar a caixa de confirmação para poder apagar as pesquisas.', 'warning');
+    return;
+  }
+
+  const ids = getSelectedSurveyIds();
+  if (ids.length === 0) {
+    showToast('Nenhuma pesquisa selecionada.', 'warning');
+    return;
+  }
+
+  const confirmBtn = document.getElementById('btn-confirm-bulk-delete');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Apagando...';
+  }
+
+  try {
+    await del('/surveys', { ids });
+    closeDialog();
+    await store.loadSurveys();
+    router.refresh();
+    showToast(`${ids.length} ${ids.length === 1 ? 'pesquisa apagada' : 'pesquisas apagadas'} com sucesso!`, 'success');
+    router.navigate('pesquisas');
+  } catch (err) {
+    showToast(err.message || 'Erro ao excluir pesquisas.', 'error');
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Tentar novamente';
+    }
   }
 }
 
@@ -588,9 +812,9 @@ export function openSurveyDetailsModal(surveyId) {
 
   const statusLabel = surveyStatusLabels[survey.status] || survey.status;
   const statusClass = survey.status === 'open' ? 'badge-success' : survey.status === 'closed' ? 'badge-neutral' : 'badge-warning';
-  const invitedCount = survey.memberIds?.length || 0;
+  const invitedCount = survey.invitedCount || survey.groupSize || survey.memberIds?.length || 0;
   const responsesCount = survey.responsesCount || survey.responseCount || 0;
-  const rate = invitedCount > 0 ? responsesCount / invitedCount : 0;
+  const rate = survey.participationRate != null ? survey.participationRate : (invitedCount > 0 ? responsesCount / invitedCount : 0);
 
   const accountGroups = state.groups || [];
   const surveyGroupIds = survey.groupIds || (survey.groupId ? [survey.groupId] : []);

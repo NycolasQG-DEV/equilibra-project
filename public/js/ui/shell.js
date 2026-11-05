@@ -3,6 +3,14 @@
 import { esc, attr } from '../domain/formatters.js';
 import { roleLabels } from '../domain/labels.js';
 
+function getInitials(name) {
+  if (!name || typeof name !== 'string') return 'U';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export function renderShell({
   activePath = 'hoje',
   breadcrumbs = [],
@@ -11,8 +19,9 @@ export function renderShell({
 }) {
   const account = state.account;
   const isViewer = account?.role === 'viewer';
-  const orgName = state.meta?.account?.companyName || 'Empresa';
-  const roleName = roleLabels[account?.role] || account?.role || '';
+  const userName = account?.name || account?.email?.split('@')[0] || 'Usuário';
+  const initials = getInitials(userName);
+  const roleName = roleLabels[account?.role] || (account?.role === 'owner' ? 'Administrador' : account?.role) || '';
 
   const navItems = [
     { key: 'hoje', path: 'hoje', label: 'Hoje', icon: 'table-cells-large' },
@@ -79,13 +88,19 @@ export function renderShell({
           </nav>
 
           <div class="app-user-menu">
-            <div class="app-org-pill">
-              <i class="fa-solid fa-building" aria-hidden="true"></i>
-              <span>${esc(orgName)}</span>
-              ${roleName ? `<span class="app-user-role">(${esc(roleName)})</span>` : ''}
-            </div>
-            <button type="button" class="btn btn-ghost btn-sm" data-action="logout" title="Encerrar sessão">
-              <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            <a href="#configuracoes/conta" class="app-profile-badge" title="Meu Perfil e Configurações">
+              ${account?.avatarUrl ? `
+                <img src="${attr(account.avatarUrl)}" alt="${attr(userName)}" class="app-avatar-img" />
+              ` : `
+                <div class="app-avatar-fallback">${esc(initials)}</div>
+              `}
+              <div class="app-user-info">
+                <span class="app-user-name">${esc(userName)}</span>
+                ${roleName ? `<span class="app-user-role">${esc(roleName)}</span>` : ''}
+              </div>
+            </a>
+            <button type="button" class="btn btn-ghost btn-sm app-logout-btn" data-action="logout" title="Encerrar sessão">
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
               <span class="sr-only">Sair</span>
             </button>
           </div>

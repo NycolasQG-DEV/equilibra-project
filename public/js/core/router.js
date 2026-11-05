@@ -28,6 +28,12 @@ class Router {
       requestAnimationFrame(() => {
         renderScheduled = false;
         if (this.currentRoute && !['login', 'registro'].includes(this.currentRoute.path) && !this.currentRoute.path.startsWith('responder')) {
+          // Não recarrega se o usuário estiver preenchendo wizard ou selecionando itens
+          if (this.currentRoute.path === 'pesquisas/nova' || this.currentRoute.path.includes('/nova')) return;
+          if (document.querySelector('.selection-active, .survey-row-checkbox:checked, .member-row-checkbox:checked')) return;
+          if (document.getElementById('active-dialog-backdrop')) return;
+          if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
           this.refresh();
         }
       });

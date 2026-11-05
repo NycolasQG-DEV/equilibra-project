@@ -72,4 +72,9 @@ export async function request(endpoint, options = {}) {
 export const get = (url, opts) => request(url, { ...opts, method: 'GET' });
 export const post = (url, body = {}, opts) => request(url, { ...opts, method: 'POST', body: JSON.stringify(body) });
 export const put = (url, body = {}, opts) => request(url, { ...opts, method: 'PUT', body: JSON.stringify(body) });
-export const del = (url, opts) => request(url, { ...opts, method: 'DELETE' });
+export const del = (url, body, opts) => {
+  if (body && typeof body === 'object') {
+    return request(url, { ...opts, method: 'DELETE', body: JSON.stringify(body) });
+  }
+  return request(url, { ...(typeof body === 'object' ? {} : body || {}), method: 'DELETE' });
+};

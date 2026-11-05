@@ -2,23 +2,23 @@
 name: Equilibra
 description: "Plataforma ergonômica e editorial para gestão de fatores psicossociais, escuta coletiva e planos de ação pelo RH/SST."
 colors:
-  primary: "#581c43"
-  primary-hover: "#431433"
-  primary-subtle: "#faedf4"
-  primary-active: "#340e26"
-  accent-rose: "#a23b72"
-  accent-rose-subtle: "#fdf2f7"
-  
-  neutral-bg: "#faf6f8"
+  primary: "#6B21A8"
+  primary-hover: "#581C87"
+  primary-subtle: "#F3E8FF"
+  primary-active: "#3B0764"
+  accent: "#7C3AED"
+  accent-subtle: "#EDE9FE"
+
+  neutral-bg: "#FAFAFA"
   neutral-surface: "#ffffff"
-  neutral-border: "#ede2e8"
-  neutral-border-subtle: "#f5edf2"
-  
-  text-primary: "#1c142b"
-  text-secondary: "#524765"
-  text-muted: "#827796"
+  neutral-border: "#E4E4E7"
+  neutral-border-subtle: "#F0F0F3"
+
+  text-primary: "#18181B"
+  text-secondary: "#3F3F46"
+  text-muted: "#71717A"
   text-on-primary: "#ffffff"
-  
+
   accent-warning: "#b45309"
   accent-warning-bg: "#fef3c7"
   accent-danger: "#b91c1c"
@@ -29,19 +29,18 @@ colors:
   accent-success-bg: "#dcfce7"
 typography:
   display:
-    fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
-    fontSize: "clamp(2rem, 3.5vw, 2.75rem)"
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
     fontWeight: 700
     lineHeight: "1.2"
     letterSpacing: "-0.03em"
   headline:
-    fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 650
     lineHeight: "1.3"
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
     lineHeight: "1.4"
@@ -81,20 +80,20 @@ components:
     backgroundColor: "{colors.primary-hover}"
 ---
 
-# Design System: Equilibra (Deep Mulberry & Rose Edition)
+# Design System: Equilibra (Deep Purple & White Edition)
 
 ## Overview
 
-**Creative North Star: "O Santuário Editorial de Escuta & Saúde Coletiva"**
+**Creative North Star: "Plataforma Profissional de Saúde Psicossocial"**
 
-O Equilibra sai do lugar-comum de dashboards genéricos e adota a direção **Deep Mulberry & Rose**: uma tonalidade de amora profunda e rica (`#581c43`), acentos quentes de rosa antigo (`#a23b72`), fundos aquecidos de linho rosado suave (`#faf6f8`) e contornos orgânicos e precisos (`#ede2e8`).
+O Equilibra adota a direção **Deep Purple & White**: roxo ameixa profundo e elegante (`#6B21A8`), acentos violeta para CTAs secundários (`#7C3AED`), fundos brancos e cinza neutro frios (`#FAFAFA`, `#F5F5F7`) e bordas precisas e discretas (`#E4E4E7`).
 
-Essa paleta traz uma atmosfera acolhedora, humana e elegante para a área de RH e SST, mantendo alto rigor técnico, contraste impecável (WCAG AAA) e seriedade na apresentação dos indicadores psicossociais.
+Essa paleta transmite seriedade, confiança e profissionalismo para a área de RH e SST, mantendo alto rigor técnico, contraste impecável (WCAG AAA) e clareza na apresentação dos indicadores psicossociais.
 
 ## Colors
 
-- **Primary (`#581c43`)**: Amora rica e profunda para CTAs, títulos da marca e destaques principais.
-- **Primary Subtle (`#faedf4`)**: Fundo aveludado suave para navegação ativa, abas e tags.
-- **Accent Rose (`#a23b72`)**: Rosa antigo e framboesa fechada para estados secundários de interesse.
-- **Neutral Canvas (`#faf6f8`)**: Fundo tipo linho suave, aquecido, sem o brilho frio dos cinzas tradicionais.
-- **Neutral Surface (`#ffffff`) & Borders (`#ede2e8`)**: Superfícies límpidas com contraste perfeito e repousante.
+- **Primary (`#6B21A8`)**: Roxo ameixa profundo e elegante para CTAs, títulos da marca e destaques principais.
+- **Primary Subtle (`#F3E8FF`)**: Fundo suave lavanda para navegação ativa, abas e tags.
+- **Accent (`#7C3AED`)**: Violeta vibrante para estados secundários de interesse e CTAs de apoio.
+- **Neutral Canvas (`#FAFAFA`)**: Fundo quase branco, neutro e sem brilho artificial.
+- **Neutral Surface (`#FFFFFF`) & Borders (`#E4E4E7`)**: Superfícies limpas com contraste suave e repousante.

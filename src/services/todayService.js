@@ -112,8 +112,10 @@ function computeDecisionQueue(account, {
     });
   }
 
-  // 3. Pesquisas em coleta próximas do prazo
-  const openSurveys = surveys.filter(s => s.status === 'open');
+  // 3. Pesquisas em coleta próximas do prazo (ordenadas por maior atividade/respostas e recência)
+  const openSurveys = surveys
+    .filter(s => s.status === 'open')
+    .sort((a, b) => (b.responsesCount || b.responseCount || 0) - (a.responsesCount || a.responseCount || 0) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   for (const survey of openSurveys) {
     const closeDate = survey.endsAt || survey.closesAt ? new Date(survey.endsAt || survey.closesAt) : null;
     if (closeDate) {
@@ -184,20 +186,37 @@ function computeDecisionQueue(account, {
   queue.sort((a, b) => (priorityWeight[a.priority] || 99) - (priorityWeight[b.priority] || 99));
 
   // KPIs
-  const activeSurvey = openSurveys[0] ? {
-    id: openSurveys[0].id,
-    title: openSurveys[0].title,
-    cycle: openSurveys[0].cycle,
-    closesAt: openSurveys[0].endsAt || openSurveys[0].closesAt,
-    daysRemaining: (openSurveys[0].endsAt || openSurveys[0].closesAt) ? Math.max(0, Math.ceil((new Date(openSurveys[0].endsAt || openSurveys[0].closesAt) - now) / (1000 * 60 * 60 * 24))) : null,
-    invited: openSurveys[0].invitedCount || (openSurveys[0].links ? openSurveys[0].links.length : 0),
-    totalInvited: openSurveys[0].invitedCount || (openSurveys[0].links ? openSurveys[0].links.length : 0),
-    responses: openSurveys[0].responseCount || 0,
-    responsesCount: openSurveys[0].responseCount || 0,
-    participationRate: (openSurveys[0].invitedCount || (openSurveys[0].links ? openSurveys[0].links.length : 0)) > 0
-      ? (openSurveys[0].responseCount || 0) / (openSurveys[0].invitedCount || openSurveys[0].links.length)
-      : 0
-  } : null;
+  const openSurveysList = openSurveys.map(s => {
+    const totalInvited = s.invitedCount || s.groupSize || (s.memberIds ? s.memberIds.length : (s.links ? s.links.length : 0));
+    const responsesCount = s.responsesCount || s.responseCount || 0;
+    const rate = s.participationRate != null
+      ? s.participationRate
+      : (totalInvited > 0 ? responsesCount / totalInvited : 0);
+    const closeDate = s.endsAt || s.closesAt ? new Date(s.endsAt || s.closesAt) : null;
+    const daysRemaining = closeDate ? Math.max(0, Math.ceil((closeDate - now) / (1000 * 60 * 60 * 24))) : null;
+
+    return {
+      id: s.id,
+      title: s.title,
+      cycle: s.cycle,
+      model: s.model,
+      groupName: s.groupName,
+      closesAt: s.endsAt || s.closesAt,
+      daysRemaining,
+      invited: totalInvited,
+      totalInvited,
+      responses: responsesCount,
+      responsesCount,
+      participationRate: rate,
+      target: s.participationTarget || 0.70
+    };
+  });
+
+  const totalOpenResponses = openSurveysList.reduce((acc, s) => acc + s.responsesCount, 0);
+  const totalOpenInvited = openSurveysList.reduce((acc, s) => acc + s.totalInvited, 0);
+  const aggregateOpenRate = totalOpenInvited > 0 ? totalOpenResponses / totalOpenInvited : 0;
+
+  const activeSurvey = openSurveysList[0] || null;
 
   const activeActions = actions.filter(a => ['planned', 'in_progress', 'implemented'].includes(a.status));
   const overdueCount = actions.filter(a => ['planned', 'in_progress'].includes(a.status) && a.dueDate && a.dueDate < todayStr).length;
@@ -210,33 +229,39 @@ function computeDecisionQueue(account, {
     : null;
 
   // Gráficos operacionais
-  // 1. Tendência de participação com rótulos curtos
-  const participationList = closedSurveys
-    .sort((a, b) => new Date(a.closedAt || 0) - new Date(b.closedAt || 0))
+  // 1. Tendência de participação com rótulos curtos (dados reais)
+  const allParticipatingSurveys = [...closedSurveys];
+  if (openSurveys[0] && !allParticipatingSurveys.some(s => s.id === openSurveys[0].id)) {
+    allParticipatingSurveys.push(openSurveys[0]);
+  }
+
+  const participationList = allParticipatingSurveys
+    .sort((a, b) => new Date(a.createdAt || a.closedAt || 0) - new Date(b.createdAt || b.closedAt || 0))
     .slice(-6)
     .map((s, idx) => {
-      const invitedCount = s.invitedCount || (s.links ? s.links.length : s.responsesCount || 10);
-      const resp = s.responseCount || s.responsesCount || 0;
-      const rate = invitedCount > 0 ? Math.min(100, Math.round((resp / invitedCount) * 100)) : 85;
+      const invitedCount = s.invitedCount || s.groupSize || (s.memberIds ? s.memberIds.length : (s.links ? s.links.length : 0));
+      const resp = s.responsesCount || s.responseCount || 0;
+      const rate = invitedCount > 0 ? Math.min(100, Math.round((resp / invitedCount) * 100)) : 0;
 
-      let shortLabel = `Ciclo ${idx + 1}`;
+      let shortLabel = s.status === 'open' ? 'Ciclo Atual' : `Ciclo ${idx + 1}`;
       if (s.cycle) {
         const m = s.cycle.match(/Ciclo\s*\d+/i);
-        if (m) shortLabel = m[0];
+        if (m) shortLabel = s.status === 'open' ? `${m[0]} (atual)` : m[0];
         else shortLabel = s.cycle.length > 12 ? s.cycle.slice(0, 12) + '…' : s.cycle;
       }
 
       return {
         id: s.id,
+        status: s.status,
         cycle: shortLabel,
         fullCycle: s.cycle || s.title,
-        date: (s.closedAt || '').slice(0, 10),
+        date: (s.closedAt || s.createdAt || '').slice(0, 10),
         rate,
         target: 70
       };
     });
 
-  // 2. Fatores mais críticos do último ciclo
+  // 2. Fatores mais críticos do último ciclo publicado (apenas dados reais, sem mock)
   const latestPublished = [...publishedReports].sort((a, b) => new Date(b.closedAt || 0) - new Date(a.closedAt || 0))[0];
   const rawFactors = (latestPublished && (latestPublished.factors || latestPublished.result)) || [];
   const factorRanking = rawFactors.length > 0
@@ -249,13 +274,7 @@ function computeDecisionQueue(account, {
           average: f.average,
           isCritical: f.average < 2.8
         }))
-    : [
-        { label: 'Demandas Emocionais', average: 2.35, isCritical: true },
-        { label: 'Ritmo & Pressão', average: 2.60, isCritical: true },
-        { label: 'Apoio da Gestão', average: 3.10, isCritical: false },
-        { label: 'Autonomia Decisória', average: 3.45, isCritical: false },
-        { label: 'Clareza de Papel', average: 3.80, isCritical: false }
-      ];
+    : [];
 
   // 3. Eficácia de ações (com baseline coerente quando ações ainda estão sendo estruturadas)
   const effectiveCount = actions.filter(a => a.status === 'effective').length;
@@ -276,6 +295,11 @@ function computeDecisionQueue(account, {
     queue,
     kpis: {
       activeSurvey,
+      openSurveys: openSurveysList,
+      openSurveysCount: openSurveysList.length,
+      totalOpenResponses,
+      totalOpenInvited,
+      aggregateOpenRate,
       actions: {
         totalActive: activeActions.length,
         total: activeActions.length,

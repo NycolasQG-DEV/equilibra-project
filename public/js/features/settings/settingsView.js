@@ -151,6 +151,14 @@ function renderTeamSection(account, team) {
   `;
 }
 
+function getInitials(name) {
+  if (!name || typeof name !== 'string') return 'U';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export function renderSettings({ params, state }) {
   const section = params.section || 'conta';
   const account = state.account || {};
@@ -163,34 +171,101 @@ export function renderSettings({ params, state }) {
 
   if (section === 'conta') {
     sectionContent = `
-      <div class="card mb-6">
-        <div class="card-header">
-          <h2 class="card-title">Dados da Organização</h2>
+      <!-- Perfil Pessoal & Foto de Perfil -->
+      <div class="card mb-8">
+        <div class="card-header px-6 py-5">
+          <div>
+            <h2 class="card-title text-base font-semibold">Perfil do Usuário</h2>
+            <p class="text-xs color-text-secondary m-0 mt-0.5">Gerencie sua foto e dados de identificação pessoal</p>
+          </div>
         </div>
-        <div class="card-body">
-          <form id="account-settings-form">
-            ${field({ id: 'acc-company', name: 'companyName', label: 'Nome da Empresa', value: meta.account?.companyName || '', required: true, disabled: !isOwner })}
-            ${field({ id: 'acc-email', name: 'email', label: 'E-mail do Administrador', value: account.email || '', type: 'email', disabled: true })}
-            ${isOwner ? `
-              <button type="button" class="btn btn-primary" data-action="save-company-name">
-                Salvar Alterações
+        <div class="card-body p-6 md:p-8">
+          <form id="profile-settings-form" class="settings-form-flow">
+            <div class="profile-avatar-section">
+              <div class="flex items-center gap-6 flex-wrap">
+                <div class="profile-avatar-preview-wrap">
+                  ${account.avatarUrl ? `
+                    <img id="profile-avatar-preview" src="${attr(account.avatarUrl)}" alt="Foto de perfil" class="profile-avatar-preview" />
+                  ` : `
+                    <div id="profile-avatar-preview-fallback" class="profile-avatar-preview-fallback">
+                      ${esc(getInitials(account.name || 'U'))}
+                    </div>
+                  `}
+                </div>
+                <div class="flex-1 min-w-[240px]">
+                  <strong class="block text-sm font-semibold mb-1">Foto de Perfil</strong>
+                  <p class="table-subtext text-xs mb-3">Foto exibida na barra de navegação e identificação da sua conta.</p>
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <label for="user-avatar-file" class="btn btn-secondary btn-sm cursor-pointer">
+                      <i class="fa-solid fa-camera" aria-hidden="true"></i> Escolher Foto
+                    </label>
+                    <input type="file" id="user-avatar-file" accept="image/png, image/jpeg, image/webp" class="hidden" data-action="pick-avatar-file" />
+                    ${account.avatarUrl ? `
+                      <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="remove-avatar-photo">
+                        <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remover
+                      </button>
+                    ` : ''}
+                  </div>
+                  <input type="hidden" id="profile-avatar-url" name="avatarUrl" value="${attr(account.avatarUrl || '')}" />
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-fields-grid max-w-2xl">
+              ${field({ id: 'acc-user-name', name: 'userName', label: 'Seu Nome Completo', value: account.name || '', required: true })}
+              ${field({ id: 'acc-email-display', name: 'userEmail', label: 'E-mail de Acesso', value: account.email || '', type: 'email', disabled: true, hint: 'O e-mail de acesso não pode ser alterado diretamente.' })}
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="button" class="btn btn-primary" data-action="save-user-profile">
+                Salvar Perfil
               </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card mb-8">
+        <div class="card-header px-6 py-5">
+          <div>
+            <h2 class="card-title text-base font-semibold">Dados da Organização</h2>
+            <p class="text-xs color-text-secondary m-0 mt-0.5">Informações corporativas visíveis nos relatórios e pesquisas</p>
+          </div>
+        </div>
+        <div class="card-body p-6 md:p-8">
+          <form id="account-settings-form" class="settings-form-flow">
+            <div class="settings-fields-grid max-w-2xl">
+              ${field({ id: 'acc-company', name: 'companyName', label: 'Nome da Empresa', value: meta.account?.companyName || '', required: true, disabled: !isOwner })}
+            </div>
+            ${isOwner ? `
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-primary" data-action="save-company-name">
+                  Salvar Alterações
+                </button>
+              </div>
             ` : ''}
           </form>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Alterar Senha</h2>
+        <div class="card-header px-6 py-5">
+          <div>
+            <h2 class="card-title text-base font-semibold">Alterar Senha</h2>
+            <p class="text-xs color-text-secondary m-0 mt-0.5">Mantenha sua conta protegida com uma senha segura</p>
+          </div>
         </div>
-        <div class="card-body">
-          <form id="change-password-form">
-            ${field({ id: 'pwd-current', name: 'currentPassword', label: 'Senha Atual', type: 'password', required: true })}
-            ${field({ id: 'pwd-new', name: 'newPassword', label: 'Nova Senha', type: 'password', required: true })}
-            <button type="button" class="btn btn-secondary" data-action="submit-change-password">
-              Atualizar Senha
-            </button>
+        <div class="card-body p-6 md:p-8">
+          <form id="change-password-form" class="settings-form-flow">
+            <div class="settings-fields-grid max-w-2xl">
+              ${field({ id: 'pwd-current', name: 'currentPassword', label: 'Senha Atual', type: 'password', required: true })}
+              ${field({ id: 'pwd-new', name: 'newPassword', label: 'Nova Senha', type: 'password', required: true })}
+            </div>
+            <div class="settings-form-actions">
+              <button type="button" class="btn btn-secondary" data-action="submit-change-password">
+                Atualizar Senha
+              </button>
+            </div>
           </form>
         </div>
       </div>

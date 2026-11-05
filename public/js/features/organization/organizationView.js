@@ -4,6 +4,7 @@ import { renderShell } from '../../ui/shell.js';
 import { esc, attr } from '../../domain/formatters.js';
 import { post, put, del } from '../../core/api.js';
 import { store } from '../../core/store.js';
+import { router } from '../../core/router.js';
 import { openDialog, closeDialog } from '../../ui/dialog.js';
 import { showToast } from '../../ui/toast.js';
 import { field } from '../../ui/fields.js';
@@ -74,10 +75,35 @@ export function renderPeople({ state }) {
         </div>
       </div>
 
+      <!-- Barra de Ações em Massa para Colaboradores -->
+      <div id="members-bulk-toolbar" class="members-bulk-toolbar hidden mb-4">
+        <div class="flex items-center gap-3">
+          <span class="badge badge-primary font-semibold" id="members-bulk-count-label">0 colaboradores selecionados</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-select-all-members">
+            <i class="fa-solid fa-check-double" aria-hidden="true"></i> Marcar todos
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="clear-member-selection">
+            Desmarcar todos
+          </button>
+          ${isOwner ? `
+            <button type="button" class="btn btn-danger btn-sm" data-action="open-bulk-delete-members-modal">
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir selecionados
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
       <div class="table-wrap">
         <table class="table" id="members-table">
           <thead>
             <tr>
+              ${isOwner ? `
+                <th class="member-select-col">
+                  <input type="checkbox" id="select-all-members" class="member-checkbox" title="Marcar todos os colaboradores" aria-label="Marcar todos os colaboradores">
+                </th>
+              ` : ''}
               <th>Nome</th>
               <th>WhatsApp / Telefone</th>
               <th>E-mail</th>
@@ -89,7 +115,7 @@ export function renderPeople({ state }) {
           <tbody>
             ${filteredMembers.length === 0 ? `
               <tr>
-                <td colspan="5" class="table-empty-cell">
+                <td colspan="${isOwner ? '7' : '6'}" class="table-empty-cell">
                   Nenhum colaborador encontrado com os filtros selecionados.
                 </td>
               </tr>
@@ -97,6 +123,11 @@ export function renderPeople({ state }) {
               const memberGroups = groups.filter(g => (m.groupIds || []).includes(g.id) || g.id === m.groupId);
               return `
                 <tr data-member-id="${attr(m.id)}" data-member-name="${attr(m.name?.toLowerCase())}" data-member-email="${attr(m.email?.toLowerCase())}">
+                  ${isOwner ? `
+                    <td class="member-select-col">
+                      <input type="checkbox" class="member-checkbox member-row-checkbox" value="${attr(m.id)}" data-member-id="${attr(m.id)}" aria-label="Selecionar ${attr(m.name)}">
+                    </td>
+                  ` : ''}
                   <td><strong>${esc(m.name)}</strong></td>
                   <td><span class="num text-xs">${esc(m.phone || '—')}</span></td>
                   <td>${esc(m.email)}</td>
@@ -108,10 +139,10 @@ export function renderPeople({ state }) {
                   </td>
                   <td class="text-right">
                     ${isOwner ? `
-                      <button type="button" class="btn btn-ghost btn-sm" data-action="edit-member" data-id="${attr(m.id)}">
+                      <button type="button" class="btn btn-ghost btn-sm member-action-btn" data-action="edit-member" data-id="${attr(m.id)}">
                         Editar
                       </button>
-                      <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="delete-member" data-id="${attr(m.id)}">
+                      <button type="button" class="btn btn-ghost btn-sm color-danger member-action-btn member-row-delete-btn" data-action="delete-member" data-id="${attr(m.id)}">
                         Remover
                       </button>
                     ` : '<span class="color-muted text-xs">—</span>'}
@@ -295,8 +326,9 @@ export async function submitAddMember() {
 
   try {
     await post('/members', { name, email, phone, registration, groupIds });
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Colaborador adicionado com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao cadastrar.', 'error');
@@ -376,11 +408,93 @@ export async function submitEditMember(memberId) {
 
   try {
     await put(`/members/${memberId}`, { name, email, phone, registration, groupIds });
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Colaborador atualizado com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao atualizar colaborador.', 'error');
+  }
+}
+
+let deleteMemberCountdownTimer = null;
+
+function startMemberDeleteCountdown({
+  duration = 10,
+  containerId = 'delete-member-timer-container',
+  badgeId = 'delete-member-timer-badge',
+  secondsId = 'delete-member-seconds-count',
+  progressId = 'delete-member-progress-bar',
+  messageId = 'delete-member-timer-msg',
+  consentRowId = 'delete-member-consent-label',
+  consentCheckboxId = 'delete-member-consent-checkbox',
+  confirmBtnId = 'btn-confirm-delete-member'
+} = {}) {
+  if (deleteMemberCountdownTimer) {
+    clearInterval(deleteMemberCountdownTimer);
+    deleteMemberCountdownTimer = null;
+  }
+
+  let secondsLeft = duration;
+  const timerContainer = document.getElementById(containerId);
+  const timerBadge = document.getElementById(badgeId);
+  const secondsSpan = document.getElementById(secondsId);
+  const progressBar = document.getElementById(progressId);
+  const timerMsg = document.getElementById(messageId);
+  const consentLabel = document.getElementById(consentRowId);
+  const consentCheckbox = document.getElementById(consentCheckboxId);
+  const confirmBtn = document.getElementById(confirmBtnId);
+
+  // Animação contínua e suave da barra de progresso (10s linear)
+  if (progressBar) {
+    progressBar.style.width = '100%';
+    progressBar.style.transition = 'none';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressBar.style.transition = `width ${duration}s linear`;
+        progressBar.style.width = '0%';
+      });
+    });
+  }
+
+  deleteMemberCountdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+
+    if (secondsSpan) {
+      secondsSpan.textContent = String(Math.max(0, secondsLeft));
+    }
+
+    if (secondsLeft <= 0) {
+      clearInterval(deleteMemberCountdownTimer);
+      deleteMemberCountdownTimer = null;
+
+      if (timerContainer) {
+        timerContainer.classList.add('timer-completed');
+      }
+      if (timerMsg) {
+        timerMsg.innerHTML = '<i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Tempo de leitura concluído. Você já pode marcar a confirmação abaixo:';
+      }
+      if (timerBadge) {
+        timerBadge.style.display = 'none';
+      }
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+
+      if (consentCheckbox && consentLabel) {
+        consentCheckbox.disabled = false;
+        consentLabel.classList.remove('disabled');
+      }
+    }
+  }, 1000);
+
+  if (consentCheckbox && confirmBtn) {
+    consentCheckbox.addEventListener('change', (e) => {
+      confirmBtn.disabled = !e.target.checked;
+      if (e.target.checked) {
+        confirmBtn.focus();
+      }
+    });
   }
 }
 
@@ -388,39 +502,261 @@ export function openDeleteMemberConfirm(memberId) {
   const member = (store.getState().members || []).find((m) => m.id === memberId);
   if (!member) return;
 
+  if (deleteMemberCountdownTimer) {
+    clearInterval(deleteMemberCountdownTimer);
+    deleteMemberCountdownTimer = null;
+  }
+
   const content = `
-    <div class="p-2">
-      <p class="text-sm color-text-primary mb-3">
-        Tem certeza que deseja remover o colaborador <strong>${esc(member.name)}</strong> (${esc(member.email)})?
-      </p>
-      <div class="privacy-notice privacy-warning">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-        <div>
-          <strong>Atenção</strong>
-          <p class="m-0 text-xs">O colaborador será desvinculado de todas as equipes. O histórico de respostas anônimas previamente submetidas é preservado para segurança estatística.</p>
+    <div class="delete-survey-modal-content">
+      <div class="delete-survey-warning">
+        <div class="delete-survey-warning__header">
+          <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+          <span>Atenção: Ação irreversível de exclusão</span>
+        </div>
+        <p class="delete-survey-warning__body">
+          Você está prestes a remover permanentemente o colaborador <strong>"${esc(member.name)}"</strong> (${esc(member.email || 'sem e-mail')}).
+        </p>
+        <ul class="delete-survey-warning__list">
+          <li>O colaborador será desvinculado de todas as equipes e grupos da organização.</li>
+          <li>Convites de pesquisa pendentes vinculados a ele serão cancelados.</li>
+          <li>Respostas anônimas submetidas anteriormente permanecem anônimas para integridade estatística.</li>
+        </ul>
+
+        <div class="delete-survey-timer-box" id="delete-member-timer-container">
+          <div class="delete-survey-timer-text">
+            <span id="delete-member-timer-msg">
+              <i class="fa-regular fa-clock" aria-hidden="true"></i> Leia o aviso com atenção antes de confirmar:
+            </span>
+            <span class="delete-survey-timer-badge" id="delete-member-timer-badge">
+              <span id="delete-member-seconds-count">10</span>s
+            </span>
+          </div>
+          <div class="delete-survey-progress">
+            <div class="delete-survey-progress-bar" id="delete-member-progress-bar"></div>
+          </div>
         </div>
       </div>
+
+      <label class="delete-survey-consent-row disabled" id="delete-member-consent-label">
+        <input type="checkbox" id="delete-member-consent-checkbox" disabled />
+        <span class="delete-survey-consent-label">
+          Compreendo que a remoção do colaborador <strong>"${esc(member.name)}"</strong> é irreversível e desejo prosseguir.
+        </span>
+      </label>
     </div>
   `;
 
   const footer = `
     <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
-    <button type="button" class="btn btn-danger" data-action="confirm-delete-member" data-id="${attr(member.id)}">
-      <i class="fa-solid fa-trash" aria-hidden="true"></i> Remover Colaborador
+    <button type="button" class="btn btn-danger" id="btn-confirm-delete-member" data-action="confirm-delete-member" data-id="${attr(member.id)}" disabled>
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remover Colaborador
     </button>
   `;
 
-  openDialog({ title: 'Remover Colaborador', content, footer });
+  openDialog({
+    title: 'Remover Colaborador',
+    content,
+    footer,
+    onClose: () => {
+      if (deleteMemberCountdownTimer) {
+        clearInterval(deleteMemberCountdownTimer);
+        deleteMemberCountdownTimer = null;
+      }
+    }
+  });
+
+  startMemberDeleteCountdown();
 }
 
 export async function confirmDeleteMember(memberId) {
+  const consentCheckbox = document.getElementById('delete-member-consent-checkbox');
+  if (consentCheckbox && !consentCheckbox.checked) {
+    showToast('Você precisa marcar a caixa de confirmação para poder remover o colaborador.', 'warning');
+    return;
+  }
+
   try {
     await del(`/members/${memberId}`);
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Colaborador removido com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao remover colaborador.', 'error');
+  }
+}
+
+export function getSelectedMemberIds() {
+  const checkboxes = document.querySelectorAll('.member-row-checkbox:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+export function updateMemberSelectionUI() {
+  const visibleCheckboxes = Array.from(document.querySelectorAll('#members-table tbody tr:not([style*="display: none"]) .member-row-checkbox'));
+  const allRowCheckboxes = Array.from(document.querySelectorAll('.member-row-checkbox'));
+  const checkedCheckboxes = allRowCheckboxes.filter(cb => cb.checked);
+  const selectedCount = checkedCheckboxes.length;
+  const visibleCount = visibleCheckboxes.length;
+
+  const selectAllCheckbox = document.getElementById('select-all-members');
+  const bulkToolbar = document.getElementById('members-bulk-toolbar');
+  const bulkCountLabel = document.getElementById('members-bulk-count-label');
+  const table = document.getElementById('members-table');
+
+  if (selectAllCheckbox) {
+    const visibleCheckedCount = visibleCheckboxes.filter(cb => cb.checked).length;
+    if (visibleCount > 0 && visibleCheckedCount === visibleCount) {
+      selectAllCheckbox.checked = true;
+      selectAllCheckbox.indeterminate = false;
+    } else if (visibleCheckedCount > 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = true;
+    } else {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    }
+  }
+
+  // Visual highlight for selected rows
+  allRowCheckboxes.forEach(cb => {
+    const row = cb.closest('tr');
+    if (row) {
+      if (cb.checked) {
+        row.classList.add('member-row-selected');
+      } else {
+        row.classList.remove('member-row-selected');
+      }
+    }
+  });
+
+  if (selectedCount > 0) {
+    if (table) table.classList.add('selection-active');
+    if (bulkToolbar) bulkToolbar.classList.remove('hidden');
+    if (bulkCountLabel) {
+      bulkCountLabel.textContent = `${selectedCount} ${selectedCount === 1 ? 'colaborador selecionado' : 'colaboradores selecionados'}`;
+    }
+  } else {
+    if (table) table.classList.remove('selection-active');
+    if (bulkToolbar) bulkToolbar.classList.add('hidden');
+  }
+}
+
+export function openBulkDeleteMembersModal() {
+  const ids = getSelectedMemberIds();
+  const count = ids.length;
+  if (count === 0) {
+    showToast('Nenhum colaborador selecionado para exclusão.', 'warning');
+    return;
+  }
+
+  if (deleteMemberCountdownTimer) {
+    clearInterval(deleteMemberCountdownTimer);
+    deleteMemberCountdownTimer = null;
+  }
+
+  const content = `
+    <div class="delete-survey-modal-content">
+      <div class="delete-survey-warning">
+        <div class="delete-survey-warning__header">
+          <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+          <span>Atenção: Ação irreversível de exclusão (${count} ${count === 1 ? 'colaborador' : 'colaboradores'})</span>
+        </div>
+        <p class="delete-survey-warning__body">
+          Você está prestes a remover permanentemente <strong>${count}</strong> ${count === 1 ? 'colaborador selecionado' : 'colaboradores selecionados'}.
+        </p>
+        <ul class="delete-survey-warning__list">
+          <li>Os colaboradores serão desvinculados de todas as equipes e grupos da organização.</li>
+          <li>Convites pendentes vinculados a eles serão desativados.</li>
+          <li>Respostas anônimas submetidas anteriormente permanecem anônimas para integridade estatística.</li>
+        </ul>
+
+        <div class="delete-survey-timer-box" id="bulk-delete-member-timer-container">
+          <div class="delete-survey-timer-text">
+            <span id="bulk-delete-member-timer-msg">
+              <i class="fa-regular fa-clock" aria-hidden="true"></i> Leia o aviso com atenção antes de confirmar:
+            </span>
+            <span class="delete-survey-timer-badge" id="bulk-delete-member-timer-badge">
+              <span id="bulk-delete-member-seconds-count">10</span>s
+            </span>
+          </div>
+          <div class="delete-survey-progress">
+            <div class="delete-survey-progress-bar" id="bulk-delete-member-progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <label class="delete-survey-consent-row disabled" id="bulk-delete-member-consent-label">
+        <input type="checkbox" id="bulk-delete-member-consent-checkbox" disabled />
+        <span class="delete-survey-consent-label">
+          Compreendo que a exclusão de todos os <strong>${count}</strong> colaboradores selecionados é definitiva e irreversível.
+        </span>
+      </label>
+    </div>
+  `;
+
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-danger" id="btn-confirm-bulk-delete-members" data-action="confirm-bulk-delete-members" disabled>
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Apagar ${count} ${count === 1 ? 'Colaborador' : 'Colaboradores'}
+    </button>
+  `;
+
+  openDialog({
+    title: `Remover ${count} ${count === 1 ? 'Colaborador' : 'Colaboradores'}`,
+    content,
+    footer,
+    onClose: () => {
+      if (deleteMemberCountdownTimer) {
+        clearInterval(deleteMemberCountdownTimer);
+        deleteMemberCountdownTimer = null;
+      }
+    }
+  });
+
+  startMemberDeleteCountdown({
+    containerId: 'bulk-delete-member-timer-container',
+    badgeId: 'bulk-delete-member-timer-badge',
+    secondsId: 'bulk-delete-member-seconds-count',
+    progressId: 'bulk-delete-member-progress-bar',
+    messageId: 'bulk-delete-member-timer-msg',
+    consentRowId: 'bulk-delete-member-consent-label',
+    consentCheckboxId: 'bulk-delete-member-consent-checkbox',
+    confirmBtnId: 'btn-confirm-bulk-delete-members'
+  });
+}
+
+export async function submitBulkDeleteMembers() {
+  const consentCheckbox = document.getElementById('bulk-delete-member-consent-checkbox');
+  if (consentCheckbox && !consentCheckbox.checked) {
+    showToast('Você precisa marcar a caixa de confirmação para poder apagar os colaboradores.', 'warning');
+    return;
+  }
+
+  const ids = getSelectedMemberIds();
+  if (ids.length === 0) {
+    showToast('Nenhum colaborador selecionado.', 'warning');
+    return;
+  }
+
+  const confirmBtn = document.getElementById('btn-confirm-bulk-delete-members');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Apagando...';
+  }
+
+  try {
+    await del('/members', { ids });
+    closeDialog();
+    await store.loadOrganization();
+    router.refresh();
+    showToast(`${ids.length} ${ids.length === 1 ? 'colaborador removido' : 'colaboradores removidos'} com sucesso!`, 'success');
+  } catch (err) {
+    showToast(err.message || 'Erro ao excluir colaboradores.', 'error');
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Tentar novamente';
+    }
   }
 }
 
@@ -725,8 +1061,9 @@ export async function submitConfirmImport() {
 
   try {
     const result = await post('/members/import', currentImportPayload);
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     const count = result.imported || 0;
     const groups = result.groupsCreated || 0;
     showToast(`Sucesso! ${count} colaboradores cadastrados${groups > 0 ? ` e ${groups} novas equipes criadas` : ''}.`, 'success');
@@ -962,8 +1299,9 @@ export async function submitAddGroup() {
 
   try {
     await post('/groups', { name, color, memberIds });
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Equipe criada com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao criar equipe.', 'error');
@@ -1096,8 +1434,9 @@ export async function submitEditGroup(groupId) {
 
   try {
     await put(`/groups/${groupId}`, { name, color, memberIds });
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Equipe atualizada com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao atualizar equipe.', 'error');
@@ -1141,8 +1480,9 @@ export function openDeleteGroupConfirm(groupId) {
 export async function confirmDeleteGroup(groupId) {
   try {
     await del(`/groups/${groupId}`);
-    await store.loadOrganization();
     closeDialog();
+    await store.loadOrganization();
+    router.refresh();
     showToast('Equipe excluída com sucesso.', 'success');
   } catch (err) {
     showToast(err.message || 'Erro ao excluir equipe.', 'error');

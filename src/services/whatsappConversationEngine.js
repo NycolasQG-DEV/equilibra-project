@@ -376,7 +376,7 @@ function processMessage(waId, text) {
       // Última pergunta respondida — submeter
       session.state = 'SUBMITTING';
       const result = {
-        reply: 'Pesquisa concluída! Suas respostas foram registradas com sucesso e com total anonimato.\n\nMuito obrigado pela sua contribuição!',
+        reply: 'Pesquisa concluída! Suas respostas foram registradas com sucesso e com total anonimato.\n\nObrigado! Sua contribuição é muito importante.',
         done: true,
         state: 'DONE',
         token: session.token,

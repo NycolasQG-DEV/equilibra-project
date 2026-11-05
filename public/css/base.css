@@ -2,6 +2,7 @@
    Equilibra Design System — Base (Reset, Typography, Accessibility)
    ========================================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 @import url('/vendor/fonts/fonts.css');
 
 *, *::before, *::after {
@@ -30,17 +31,17 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ── Typography Defaults ── */
+/* ── Typography Defaults (Outfit para Headings, Inter para Body) ── */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   color: var(--color-text-primary);
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   line-height: var(--line-height-tight);
   letter-spacing: -0.02em;
 }
 
 h1 {
-  font-size: clamp(1.5rem, 2.5vw, 1.875rem);
+  font-size: clamp(1.6rem, 2.2vw, 2rem);
   font-weight: 700;
   margin-bottom: var(--space-2);
 }
@@ -52,7 +53,7 @@ h2 {
 }
 
 h3 {
-  font-size: 1.0625rem;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -65,40 +66,42 @@ p {
 a {
   color: var(--color-primary);
   text-decoration: none;
+  font-weight: 500;
   transition: color var(--transition-fast);
 }
 
 a:hover {
   color: var(--color-primary-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 /* ── Tabular Figures for Numbers & Metrics ── */
 .tabular-nums, .num, .metric-value, .kpi-val, [data-tabular] {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
+  font-family: var(--font-display);
 }
 
 /* ── Focus Outline & Keyboard Accessibility ── */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
-/* ── Browser Surface Styling ── */
+/* ── Selection & Scrollbar ── */
 ::selection {
   background-color: var(--color-primary-subtle);
   color: var(--color-primary);
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -125,20 +128,25 @@ a:hover {
 
 .skip-link {
   position: absolute;
-  top: -40px;
+  top: -45px;
   left: var(--space-4);
   background: var(--color-primary);
   color: var(--color-text-on-primary);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   z-index: var(--z-toast);
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   transition: top var(--transition-fast);
 }
 
 .skip-link:focus {
   top: var(--space-4);
   outline: 2px solid var(--color-surface);
+}
+
+/* ── Utilities ── */
+.hidden {
+  display: none !important;
 }
 
 /* ── Prefers Reduced Motion ── */

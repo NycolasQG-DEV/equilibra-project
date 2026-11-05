@@ -18,6 +18,10 @@ import {
   submitEditMember,
   openDeleteMemberConfirm,
   confirmDeleteMember,
+  openBulkDeleteMembersModal,
+  submitBulkDeleteMembers,
+  updateMemberSelectionUI,
+  getSelectedMemberIds,
   openAddGroupModal,
   submitAddGroup,
   openEditGroupModal,
@@ -42,6 +46,10 @@ import {
   submitCloseEarly,
   openDeleteSurveyModal,
   submitDeleteSurvey,
+  openBulkDeleteSurveysModal,
+  submitBulkDeleteSurveys,
+  updateSurveySelectionUI,
+  getSelectedSurveyIds,
   handleOpenSurveyDirect,
   openSurveyDetailsModal
 } from './features/surveys/surveysView.js';
@@ -255,6 +263,30 @@ router.register({
 
 // Setup Global Event Delegation via data-action
 document.addEventListener('click', async (e) => {
+  // If surveys are currently selected, block opening individual survey links
+  const openLink = e.target.closest('.survey-open-link, #surveys-table a[href]');
+  if (openLink) {
+    const selectedIds = getSelectedSurveyIds();
+    if (selectedIds.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      showToast('Desmarque as pesquisas selecionadas para abrir uma pesquisa individualmente.', 'warning');
+      return;
+    }
+  }
+
+  // If members are currently selected, block individual member actions
+  const memberAction = e.target.closest('.member-action-btn, #members-table [data-action="edit-member"], #members-table [data-action="delete-member"]');
+  if (memberAction) {
+    const selectedIds = getSelectedMemberIds();
+    if (selectedIds.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      showToast('Desmarque os colaboradores selecionados para executar ações individuais.', 'warning');
+      return;
+    }
+  }
+
   const trigger = e.target.closest('[data-action]');
   if (!trigger) return;
 
@@ -299,6 +331,18 @@ document.addEventListener('click', async (e) => {
     openDeleteMemberConfirm(trigger.dataset.id);
   } else if (action === 'confirm-delete-member') {
     await confirmDeleteMember(trigger.dataset.id);
+  } else if (action === 'open-bulk-delete-members-modal') {
+    openBulkDeleteMembersModal();
+  } else if (action === 'confirm-bulk-delete-members') {
+    await submitBulkDeleteMembers();
+  } else if (action === 'toggle-select-all-members') {
+    const visibleCheckboxes = Array.from(document.querySelectorAll('#members-table tbody tr:not([style*="display: none"]) .member-row-checkbox'));
+    const allChecked = visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked);
+    visibleCheckboxes.forEach(cb => { cb.checked = !allChecked; });
+    updateMemberSelectionUI();
+  } else if (action === 'clear-member-selection') {
+    document.querySelectorAll('.member-row-checkbox').forEach(cb => { cb.checked = false; });
+    updateMemberSelectionUI();
   } else if (action === 'open-add-group-modal') {
     openAddGroupModal();
   } else if (action === 'submit-add-group') {
@@ -413,6 +457,19 @@ document.addEventListener('click', async (e) => {
     openDeleteSurveyModal(trigger.dataset.id, trigger.dataset.title);
   } else if (action === 'confirm-delete-survey') {
     await submitDeleteSurvey(trigger.dataset.id);
+  } else if (action === 'open-bulk-delete-surveys-modal') {
+    openBulkDeleteSurveysModal();
+  } else if (action === 'confirm-bulk-delete-surveys') {
+    await submitBulkDeleteSurveys();
+  } else if (action === 'toggle-select-all-surveys') {
+    const rowCheckboxes = Array.from(document.querySelectorAll('.survey-row-checkbox'));
+    const allChecked = rowCheckboxes.length > 0 && rowCheckboxes.every(cb => cb.checked);
+    rowCheckboxes.forEach(cb => { cb.checked = !allChecked; });
+    updateSurveySelectionUI();
+  } else if (action === 'clear-survey-selection') {
+    const rowCheckboxes = Array.from(document.querySelectorAll('.survey-row-checkbox'));
+    rowCheckboxes.forEach(cb => { cb.checked = false; });
+    updateSurveySelectionUI();
   } else if (action === 'confirm-replace-open-survey') {
     const oldId = trigger.dataset.oldId;
     const newId = trigger.dataset.newId;
@@ -557,6 +614,84 @@ document.addEventListener('click', async (e) => {
     } catch (err) {
       showToast(err.message || 'Erro ao atualizar dados.', 'error');
     }
+  } else if (action === 'save-user-profile') {
+    const form = document.getElementById('profile-settings-form');
+    const name = form?.userName?.value?.trim();
+    const avatarUrl = form?.avatarUrl?.value || undefined;
+    if (!name) {
+      showToast('Informe o seu nome completo.', 'error');
+      return;
+    }
+    try {
+      await put('/auth/me', { name, avatarUrl });
+      await store.loadAccount();
+      showToast('Perfil atualizado com sucesso.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao atualizar perfil.', 'error');
+    }
+  } else if (action === 'remove-avatar-photo') {
+    try {
+      await post('/auth/avatar', { avatarUrl: null });
+      await store.loadAccount();
+      const input = document.getElementById('profile-avatar-url');
+      if (input) input.value = '';
+      showToast('Foto de perfil removida com sucesso.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao remover foto.', 'error');
+    }
+  } else if (action === 'toggle-more-surveys') {
+    const hiddenItems = document.querySelectorAll('.survey-item-collapsible');
+    const btn = document.getElementById('btn-toggle-more-surveys');
+    if (!hiddenItems.length || !btn) return;
+    const isExpanded = btn.dataset.expanded === 'true';
+    if (isExpanded) {
+      hiddenItems.forEach(el => el.classList.add('hidden'));
+      btn.dataset.expanded = 'false';
+      btn.innerHTML = `<i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mostrar mais (${hiddenItems.length} pesquisas)`;
+    } else {
+      hiddenItems.forEach(el => el.classList.remove('hidden'));
+      btn.dataset.expanded = 'true';
+      btn.innerHTML = `<i class="fa-solid fa-chevron-up mr-1" aria-hidden="true"></i> Mostrar menos`;
+    }
+  }
+});
+
+// Listener para upload de foto de perfil
+document.addEventListener('change', async (e) => {
+  const target = e.target;
+  if (!target || target.dataset.action !== 'pick-avatar-file') return;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  try {
+    showToast('Processando foto de perfil...', 'info');
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const size = Math.min(img.width, img.height);
+          const startX = (img.width - size) / 2;
+          const startY = (img.height - size) / 2;
+          canvas.width = Math.min(256, size);
+          canvas.height = canvas.width;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, startX, startY, size, size, 0, 0, canvas.width, canvas.height);
+          const avatarUrl = canvas.toDataURL('image/jpeg', 0.88);
+
+          await post('/auth/avatar', { avatarUrl });
+          await store.loadAccount();
+          showToast('Foto de perfil salva com sucesso!', 'success');
+        } catch (err) {
+          showToast(err.message || 'Erro ao salvar foto de perfil.', 'error');
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    showToast('Não foi possível processar a imagem selecionada.', 'error');
   }
 });
 
@@ -588,10 +723,32 @@ document.addEventListener('input', (e) => {
       const matches = !query || name.includes(query) || email.includes(query);
       row.style.display = matches ? '' : 'none';
     });
+    updateMemberSelectionUI();
   }
 });
 
 document.addEventListener('change', async (e) => {
+  if (e.target.id === 'select-all-surveys') {
+    const checked = e.target.checked;
+    document.querySelectorAll('.survey-row-checkbox').forEach(cb => {
+      cb.checked = checked;
+    });
+    updateSurveySelectionUI();
+  }
+  if (e.target.classList.contains('survey-row-checkbox')) {
+    updateSurveySelectionUI();
+  }
+  if (e.target.id === 'select-all-members') {
+    const checked = e.target.checked;
+    const visibleCheckboxes = document.querySelectorAll('#members-table tbody tr:not([style*="display: none"]) .member-row-checkbox');
+    visibleCheckboxes.forEach(cb => {
+      cb.checked = checked;
+    });
+    updateMemberSelectionUI();
+  }
+  if (e.target.classList.contains('member-row-checkbox')) {
+    updateMemberSelectionUI();
+  }
   if (e.target.dataset.action === 'change-team-role') {
     const userId = e.target.dataset.id;
     const newRole = e.target.value;
@@ -640,7 +797,7 @@ async function boot() {
     router.handleHashChange();
   }
 
-  // Auto-sync data in background on window focus and every 10s
+  // Auto-sync data in background periodically
   startAutoSync();
 }
 
@@ -648,16 +805,23 @@ function startAutoSync() {
   const syncCurrentRouteData = async () => {
     if (document.hidden) return;
     if (document.getElementById('active-dialog-backdrop')) return;
+
+    // Não sincroniza enquanto houver seleção ativa, formulários em edição ou wizards abertos
+    if (document.querySelector('.selection-active, .survey-row-checkbox:checked, .member-row-checkbox:checked')) return;
+    if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
     const state = store.getState();
     if (!state.account) return;
 
     const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0] || 'hoje';
+    if (hash === 'pesquisas/nova' || hash.includes('/nova')) return;
+
     try {
       if (hash.startsWith('organizacao')) {
         await store.loadOrganization();
       } else if (hash === 'hoje') {
         await store.loadToday();
-      } else if (hash.startsWith('pesquisas')) {
+      } else if (hash === 'pesquisas') {
         await store.loadSurveys();
       } else if (hash.startsWith('resultados')) {
         await store.loadReports();
@@ -672,8 +836,8 @@ function startAutoSync() {
     }
   };
 
-  window.addEventListener('focus', syncCurrentRouteData);
-  setInterval(syncCurrentRouteData, 10000);
+  // Sincronização periódica suave em segundo plano (60s), sem listener agressivo de foco
+  setInterval(syncCurrentRouteData, 60000);
 }
 
 boot().catch((err) => {

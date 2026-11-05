@@ -59,7 +59,14 @@ function currentAccount(req) {
   if (!actor) return null;
   const organization = read('accounts').find(item => item.id === (actor.organizationId || actor.id));
   if (!organization || organization.disabled) return null;
-  return { ...actor, id: actor.organizationId || actor.id, userId: actor.id, role: actor.role || 'owner', company: organization.company };
+  return {
+    ...actor,
+    id: actor.organizationId || actor.id,
+    userId: actor.id,
+    role: actor.role || 'owner',
+    company: organization.company,
+    avatarUrl: actor.avatarUrl || organization.avatarUrl || null
+  };
 }
 function protectedRoute(req, res, next) {
   req.account = currentAccount(req);
@@ -71,7 +78,15 @@ function protectedRoute(req, res, next) {
   try { require('../services/entitlementService').check(req); } catch (error) { return fail(res, error.status || 400, error.message); }
   next();
 }
-const publicAccount = account => ({ id: account.id, userId: account.userId || account.id, name: account.name, company: account.company, email: account.email, role: account.role || 'owner' });
+const publicAccount = account => ({
+  id: account.id,
+  userId: account.userId || account.id,
+  name: account.name,
+  company: account.company,
+  email: account.email,
+  role: account.role || 'owner',
+  avatarUrl: account.avatarUrl || null
+});
 function publishableAggregate(survey, responses) {
   if (responses.length > (survey.memberIds?.length || 0)) return null;
   const audience = new Set(survey.memberIds || []);
@@ -93,10 +108,21 @@ function surveySummary(survey, accountId) {
     ? surveyGroups.map(g => g.name).join(', ')
     : (surveyGroups[0]?.name || 'Grupo removido');
   const responses = scoped('responses', accountId).filter((item) => item.surveyId === survey.id);
-  const responseCount = survey.status === 'closed' ? (survey.responseCount ?? responses.length) : responses.length;
+  // For open surveys: count used invitations as participation source of truth
+  // (invitations are marked used=true at response submission time, even if responses.json
+  //  entry is somehow missing — used invitations represent real answered surveys)
+  const usedInvitations = survey.status !== 'closed'
+    ? scoped('invitations', accountId).filter(i => i.surveyId === survey.id && i.used === true).length
+    : 0;
+  const rawCount = survey.status === 'closed'
+    ? (survey.responseCount ?? responses.length)
+    : Math.max(responses.length, usedInvitations);
+  const responseCount = rawCount;
   const totalMembers = survey.memberIds?.length || 0;
+  const invitedCount = totalMembers;
   const target = survey.participationTarget || 0.70;
   const pct70 = totalMembers > 0 ? Math.ceil(totalMembers * target) : 0;
+  const participationRate = invitedCount > 0 ? responseCount / invitedCount : 0;
   const isExpired = Number.isFinite(new Date(survey.endsAt).getTime()) && new Date(survey.endsAt).getTime() <= Date.now();
   const canClose = responseCount >= pct70 || isExpired;
   const savedReport = scoped('reports', accountId).find(row => row.surveyId === survey.id);
@@ -109,7 +135,11 @@ function surveySummary(survey, accountId) {
     groupNames: surveyGroups.map(g => g.name),
     groupName,
     groupSize: totalMembers,
+    invitedCount,
+    // responsesCount alias for frontend compatibility (surveysView.js reads this field)
+    responsesCount: responseCount,
     responseCount,
+    participationRate,
     participationTarget: target,
     canClose,
     pct70,
@@ -257,19 +287,35 @@ router.post('/auth/login', (req, res) => {
 });
 router.get('/auth/me', (req, res) => { const account = currentAccount(req); res.json(account ? publicAccount(account) : null); });
 router.put('/auth/me', protectedRoute, (req, res) => {
-  const name = clean(req.body.name), company = clean(req.body.company), address = email(req.body.email);
-  if (!name || !company || !validEmail(address)) return fail(res, 400, 'Informe nome, empresa e um e-mail válido.');
+  const name = clean(req.body.name);
+  const company = req.body.company ? clean(req.body.company) : req.account.company;
+  const address = req.body.email ? email(req.body.email) : req.account.email;
+  if (!name || !validEmail(address)) return fail(res, 400, 'Informe seu nome e um e-mail válido.');
   const accounts = read('accounts');
   if (accounts.some((item) => item.id !== req.account.userId && item.email === address)) return fail(res, 409, 'E-mail já cadastrado por outra conta.');
   const account = accounts.find((item) => item.id === req.account.userId);
   if (!account) return fail(res, 404, 'Conta não encontrada.');
   account.name = name;
-  if (req.account.role === 'owner') account.company = company;
+  if (req.account.role === 'owner' && req.body.company) account.company = company;
   account.email = address;
+  if (req.body.avatarUrl !== undefined) {
+    account.avatarUrl = typeof req.body.avatarUrl === 'string' ? req.body.avatarUrl.trim() : null;
+  }
   account.updatedAt = new Date().toISOString();
   write('accounts', accounts);
   req.account = currentAccount(req);
   res.json(publicAccount(req.account));
+});
+router.post('/auth/avatar', protectedRoute, (req, res) => {
+  const accounts = read('accounts');
+  const account = accounts.find((item) => item.id === req.account.userId);
+  if (!account) return fail(res, 404, 'Conta não encontrada.');
+  const avatarUrl = typeof req.body.avatarUrl === 'string' && req.body.avatarUrl.trim() ? req.body.avatarUrl.trim() : null;
+  account.avatarUrl = avatarUrl;
+  account.updatedAt = new Date().toISOString();
+  write('accounts', accounts);
+  req.account = currentAccount(req);
+  res.json({ ok: true, account: publicAccount(req.account) });
 });
 router.post('/auth/logout', protectedRoute, (req, res) => { write('sessions', read('sessions').filter((item) => item.tokenHash !== hash(cookie(req)))); res.clearCookie('equilibra_session', { path: '/' }); res.status(204).end(); });
 
@@ -329,6 +375,30 @@ router.delete('/members/:id', protectedRoute, (req, res) => {
   for (const group of groups) if (group.accountId === req.account.id) group.memberIds = group.memberIds.filter((mId) => mId !== member.id);
   write('groups', groups);
   res.status(204).end();
+});
+
+// Bulk delete members
+router.delete('/members', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem excluir colaboradores.');
+  const ids = req.body && req.body.ids;
+  if (!Array.isArray(ids) || ids.length === 0) return fail(res, 400, 'Informe os IDs dos colaboradores a excluir.');
+
+  const members = read('members');
+  const toDelete = members.filter(m => ids.includes(m.id) && m.accountId === req.account.id);
+  if (toDelete.length === 0) return fail(res, 404, 'Nenhum colaborador encontrado para exclusão.');
+
+  const deletedIds = toDelete.map(m => m.id);
+  write('members', members.filter(m => !(deletedIds.includes(m.id) && m.accountId === req.account.id)));
+
+  const groups = read('groups');
+  for (const group of groups) {
+    if (group.accountId === req.account.id) {
+      group.memberIds = group.memberIds.filter(mId => !deletedIds.includes(mId));
+    }
+  }
+  write('groups', groups);
+
+  res.json({ ok: true, deleted: deletedIds.length });
 });
 
 router.get('/members/template', protectedRoute, async (_req, res) => {
@@ -438,6 +508,24 @@ router.delete('/surveys/:id', protectedRoute, (req, res) => {
   write('responses', responses);
 
   res.status(204).end();
+});
+
+// Bulk delete surveys
+router.delete('/surveys', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Sem permissão para excluir pesquisas.');
+  const ids = req.body && req.body.ids;
+  if (!Array.isArray(ids) || ids.length === 0) return fail(res, 400, 'Informe os IDs das pesquisas a excluir.');
+
+  const surveys = read('surveys');
+  const toDelete = surveys.filter(s => ids.includes(s.id) && s.accountId === req.account.id);
+  if (toDelete.length === 0) return fail(res, 404, 'Nenhuma pesquisa encontrada para exclusão.');
+
+  const deletedIds = toDelete.map(s => s.id);
+  write('surveys', surveys.filter(s => !(deletedIds.includes(s.id) && s.accountId === req.account.id)));
+  write('invitations', read('invitations').filter(i => !deletedIds.includes(i.surveyId)));
+  write('responses', read('responses').filter(r => !deletedIds.includes(r.surveyId)));
+
+  res.json({ ok: true, deleted: deletedIds.length });
 });
 
 router.get('/surveys/preflight', protectedRoute, (req, res) => {

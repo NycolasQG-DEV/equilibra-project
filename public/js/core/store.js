@@ -48,7 +48,6 @@ class Store {
 
   setLoading(section, isLoading) {
     this.state.loading = { ...this.state.loading, [section]: isLoading };
-    this.notify();
   }
 
   setError(section, error) {

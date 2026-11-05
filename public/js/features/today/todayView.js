@@ -18,20 +18,11 @@ export function renderToday({ state }) {
   let queueHtml = '';
   if (queue.length === 0) {
     queueHtml = `
-      <div class="card card-stable mb-6">
-        <div class="card-body flex items-center justify-between p-4">
-          <div class="flex items-center gap-3">
-            <div class="status-icon-circle status-icon-circle-success">
-              <i class="fa-solid fa-check" aria-hidden="true"></i>
-            </div>
-            <div>
-              <strong class="color-primary font-semibold">Tudo em dia</strong>
-              <p class="view-subtitle m-0">
-                Nenhuma ação atrasada, relatório pendente de aceite ou quórum crítico exigindo intervenção imediata.
-              </p>
-            </div>
-          </div>
-          <span class="badge badge-success">Operação estável</span>
+      <div class="today-status-strip mb-6">
+        <i class="fa-solid fa-circle-check status-strip-icon" aria-hidden="true"></i>
+        <div class="status-strip-text">
+          <strong>Tudo em dia</strong>
+          <span>— Nenhuma ação requer intervenção no momento. Operação estável.</span>
         </div>
       </div>
     `;
@@ -96,8 +87,32 @@ export function renderToday({ state }) {
     `;
   }
 
-  // Operational KPIs
-  const activeSurvey = kpis.activeSurvey;
+  // Operational KPIs & Open Surveys
+  const rawOpenSurveys = kpis.openSurveys || (state.surveys ? state.surveys.filter(s => s.status === 'open') : []);
+  const openSurveys = rawOpenSurveys.map(s => {
+    const totalInvited = s.totalInvited || s.invitedCount || s.groupSize || s.memberIds?.length || 0;
+    const responsesCount = s.responsesCount || s.responseCount || 0;
+    const rate = s.participationRate != null
+      ? s.participationRate
+      : (totalInvited > 0 ? responsesCount / totalInvited : 0);
+    const closeDate = s.endsAt || s.closesAt ? new Date(s.endsAt || s.closesAt) : null;
+    const daysRemaining = s.daysRemaining != null
+      ? s.daysRemaining
+      : (closeDate ? Math.max(0, Math.ceil((closeDate - Date.now()) / (1000 * 60 * 60 * 24))) : null);
+
+    return {
+      ...s,
+      totalInvited,
+      responsesCount,
+      participationRate: rate,
+      daysRemaining
+    };
+  });
+
+  const totalOpenResponses = openSurveys.reduce((sum, s) => sum + s.responsesCount, 0);
+  const totalOpenInvited = openSurveys.reduce((sum, s) => sum + s.totalInvited, 0);
+  const aggregateRate = totalOpenInvited > 0 ? totalOpenResponses / totalOpenInvited : 0;
+
   const actions = kpis.actionsSummary || kpis.actions || { total: 0, onTrack: 0, overdue: 0, needsReview: 0 };
   const pop = kpis.monitoredPopulation || kpis.population || { membersCount: 0, groupsCount: 0 };
 
@@ -107,21 +122,14 @@ export function renderToday({ state }) {
   const kpisHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
       <div class="kpi-card">
-        <span class="kpi-title">Pesquisa em Andamento</span>
-        ${activeSurvey ? `
-          <div class="kpi-val">${fmtPercent(activeSurvey.participationRate)}</div>
-          <div class="table-subtext mb-1">
-            ${esc(activeSurvey.title)} · Meta: 70%
-          </div>
-          <div class="dist-bar">
-            <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(activeSurvey.participationRate * 100))}"></div>
-          </div>
-          <span class="kpi-sub mt-2">${activeSurvey.responsesCount || activeSurvey.responses || 0} respostas de ${activeSurvey.totalInvited || activeSurvey.invited || 0} convidados</span>
-        ` : `
-          <div class="kpi-val color-muted">Nenhuma aberta</div>
-          <span class="kpi-sub">Todos os ciclos anteriores foram encerrados.</span>
-          <a href="#pesquisas/nova" class="btn btn-secondary btn-sm mt-2">Abrir pesquisa</a>
-        `}
+        <span class="kpi-title">Pesquisas Ativas</span>
+        <div class="kpi-val">${openSurveys.length} <span class="text-sm font-normal color-muted">${openSurveys.length === 1 ? 'coleta ativa' : 'coletas ativas'}</span></div>
+        <div class="table-subtext mt-1">
+          ${openSurveys.length > 0
+            ? `${totalOpenResponses} de ${totalOpenInvited} pessoas responderam (${fmtPercent(aggregateRate)})`
+            : 'Nenhuma coleta aberta no momento'}
+        </div>
+        <span class="kpi-sub mt-2">Visão geral em tempo real</span>
       </div>
 
       <div class="kpi-card">
@@ -146,6 +154,75 @@ export function renderToday({ state }) {
     </div>
   `;
 
+  const openSurveysSectionHtml = `
+    <div class="card mb-6">
+      <div class="card-header flex items-center justify-between flex-wrap gap-2 py-3 px-4">
+        <div class="flex items-center gap-2">
+          <h2 class="card-title text-sm font-semibold m-0">Escutas em Andamento</h2>
+          <span class="badge badge-primary text-xs">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</span>
+        </div>
+        <a href="#pesquisas" class="table-subtext text-xs hover:color-primary flex items-center gap-1 font-medium">
+          Ver todas no painel <i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i>
+        </a>
+      </div>
+      <div class="card-body p-0">
+        ${openSurveys.length === 0 ? `
+          <div class="flex items-center justify-center text-center p-6">
+            <div>
+              <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i></div>
+              <p class="font-medium text-sm m-0">Nenhuma pesquisa em andamento</p>
+              <p class="table-subtext text-xs mt-1 mb-3">Abra uma nova escuta coletiva para iniciar a coleta.</p>
+              <a href="#pesquisas/nova" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Escuta
+              </a>
+            </div>
+          </div>
+        ` : `
+          <div class="today-surveys-list">
+            ${openSurveys.map((s, idx) => {
+              const isHidden = idx >= 3;
+              return `
+                <div class="today-survey-row ${isHidden ? 'survey-item-collapsible hidden' : ''}">
+                  <div class="today-survey-main">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                      <a href="#pesquisas/${attr(s.id)}/distribuicao" class="today-survey-name" title="${attr(s.title)}">
+                        ${esc(s.title)}
+                      </a>
+                      <span class="badge badge-subtle text-xs">${esc(s.model || 'Diagnóstico')}</span>
+                    </div>
+                    <div class="today-survey-details">
+                      <span>${esc(s.cycle || 'Geral')}</span>
+                      <span class="dot-separator">•</span>
+                      <span class="color-muted">${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}</span>
+                    </div>
+                  </div>
+
+                  <div class="today-survey-side">
+                    <div class="today-survey-metric">
+                      <span class="today-survey-rate">${fmtPercent(s.participationRate)}</span>
+                      <span class="today-survey-sub">${s.responsesCount} de ${s.totalInvited} resp.</span>
+                    </div>
+                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm today-survey-btn" title="Acompanhar coleta">
+                      Acompanhar
+                    </a>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${openSurveys.length > 3 ? `
+            <div class="p-2 text-center border-t border-border bg-surface-subtle">
+              <button type="button" class="btn btn-ghost btn-sm font-medium" data-action="toggle-more-surveys" id="btn-toggle-more-surveys" data-expanded="false">
+                <i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mostrar mais (${openSurveys.length - 3} pesquisas)
+              </button>
+            </div>
+          ` : ''}
+        `}
+      </div>
+    </div>
+  `;
+
   // Decision Charts Section
   const partTrendList = Array.isArray(charts.participationTrend) ? charts.participationTrend : (charts.participationTrendData?.labels ? charts.participationTrendData.labels.map((lbl, i) => ({ cycle: lbl, rate: charts.participationTrendData.rates[i] })) : []);
   const factorRankingList = Array.isArray(charts.factorRanking) ? charts.factorRanking : (charts.factorAverages?.labels ? charts.factorAverages.labels.map((lbl, i) => ({ label: lbl, average: charts.factorAverages.values[i] })) : []);
@@ -155,60 +232,92 @@ export function renderToday({ state }) {
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">Adesão aos Ciclos</h3>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-participation">Ver tabela</button>
+          ${partTrendList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-participation">Ver tabela</button>` : ''}
         </div>
         <div class="card-body chart-container-fixed">
-          <canvas id="chart-participation-canvas" role="img" aria-label="Gráfico de tendência de participação nos ciclos"></canvas>
-          <div id="table-participation" class="table-wrap chart-fallback-table chart-fallback-hidden">
-            <table class="table">
-              <thead><tr><th>Ciclo</th><th>Adesão</th></tr></thead>
-              <tbody>
-                ${partTrendList.map(p => `
-                  <tr><td>${esc(p.fullCycle || p.cycle)}</td><td>${p.rate}%</td></tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+          ${partTrendList.length > 0 ? `
+            <canvas id="chart-participation-canvas" role="img" aria-label="Gráfico de tendência de participação nos ciclos"></canvas>
+            <div id="table-participation" class="table-wrap chart-fallback-table chart-fallback-hidden">
+              <table class="table">
+                <thead><tr><th>Ciclo</th><th>Adesão</th></tr></thead>
+                <tbody>
+                  ${partTrendList.map(p => `
+                    <tr><td>${esc(p.fullCycle || p.cycle)}</td><td>${p.rate}%</td></tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div class="flex items-center justify-center text-center p-6 h-full">
+              <div>
+                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
+                <p class="font-medium text-sm m-0">Nenhum ciclo registrado</p>
+                <p class="table-subtext text-xs mt-1 mb-3">Inicie uma pesquisa de escuta para acompanhar a taxa de adesão.</p>
+                <a href="#pesquisas/nova" class="btn btn-secondary btn-sm">Criar Pesquisa</a>
+              </div>
+            </div>
+          `}
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">Fatores do Último Ciclo</h3>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-factors">Ver tabela</button>
+          ${factorRankingList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-factors">Ver tabela</button>` : ''}
         </div>
         <div class="card-body chart-container-fixed">
-          <canvas id="chart-factors-canvas" role="img" aria-label="Gráfico de média dos fatores psicossociais"></canvas>
-          <div id="table-factors" class="table-wrap chart-fallback-table chart-fallback-hidden">
-            <table class="table">
-              <thead><tr><th>Fator</th><th>Média</th></tr></thead>
-              <tbody>
-                ${factorRankingList.map(f => `
-                  <tr><td>${esc(f.label)}</td><td>${fmt(f.average)}</td></tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+          ${factorRankingList.length > 0 ? `
+            <canvas id="chart-factors-canvas" role="img" aria-label="Gráfico de média dos fatores psicossociais"></canvas>
+            <div id="table-factors" class="table-wrap chart-fallback-table chart-fallback-hidden">
+              <table class="table">
+                <thead><tr><th>Fator</th><th>Média</th></tr></thead>
+                <tbody>
+                  ${factorRankingList.map(f => `
+                    <tr><td>${esc(f.label)}</td><td>${fmt(f.average)}</td></tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div class="flex items-center justify-center text-center p-6 h-full">
+              <div>
+                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></div>
+                <p class="font-medium text-sm m-0">Aguardando encerramento do ciclo</p>
+                <p class="table-subtext text-xs mt-1">As médias de cada dimensão serão consolidadas com quórum estatístico seguro após o fechamento do ciclo.</p>
+              </div>
+            </div>
+          `}
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">Eficácia das Ações</h3>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-actions">Ver tabela</button>
+          ${(charts.efficacy?.total || 0) > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-actions">Ver tabela</button>` : ''}
         </div>
         <div class="card-body chart-container-fixed">
-          <canvas id="chart-actions-canvas" role="img" aria-label="Gráfico de eficácia das medidas preventivas"></canvas>
-          <div id="table-actions" class="table-wrap chart-fallback-table chart-fallback-hidden">
-            <table class="table">
-              <thead><tr><th>Status</th><th>Qtd</th></tr></thead>
-              <tbody>
-                ${(charts.actionEfficacy?.labels || ['Eficazes', 'Em andamento', 'A revisar']).map((lbl, i) => `
-                  <tr><td>${esc(lbl)}</td><td>${(charts.actionEfficacy?.counts ? charts.actionEfficacy.counts[i] : 0)}</td></tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+          ${(charts.efficacy?.total || 0) > 0 ? `
+            <canvas id="chart-actions-canvas" role="img" aria-label="Gráfico de eficácia das medidas preventivas"></canvas>
+            <div id="table-actions" class="table-wrap chart-fallback-table chart-fallback-hidden">
+              <table class="table">
+                <thead><tr><th>Status</th><th>Qtd</th></tr></thead>
+                <tbody>
+                  ${(charts.actionEfficacy?.labels || ['Eficazes', 'Em andamento', 'A revisar']).map((lbl, i) => `
+                    <tr><td>${esc(lbl)}</td><td>${(charts.actionEfficacy?.counts ? charts.actionEfficacy.counts[i] : 0)}</td></tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div class="flex items-center justify-center text-center p-6 h-full">
+              <div>
+                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-list-check" aria-hidden="true"></i></div>
+                <p class="font-medium text-sm m-0">Nenhum plano de ação cadastrado</p>
+                <p class="table-subtext text-xs mt-1 mb-3">Defina medidas preventivas associadas aos fatores avaliados.</p>
+                <a href="#planos/novo" class="btn btn-secondary btn-sm">Criar Ação</a>
+              </div>
+            </div>
+          `}
         </div>
       </div>
     </div>
@@ -234,6 +343,7 @@ export function renderToday({ state }) {
       ${queueHtml}
       ${kpisHtml}
       ${chartsHtml}
+      ${openSurveysSectionHtml}
     </div>
   `;
 

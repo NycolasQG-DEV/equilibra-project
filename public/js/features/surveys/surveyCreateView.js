@@ -158,7 +158,7 @@ export function renderSurveyCreate({ state }) {
                             <i class="fa-regular fa-eye" aria-hidden="true"></i> Ver Afirmações
                           </button>
                           
-                          <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm model-select-btn" data-action="select-model-card" data-model="${attr(tpl.name)}">
+                          <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm model-select-btn" tabindex="-1">
                             ${isSelected ? '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Selecionado' : 'Selecionar'}
                           </button>
                         </div>

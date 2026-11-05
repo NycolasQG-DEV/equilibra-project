@@ -23,7 +23,7 @@ export function renderActionsList({ state }) {
         <div>
           <h1 class="view-title">Planos de Ação e Intervenções (NR-1)</h1>
           <p class="view-subtitle">
-            Ciclo contínuo de planejamento, implementação e revisão de eficácia das medidas preventivas
+            Acompanhamento e gestão contínua de medidas preventivas NR-1
           </p>
         </div>
         <div>
