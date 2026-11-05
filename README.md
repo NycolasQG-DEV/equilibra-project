@@ -1,6 +1,6 @@
 # Equilibra Web — Plataforma de Escuta e Gestão NR-1 / SST
 
-Plataforma web para a equipe interna de RH e Segurança e Saúde no Trabalho (SST) organizar a escuta confidencial sobre condições de trabalho e fatores psicossociais, transformar dados coletivos em relatórios técnicos auditáveis e gerir planos de ação contínuos no âmbito da NR-1 / PGR.
+Plataforma web SaaS para a equipe interna de RH e Segurança e Saúde no Trabalho (SST) organizar a escuta confidencial sobre condições de trabalho e fatores psicossociais, transformar dados coletivos em relatórios técnicos auditáveis e gerir planos de ação contínuos no âmbito da NR-1 / PGR.
 
 ---
 
