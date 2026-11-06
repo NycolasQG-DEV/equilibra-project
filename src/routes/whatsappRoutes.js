@@ -116,16 +116,23 @@ router.post('/webhook/whatsapp', verifyWebhookSecret, async (req, res) => {
   const { waId, text } = parsed;
 
   try {
-    const { reply, submitted } = await handleIncomingMessage(
+    const { reply, bubbles, submitted } = await handleIncomingMessage(
       waId,
       text,
       submitAnswersInternal
     );
 
-    if (reply) {
-      // Usa phone do waId (remove @s.whatsapp.net) para enviar resposta
+    const messagesToSend = bubbles || (Array.isArray(reply) ? reply : (reply ? [reply] : []));
+    if (messagesToSend.length > 0) {
       const phone = waId.replace(/@.+/, '');
-      await sendText(phone, reply);
+      for (let i = 0; i < messagesToSend.length; i++) {
+        const msgItem = messagesToSend[i];
+        if (!msgItem) continue;
+        await sendText(phone, msgItem);
+        if (i < messagesToSend.length - 1) {
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
     }
 
     if (submitted) {

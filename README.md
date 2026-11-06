@@ -1,13 +1,13 @@
 # Equilibra Web — Plataforma de Escuta e Gestão NR-1 / SST
 
-Plataforma web para a equipe interna de RH e Segurança e Saúde no Trabalho (SST) organizar a escuta confidencial sobre condições de trabalho e fatores psicossociais, transformar dados coletivos em relatórios técnicos auditáveis e gerir planos de ação contínuos no âmbito da NR-1 / PGR.
+Plataforma web SaaS para a equipe interna de RH e Segurança e Saúde no Trabalho (SST) organizar a escuta confidencial sobre condições de trabalho e fatores psicossociais, transformar dados coletivos em relatórios técnicos auditáveis e gerir planos de ação contínuos no âmbito da NR-1 / PGR.
 
 ---
 
 ## 1. Visão Geral e Pilares
 
 1. **Privacidade e Sigilo Estatístico por Desenho ($N \ge 5$):**
-   - Nenhuma média, percentual ou distribuição é divulgada para amostras com menos de 5 respondentes.
+   - Nenhuma média, percentual ou distribuição é divulgada para amostras com menos de 5 respondentes validados.
    - Partição determinística de segmentos: áreas com $n < 5$ são agrupadas automaticamente em *"Demais áreas (agrupadas)"* para impedir identificação de indivíduos por exclusão.
    - Supressão preventiva por sobreposição residual: previne inferência quando ciclos sucessivos têm públicos quase idênticos (diferença $< 5$).
 2. **Conformidade Técnica com a NR-1 / PGR:**

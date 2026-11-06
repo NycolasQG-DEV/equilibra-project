@@ -245,16 +245,38 @@ async function initWhatsAppClient() {
       console.log(`\n💬 [WhatsApp Recebido] De: ${cleanJid} | Mensagem: "${text}"`);
 
       try {
-        const { reply, submitted } = await handleIncomingMessage(
+        const { reply, bubbles, submitted } = await handleIncomingMessage(
           cleanJid,
           text,
           submitAnswersDirect,
           resolvedPn
         );
 
-        if (reply) {
-          console.log(`🤖 [WhatsApp Resposta] Enviando para ${rawRemoteJid}: "${reply.slice(0, 50)}..."`);
-          await sock.sendMessage(rawRemoteJid, { text: reply });
+        const messagesToSend = bubbles || (Array.isArray(reply) ? reply : (reply ? [reply] : []));
+
+        if (messagesToSend.length > 0) {
+          for (let i = 0; i < messagesToSend.length; i++) {
+            const msgItem = messagesToSend[i];
+            if (!msgItem) continue;
+
+            // Simula digitação humana antes de enviar cada balão
+            try {
+              await sock.sendPresenceUpdate('composing', rawRemoteJid);
+              const charDelay = Math.min(2200, Math.max(900, msgItem.length * 28));
+              await new Promise(r => setTimeout(r, charDelay));
+              await sock.sendPresenceUpdate('paused', rawRemoteJid);
+            } catch (pErr) {
+              // Não bloqueia envio caso atualização de presença falhe
+            }
+
+            console.log(`🤖 [WhatsApp Resposta ${i + 1}/${messagesToSend.length}] Enviando para ${rawRemoteJid}: "${msgItem.slice(0, 50)}..."`);
+            await sock.sendMessage(rawRemoteJid, { text: msgItem });
+
+            // Se houver mais uma mensagem complementar na fila, breve pausa natural entre balões
+            if (i < messagesToSend.length - 1) {
+              await new Promise(r => setTimeout(r, 1200));
+            }
+          }
           console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${rawRemoteJid}`);
         } else {
           console.log(`🔇 [WhatsApp] Nenhuma pesquisa ativa para ${cleanJid} — ignorado silenciosamente.`);
