@@ -6,7 +6,7 @@ const { createTemplate, parseImport, validateImport, validPhone, phoneKey } = re
 const router = express.Router();
 const { FACTORS, MODELS, TEMPLATES, REFERENCES, instrumentForModel, surveyInstrument, snapshotInstrument } = require('../domain/instruments');
 const { aggregate, summarizeDistribution } = require('../domain/analysis');
-const { openSurvey, closeSurvey, reissueLinks, getParticipation, extendSurvey, closeExpiredSurveys } = require('../services/surveyLifecycle');
+const { openSurvey, closeSurvey, reissueLinks, getParticipation, extendSurvey, closeExpiredSurveys, openScheduledSurveys } = require('../services/surveyLifecycle');
 const { buildCycleReport, preflightSurveyAudience } = require('../domain/reporting');
 const exportService = require('../services/reportExportService');
 const managementRepo = require('../repositories/managementRepository');
@@ -177,9 +177,11 @@ function ensureReports(accountId) {
   if (changed) write('reports', reports);
   return reports.filter((item) => item.accountId === accountId).sort((a, b) => b.closedAt.localeCompare(a.closedAt));
 }
-function closeExpired(accountId) {
+function closeExpired(accountId, req = null) {
   const check = closeExpiredSurveys(accountId);
   if (check.changed) ensureReports(accountId);
+  const baseUrl = req ? `${req.protocol}://${req.get('host')}` : '';
+  openScheduledSurveys(accountId, baseUrl);
 }
 function validateSurveyInput(req, accountId) {
   const title = clean(req.body.title);
@@ -209,6 +211,15 @@ function validateSurveyInput(req, accountId) {
     return { error: 'A data de encerramento deve ser no futuro.' };
   }
 
+  const startsAtRaw = clean(req.body.startsAt, 40);
+  let startsAt = null;
+  if (startsAtRaw) {
+    const startsAtTime = new Date(startsAtRaw).getTime();
+    if (Number.isFinite(startsAtTime)) {
+      startsAt = new Date(startsAtTime).toISOString();
+    }
+  }
+
   const memberIds = [...new Set(groups.flatMap(g => g.memberIds))];
   return {
     fields: {
@@ -220,6 +231,7 @@ function validateSurveyInput(req, accountId) {
       groupIds: groups.map(g => g.id),
       groupId: groups[0].id,
       memberIds,
+      startsAt,
       endsAt: new Date(endsAtTime).toISOString()
     }
   };
@@ -343,14 +355,28 @@ router.post('/members', protectedRoute, (req, res) => {
 router.put('/members/:id', protectedRoute, (req, res) => {
   const members = read('members'), member = members.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!member) return fail(res, 404, 'Pessoa não encontrada.');
-  const name = clean(req.body.name, 120), address = req.body.email ? email(req.body.email) : '', phone = req.body.phone ? clean(req.body.phone, 22) : '';
+  const name = clean(req.body.name, 120), address = req.body.email ? email(req.body.email) : '', phone = req.body.phone ? clean(req.body.phone, 25) : '';
   if (!name && !address) return fail(res, 400, 'Informe ao menos o nome ou e-mail da pessoa.');
   if (address && !validEmail(address)) return fail(res, 400, 'Informe um e-mail válido.');
-  if (phone && !validPhone(phone)) return fail(res, 400, 'Informe um telefone válido com DDD (ex: 11987654321).');
   if (address && members.some((item) => item.id !== member.id && item.accountId === req.account.id && item.email === address)) return fail(res, 409, 'E-mail já cadastrado.');
-  if (phone && members.some((item) => item.id !== member.id && item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) return fail(res, 409, 'Telefone já cadastrado.');
+
+  let updatedPhone = member.phone;
+  if (phone) {
+    const currentDecrypted = decryptPhone(member.phone);
+    // Se o telefone mudou ou foi fornecido pela primeira vez
+    if (phone !== currentDecrypted && (!currentDecrypted || phoneKey(phone) !== phoneKey(currentDecrypted))) {
+      if (!validPhone(phone)) return fail(res, 400, 'Informe um telefone válido com DDD (ex: 11987654321).');
+      if (members.some((item) => item.id !== member.id && item.accountId === req.account.id && decryptPhone(item.phone) && phoneKey(decryptPhone(item.phone)) === phoneKey(phone))) {
+        return fail(res, 409, 'Telefone já cadastrado.');
+      }
+      updatedPhone = encryptPhone(phone);
+    }
+  }
+
   const registration = clean(req.body.registration, 50);
-  Object.assign(member, { name, email: address, phone: encryptPhone(phone), registration }); write('members', members);
+  Object.assign(member, { name, email: address, phone: updatedPhone, registration });
+  write('members', members);
+
   if (Array.isArray(req.body.groupIds)) {
     const groups = read('groups');
     for (const g of groups) {
@@ -370,10 +396,10 @@ router.put('/members/:id', protectedRoute, (req, res) => {
 router.delete('/members/:id', protectedRoute, (req, res) => {
   const members = read('members'), member = members.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!member) return fail(res, 404, 'Pessoa não encontrada.');
-  write('members', members.filter((item) => item.id !== member.id));
+  const nextMembers = members.filter((item) => item.id !== member.id);
   const groups = read('groups');
   for (const group of groups) if (group.accountId === req.account.id) group.memberIds = group.memberIds.filter((mId) => mId !== member.id);
-  write('groups', groups);
+  writeMany({ members: nextMembers, groups });
   res.status(204).end();
 });
 
@@ -388,7 +414,7 @@ router.delete('/members', protectedRoute, (req, res) => {
   if (toDelete.length === 0) return fail(res, 404, 'Nenhum colaborador encontrado para exclusão.');
 
   const deletedIds = toDelete.map(m => m.id);
-  write('members', members.filter(m => !(deletedIds.includes(m.id) && m.accountId === req.account.id)));
+  const nextMembers = members.filter(m => !(deletedIds.includes(m.id) && m.accountId === req.account.id));
 
   const groups = read('groups');
   for (const group of groups) {
@@ -396,7 +422,7 @@ router.delete('/members', protectedRoute, (req, res) => {
       group.memberIds = group.memberIds.filter(mId => !deletedIds.includes(mId));
     }
   }
-  write('groups', groups);
+  writeMany({ members: nextMembers, groups });
 
   res.json({ ok: true, deleted: deletedIds.length });
 });
@@ -472,12 +498,89 @@ router.delete('/groups/:id', protectedRoute, (req, res) => {
   if (group.isDefault) return fail(res, 409, 'O grupo Geral é automático e não pode ser excluído.');
   const surveys = scoped('surveys', req.account.id);
   if (surveys.some((s) => (s.groupIds || [s.groupId]).includes(group.id) && s.status === 'open')) return fail(res, 409, 'Não é possível excluir um grupo com pesquisa em andamento.');
-  write('groups', groups.filter((item) => item.id !== group.id));
+  const nextGroups = groups.filter((item) => item.id !== group.id);
+  const members = read('members');
+  let membersChanged = false;
+  for (const m of members) {
+    if (m.accountId === req.account.id && Array.isArray(m.groupIds) && m.groupIds.includes(group.id)) {
+      m.groupIds = m.groupIds.filter(gid => gid !== group.id);
+      membersChanged = true;
+    }
+  }
+  if (membersChanged) {
+    writeMany({ groups: nextGroups, members });
+  } else {
+    write('groups', nextGroups);
+  }
   res.status(204).end();
 });
 
-router.get('/meta', protectedRoute, (_req, res) => res.json({ factors: FACTORS, models: TEMPLATES.map(row => row.name), templates: TEMPLATES, references: REFERENCES, collectionChannel: 'web', minResults: MIN_RESULTS }));
-router.get('/surveys', protectedRoute, (req, res) => { closeExpired(req.account.id); res.json(scoped('surveys', req.account.id).filter(item => !item.archivedAt).map((item) => surveySummary(item, req.account.id)).reverse()); });
+router.get('/meta', protectedRoute, (req, res) => res.json({
+  factors: FACTORS,
+  models: TEMPLATES.map(row => row.name),
+  templates: TEMPLATES,
+  references: REFERENCES,
+  collectionChannel: 'web',
+  minResults: MIN_RESULTS,
+  account: { companyName: req.account?.company || '' }
+}));
+
+router.put('/meta/account', protectedRoute, (req, res) => {
+  const companyName = clean(req.body.companyName || req.body.company);
+  if (!companyName) return fail(res, 400, 'Informe o nome da empresa.');
+  const accounts = read('accounts');
+  const org = accounts.find((item) => item.id === req.account.id);
+  if (!org) return fail(res, 404, 'Organização não encontrada.');
+  org.company = companyName;
+  org.updatedAt = new Date().toISOString();
+  const user = accounts.find((item) => item.id === req.account.userId);
+  if (user && user.id !== org.id) {
+    user.company = companyName;
+    user.updatedAt = new Date().toISOString();
+  }
+  write('accounts', accounts);
+  req.account = currentAccount(req);
+  res.json({ ok: true, companyName, account: publicAccount(req.account) });
+});
+
+router.delete('/auth/me', protectedRoute, (req, res) => {
+  if (req.account.role !== 'owner') {
+    return fail(res, 403, 'Apenas o proprietário da conta pode excluir a organização.');
+  }
+  const accountId = req.account.id;
+  const userId = req.account.userId;
+
+  const allSurveys = read('surveys');
+  const accountSurveys = allSurveys.filter(s => s.accountId === accountId);
+  const surveyIds = accountSurveys.map(s => s.id);
+
+  const accounts = read('accounts').filter(a => a.id !== accountId && a.organizationId !== accountId && a.id !== userId);
+  const members = read('members').filter(m => m.accountId !== accountId);
+  const groups = read('groups').filter(g => g.accountId !== accountId);
+  const surveys = allSurveys.filter(s => s.accountId !== accountId);
+  const invitations = read('invitations').filter(i => !surveyIds.includes(i.surveyId));
+  const responses = read('responses').filter(r => !surveyIds.includes(r.surveyId));
+  const reports = read('reports').filter(rp => rp.accountId !== accountId && !surveyIds.includes(rp.surveyId));
+  const sessions = read('sessions').filter(s => s.accountId !== accountId && s.accountId !== userId);
+  const management = read('management').filter(m => m.id !== accountId);
+
+  writeMany({
+    accounts,
+    members,
+    groups,
+    surveys,
+    invitations,
+    responses,
+    reports,
+    sessions,
+    management
+  });
+
+  res.clearCookie('equilibra_session', { path: '/' });
+  res.status(204).end();
+});
+
+router.get('/surveys', protectedRoute, (req, res) => { closeExpired(req.account.id, req); res.json(scoped('surveys', req.account.id).filter(item => !item.archivedAt).map((item) => surveySummary(item, req.account.id)).reverse()); });
 router.post('/surveys', protectedRoute, (req, res) => {
   const validation = validateSurveyInput(req, req.account.id);
   if (validation.error) return fail(res, 400, validation.error);
@@ -493,20 +596,89 @@ router.put('/surveys/:id', protectedRoute, (req, res) => {
   if (validation.error) return fail(res, 400, validation.error);
   Object.assign(survey, validation.fields); write('surveys', surveys); res.json(surveySummary(survey, req.account.id));
 });
+router.put('/surveys/:id/dates', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem alterar datas de pesquisas.');
+  const surveys = read('surveys');
+  const survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
+  if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
+  if (survey.status === 'closed') return fail(res, 409, 'Não é possível alterar datas de uma pesquisa já encerrada.');
+
+  const { startsAt, endsAt, cycle, title, reason } = req.body || {};
+
+  if (cycle) survey.cycle = clean(cycle, 80);
+  if (title) survey.title = clean(title, 120);
+
+  if (endsAt) {
+    const endsAtTime = new Date(endsAt).getTime();
+    if (!Number.isFinite(endsAtTime) || endsAtTime <= Date.now()) {
+      return fail(res, 400, 'A data de encerramento deve ser no futuro.');
+    }
+    if (survey.status === 'open' && endsAt !== survey.endsAt) {
+      survey.extensions = survey.extensions || [];
+      survey.extensions.push({
+        previousEndsAt: survey.endsAt,
+        newEndsAt: endsAt,
+        extendedAt: new Date().toISOString(),
+        reason: (reason || '').trim() || 'Alteração de prazo'
+      });
+    }
+    survey.endsAt = new Date(endsAtTime).toISOString();
+  }
+
+  if (startsAt !== undefined) {
+    if (survey.status === 'draft') {
+      if (startsAt) {
+        const startsAtTime = new Date(startsAt).getTime();
+        if (!Number.isFinite(startsAtTime)) {
+          return fail(res, 400, 'Data de início inválida.');
+        }
+        survey.startsAt = new Date(startsAtTime).toISOString();
+      } else {
+        survey.startsAt = null;
+      }
+    }
+  }
+
+  if (survey.startsAt && survey.endsAt && new Date(survey.endsAt).getTime() <= new Date(survey.startsAt).getTime()) {
+    return fail(res, 400, 'A data de encerramento deve ser posterior à data de início.');
+  }
+
+  write('surveys', surveys);
+
+  // Se agendada para início agora ou no passado, abre a pesquisa imediatamente
+  if (survey.status === 'draft' && survey.startsAt && new Date(survey.startsAt).getTime() <= Date.now()) {
+    const opened = openSurvey({ surveyId: survey.id, accountId: req.account.id, baseUrl: `${req.protocol}://${req.get('host')}` });
+    if (opened && opened.ok) {
+      return res.json(surveySummary(opened.survey, req.account.id));
+    }
+  }
+
+  res.json(surveySummary(survey, req.account.id));
+});
 router.delete('/surveys/:id', protectedRoute, (req, res) => {
   if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem excluir pesquisas.');
   const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
 
   // Remove a pesquisa da lista
-  write('surveys', surveys.filter((item) => item.id !== survey.id));
+  const nextSurveys = surveys.filter((item) => item.id !== survey.id);
 
-  // Limpa convites e respostas associados à pesquisa excluída
+  // Limpa convites e respostas individuais associados
   const invitations = read('invitations').filter((item) => item.surveyId !== survey.id);
-  write('invitations', invitations);
   const responses = read('responses').filter((item) => item.surveyId !== survey.id);
-  write('responses', responses);
 
+  const changes = {
+    surveys: nextSurveys,
+    invitations,
+    responses
+  };
+
+  // Se explicitamente solicitado a exclusão de laudos consolidados
+  if (req.query.includeReports === 'true') {
+    changes.reports = read('reports').filter((item) => item.surveyId !== survey.id);
+  }
+
+  writeMany(changes);
   res.status(204).end();
 });
 
@@ -521,10 +693,21 @@ router.delete('/surveys', protectedRoute, (req, res) => {
   if (toDelete.length === 0) return fail(res, 404, 'Nenhuma pesquisa encontrada para exclusão.');
 
   const deletedIds = toDelete.map(s => s.id);
-  write('surveys', surveys.filter(s => !(deletedIds.includes(s.id) && s.accountId === req.account.id)));
-  write('invitations', read('invitations').filter(i => !deletedIds.includes(i.surveyId)));
-  write('responses', read('responses').filter(r => !deletedIds.includes(r.surveyId)));
+  const nextSurveys = surveys.filter(s => !(deletedIds.includes(s.id) && s.accountId === req.account.id));
+  const invitations = read('invitations').filter(i => !deletedIds.includes(i.surveyId));
+  const responses = read('responses').filter(r => !deletedIds.includes(r.surveyId));
 
+  const changes = {
+    surveys: nextSurveys,
+    invitations,
+    responses
+  };
+
+  if (req.query.includeReports === 'true') {
+    changes.reports = read('reports').filter(rp => !deletedIds.includes(rp.surveyId));
+  }
+
+  writeMany(changes);
   res.json({ ok: true, deleted: deletedIds.length });
 });
 
@@ -661,7 +844,7 @@ router.post('/surveys/:id/extend', protectedRoute, (req, res) => {
   const result = extendSurvey({
     surveyId: req.params.id,
     accountId: req.account.id,
-    newEndsAt: req.body.endsAt,
+    newEndsAt: req.body.newEndsAt || req.body.endsAt,
     reason: req.body.reason
   });
   if (result.error) return fail(res, result.status, result.message);
@@ -693,7 +876,7 @@ router.post('/surveys/:id/close', protectedRoute, (req, res) => {
 });
 
 router.get('/reports', protectedRoute, (req, res) => {
-  closeExpired(req.account.id);
+  closeExpired(req.account.id, req);
   res.json(ensureReports(req.account.id));
 });
 
@@ -844,7 +1027,7 @@ router.post('/reports/:id/reevaluate', protectedRoute, (req, res) => {
 });
 
 router.get('/dashboard', protectedRoute, (req, res) => {
-  closeExpired(req.account.id);
+  closeExpired(req.account.id, req);
   const surveys = scoped('surveys', req.account.id).map((item) => surveySummary(item, req.account.id));
   const published = surveys.filter((item) => item.result).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
   const responses = scoped('responses', req.account.id).filter((item) => published.some((survey) => survey.id === item.surveyId));
@@ -865,7 +1048,7 @@ router.get('/dashboard', protectedRoute, (req, res) => {
 });
 
 router.get('/today', protectedRoute, (req, res) => {
-  closeExpired(req.account.id);
+  closeExpired(req.account.id, req);
   ensureReports(req.account.id);
 
   const surveys = scoped('surveys', req.account.id).map(item => surveySummary(item, req.account.id));

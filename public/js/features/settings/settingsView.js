@@ -235,7 +235,7 @@ export function renderSettings({ params, state }) {
         <div class="card-body p-6 md:p-8">
           <form id="account-settings-form" class="settings-form-flow">
             <div class="settings-fields-grid max-w-2xl">
-              ${field({ id: 'acc-company', name: 'companyName', label: 'Nome da Empresa', value: meta.account?.companyName || '', required: true, disabled: !isOwner })}
+              ${field({ id: 'acc-company', name: 'companyName', label: 'Nome da Empresa', value: meta?.account?.companyName || account?.company || '', required: true, disabled: !isOwner })}
             </div>
             ${isOwner ? `
               <div class="settings-form-actions">
@@ -269,6 +269,29 @@ export function renderSettings({ params, state }) {
           </form>
         </div>
       </div>
+
+      ${isOwner ? `
+        <div class="card mt-8 border-danger-subtle">
+          <div class="card-header px-6 py-5">
+            <div>
+              <h2 class="card-title text-base font-semibold color-danger flex items-center gap-2 m-0">
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Zona de Perigo: Excluir Conta e Organização
+              </h2>
+              <p class="text-xs color-text-secondary m-0 mt-0.5">
+                Exclui permanentemente todos os dados da empresa, incluindo colaboradores, pesquisas, respostas e relatórios.
+              </p>
+            </div>
+          </div>
+          <div class="card-body p-6 md:p-8">
+            <p class="text-sm color-muted mb-4">
+              Esta ação é <strong>irreversível</strong>. Todos os registros serão removidos definitivamente tanto localmente quanto do banco de dados na nuvem.
+            </p>
+            <button type="button" class="btn btn-danger" data-action="open-delete-account-modal">
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Minha Conta e Organização
+            </button>
+          </div>
+        </div>
+      ` : ''}
     `;
   } else if (section === 'equipe') {
     sectionContent = renderTeamSection(account, team);

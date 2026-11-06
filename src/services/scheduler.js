@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const storage = require("../config/equilibraStorage");
 const repo = require("../repositories/managementRepository");
-const { closeExpiredSurveys } = require("./surveyLifecycle");
+const { closeExpiredSurveys, openScheduledSurveys } = require("./surveyLifecycle");
 const { expireSessions: expireWaSessions } = require("./whatsappConversationEngine");
 function nextMonth(date, months) {
   return require("../domain/dates")
@@ -11,6 +11,7 @@ function nextMonth(date, months) {
 }
 function tick() {
   closeExpiredSurveys();
+  openScheduledSurveys();
   const today = require("../domain/dates").today();
   for (const workspace of storage.read("management")) {
     for (const schedule of workspace.schedules.filter(

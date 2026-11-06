@@ -18,6 +18,11 @@ async function initSupabaseIfEnabled() {
     if (data) {
       memoryCache = data;
       console.log('✅ [Storage] Supabase conectado e sincronizado com sucesso!');
+      if (typeof supabase.purgeOrphans === 'function') {
+        supabase.purgeOrphans().catch((err) => {
+          console.warn('[Storage] Aviso na purga de órfãos:', err.message);
+        });
+      }
       return true;
     }
   } catch (err) {
@@ -64,9 +69,23 @@ function backup() {
 }
 
 function rawWrite(name, value) {
-  const temporary = `${files[name]}.${process.pid}.tmp`;
+  const temporary = `${files[name]}.${process.pid}.${Date.now()}-${Math.random().toString(36).slice(2, 7)}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temporary, files[name]);
+  try {
+    fs.renameSync(temporary, files[name]);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'EBUSY') {
+      try {
+        fs.copyFileSync(temporary, files[name]);
+        fs.unlinkSync(temporary);
+      } catch {
+        fs.writeFileSync(files[name], `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+        try { fs.unlinkSync(temporary); } catch {}
+      }
+    } else {
+      throw err;
+    }
+  }
 }
 
 function writeMany(changes) {
@@ -91,14 +110,54 @@ function writeMany(changes) {
 
   backup();
   const journal = path.join(directory, '.transaction.json');
-  const temporary = `${journal}.${process.pid}.tmp`;
+  const temporary = `${journal}.${process.pid}.${Date.now()}-${Math.random().toString(36).slice(2, 7)}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(changes), { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temporary, journal);
+  try {
+    fs.renameSync(temporary, journal);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'EBUSY') {
+      try {
+        fs.copyFileSync(temporary, journal);
+        fs.unlinkSync(temporary);
+      } catch {
+        fs.writeFileSync(journal, JSON.stringify(changes), { encoding: 'utf8', mode: 0o600 });
+        try { fs.unlinkSync(temporary); } catch {}
+      }
+    } else {
+      throw err;
+    }
+  }
+
   for (const [name, value] of Object.entries(changes)) rawWrite(name, value);
-  fs.unlinkSync(journal);
+  try {
+    if (fs.existsSync(journal)) fs.unlinkSync(journal);
+  } catch {}
 }
 
 function write(name, value) { writeMany({ [name]: value }); }
+
+/**
+ * Remove registros explicitamente do banco Supabase em segundo plano ou de forma direta.
+ */
+async function deleteDirectly(table, id) {
+  if (supabase.isEnabled() && id) {
+    try {
+      await supabase.deleteById(table, id);
+    } catch (err) {
+      console.error(`[Storage] Erro ao deletar diretamente ${id} de ${table}:`, err.message);
+    }
+  }
+}
+
+async function deleteManyDirectly(table, ids) {
+  if (supabase.isEnabled() && Array.isArray(ids) && ids.length > 0) {
+    try {
+      await supabase.deleteByIds(table, ids);
+    } catch (err) {
+      console.error(`[Storage] Erro ao deletar múltiplos registros de ${table}:`, err.message);
+    }
+  }
+}
 
 module.exports = {
   initializeStorage,
@@ -106,6 +165,9 @@ module.exports = {
   read,
   write,
   writeMany,
+  deleteDirectly,
+  deleteManyDirectly,
   backup,
-  directory
+  directory,
+  supabase
 };

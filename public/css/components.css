@@ -3199,3 +3199,39 @@ button.tab-link.active {
   cursor: pointer !important;
 }
 
+/* ── Survey Lifecycle & Status Helpers ── */
+.survey-close-wrapper {
+  display: inline-block;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.survey-close-wrapper button:disabled {
+  pointer-events: none;
+}
+
+.border-card-success {
+  border-color: var(--color-success) !important;
+}
+
+.border-card-warning {
+  border-color: var(--color-warning) !important;
+}
+
+.survey-launch-option {
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background-color: var(--color-surface);
+  transition: all var(--transition-fast);
+}
+
+.survey-launch-option.active,
+.survey-launch-option:has(input[type="radio"]:checked) {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+

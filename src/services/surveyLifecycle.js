@@ -375,6 +375,37 @@ function closeExpiredSurveys(targetAccountId = null) {
   };
 }
 
+/**
+ * Abertura automática de pesquisas agendadas (status: draft e startsAt <= now).
+ */
+function openScheduledSurveys(targetAccountId = null, baseUrl = '') {
+  const surveys = storage.read('surveys');
+  const now = Date.now();
+  const openedIds = [];
+
+  for (const survey of surveys) {
+    if (targetAccountId && survey.accountId !== targetAccountId) continue;
+    if (survey.status === 'draft' && survey.startsAt) {
+      const startsAtTime = new Date(survey.startsAt).getTime();
+      const endsAtTime = new Date(survey.endsAt).getTime();
+      if (Number.isFinite(startsAtTime) && startsAtTime <= now && Number.isFinite(endsAtTime) && endsAtTime > now) {
+        try {
+          const res = openSurvey({ surveyId: survey.id, accountId: survey.accountId, baseUrl });
+          if (res && res.ok) {
+            openedIds.push(survey.id);
+          }
+        } catch (err) {
+          console.error(`[SCHEDULED-SURVEY] Erro ao abrir pesquisa agendada ${survey.id}:`, err.message);
+        }
+      }
+    }
+  }
+
+  return {
+    openedIds
+  };
+}
+
 module.exports = {
   MIN_RESULTS,
   openSurvey,
@@ -383,5 +414,6 @@ module.exports = {
   extendSurvey,
   closeSurvey,
   closeExpiredSurveys,
+  openScheduledSurveys,
   getBand
 };

@@ -104,11 +104,14 @@ module.exports = function createRouter() {
         item.id === req.params.id && item.organizationId === req.account.id,
     );
     if (idx === -1) throw new DomainError("Colaborador não encontrado.", 404);
-    const sessions = storage.read("sessions").filter(s => s.accountId !== req.params.id);
-    storage.write("sessions", sessions);
+    const removedAccountId = req.params.id;
+    const sessions = storage.read("sessions").filter(s => s.accountId !== removedAccountId);
     accounts.splice(idx, 1);
-    storage.write("accounts", accounts);
-    repo.transaction(req.account, "team.member_removed", () => ({ id: req.params.id }));
+    storage.writeMany({ accounts, sessions });
+    if (storage.deleteDirectly) {
+      storage.deleteDirectly('accounts', removedAccountId);
+    }
+    repo.transaction(req.account, "team.member_removed", () => ({ id: removedAccountId }));
     res.status(204).end();
   });
   return router;

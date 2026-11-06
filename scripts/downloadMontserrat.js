@@ -28,7 +28,7 @@ async function downloadMontserrat() {
     if (!isLatin && !isLatinExt) continue;
     
     const weightMatch = blockBody.match(/font-weight:\s*(\d+)/);
-    const urlMatch = blockBodyrmatch(/url\((https:[^)]+\.woff2)\)/);
+    const urlMatch = blockBody.match(/url\((https:[^)]+\.woff2)\)/);
     const rangeMatch = blockBody.match(/unicode-range:\s*([^;]+);/);
 
     if (!weightMatch || !urlMatch) continue;

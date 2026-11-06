@@ -311,17 +311,22 @@ export async function submitAddMember() {
     return;
   }
 
-  if (!phone) {
-    showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
-    form.phone?.focus();
-    return;
-  }
+  const member = (store.getState().members || []).find((m) => m.id === memberId);
+  const isUnchangedMasked = member && member.phone && phone === member.phone;
 
-  const phoneDigits = phone.replace(/\D/g, '');
-  if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-    showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
-    form.phone?.focus();
-    return;
+  if (!isUnchangedMasked) {
+    if (!phone) {
+      showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
+      form.phone?.focus();
+      return;
+    }
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
+      form.phone?.focus();
+      return;
+    }
   }
 
   try {
@@ -393,17 +398,22 @@ export async function submitEditMember(memberId) {
     return;
   }
 
-  if (!phone) {
-    showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
-    form.phone?.focus();
-    return;
-  }
+  const member = (store.getState().members || []).find((m) => m.id === memberId);
+  const isUnchangedMasked = member && member.phone && phone === member.phone;
 
-  const phoneDigits = phone.replace(/\D/g, '');
-  if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-    showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
-    form.phone?.focus();
-    return;
+  if (!isUnchangedMasked) {
+    if (!phone) {
+      showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
+      form.phone?.focus();
+      return;
+    }
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
+      form.phone?.focus();
+      return;
+    }
   }
 
   try {

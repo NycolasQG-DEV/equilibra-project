@@ -350,6 +350,41 @@ export function renderSurveyCreate({ state }) {
                     </label>
                   </div>
                 </div>
+
+                <!-- Opções de início da coleta -->
+                <div class="form-group mb-2 mt-4">
+                  <label class="form-label font-bold text-base">Início da Coleta <span class="form-required">*</span></label>
+                  <p class="table-subtext mt-0 mb-3">Escolha se deseja abrir a coleta imediatamente ou deixá-la salva para iniciar manualmente mais tarde (ou na data agendada).</p>
+                  <div class="grid grid-cols-2 gap-4">
+                    <label class="survey-launch-option active" id="launch-option-manual">
+                      <div class="flex items-start gap-3">
+                        <input type="radio" name="launchMode" value="manual" id="launch-mode-manual" checked class="mt-1" />
+                        <div>
+                          <div class="font-bold text-base flex items-center gap-2">
+                            <i class="fa-regular fa-calendar-check color-primary" aria-hidden="true"></i> Iniciar Coleta Manualmente Depois
+                          </div>
+                          <p class="text-sm table-subtext mt-1 mb-0">
+                            A pesquisa será cadastrada e salva. A coleta <strong>não inicia sozinha</strong>; você poderá iniciá-la manualmente com um clique a qualquer momento ou aguardar o início automático na data configurada.
+                          </p>
+                        </div>
+                      </div>
+                    </label>
+
+                    <label class="survey-launch-option" id="launch-option-immediate">
+                      <div class="flex items-start gap-3">
+                        <input type="radio" name="launchMode" value="immediate" id="launch-mode-immediate" class="mt-1" />
+                        <div>
+                          <div class="font-bold text-base flex items-center gap-2">
+                            <i class="fa-solid fa-rocket color-success" aria-hidden="true"></i> Iniciar Coleta Instantaneamente
+                          </div>
+                          <p class="text-sm table-subtext mt-1 mb-0">
+                            Abre a coleta imediatamente após a criação e já gera os links/disparos para os colaboradores começarem a responder agora.
+                          </p>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </section>
             </div>
           </div>
@@ -381,8 +416,8 @@ export function renderSurveyCreate({ state }) {
               <button type="button" class="btn btn-primary" id="btn-wizard-next" data-action="wizard-next-step">
                 <span>Continuar</span> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
               </button>
-              <button type="button" class="btn btn-primary btn-lg wizard-launch-btn hidden" id="btn-wizard-launch" data-action="submit-create-survey-btn">
-                <i class="fa-solid fa-rocket" aria-hidden="true"></i> Iniciar Ciclo & Abrir Coleta
+              <button type="button" class="btn btn-secondary btn-lg wizard-launch-btn hidden" id="btn-wizard-launch" data-action="submit-create-survey-btn">
+                <i class="fa-regular fa-bookmark" aria-hidden="true"></i> Salvar Pesquisa (Coleta Manual)
               </button>
             </div>
           </div>
@@ -494,6 +529,7 @@ export function goToWizardStep(step) {
     if (s === 4) {
       btnNext.classList.add('hidden');
       btnLaunch.classList.remove('hidden');
+      updateLaunchButtonLabel();
     } else {
       btnNext.classList.remove('hidden');
       btnLaunch.classList.add('hidden');
@@ -553,11 +589,22 @@ export function mountedSurveyCreate() {
   const cycleInput = document.getElementById('survey-cycle-input');
   const endInput = document.getElementById('survey-end-input');
   const titleInput = document.getElementById('survey-title-input');
+  const radioManual = document.getElementById('launch-mode-manual');
+  const radioImmediate = document.getElementById('launch-mode-immediate');
 
   const onInputHandler = () => updateWizardValidation();
   if (cycleInput) cycleInput.addEventListener('input', onInputHandler);
   if (endInput) endInput.addEventListener('change', onInputHandler);
   if (titleInput) titleInput.addEventListener('input', onInputHandler);
+
+  const onModeChange = () => {
+    const isImm = radioImmediate?.checked || false;
+    document.getElementById('launch-option-immediate')?.classList.toggle('active', isImm);
+    document.getElementById('launch-option-manual')?.classList.toggle('active', !isImm);
+    updateLaunchButtonLabel();
+  };
+  if (radioManual) radioManual.addEventListener('change', onModeChange);
+  if (radioImmediate) radioImmediate.addEventListener('change', onModeChange);
 }
 
 
@@ -764,15 +811,22 @@ export function selectGeneralWizardGroup() {
 
 // ── Submit Survey Creation ──
 
-export async function submitSurveyCreation({ openImmediately = true } = {}) {
+export async function submitSurveyCreation({ openImmediately = null } = {}) {
   const form = document.getElementById('create-survey-form');
   if (!form) return;
+
+  // Se openImmediately não foi explicitamente fornecido, lê o modo de lançamento selecionado
+  if (openImmediately === null) {
+    const isImmediate = document.getElementById('launch-mode-immediate')?.checked || false;
+    openImmediately = isImmediate;
+  }
 
   const title = form.title?.value?.trim();
   const cycle = form.cycle?.value?.trim();
   const modelRadio = form.querySelector('input[name="model"]:checked');
   const modelHidden = document.getElementById('selected-model-input');
   const model = (modelRadio?.value || modelHidden?.value || form.model?.value || '').trim();
+  const startsAtRaw = form.startsAt?.value;
   const endsAtRaw = form.endsAt?.value;
 
   const checkedBoxes = form.querySelectorAll('input[name="groupIds"]:checked');
@@ -811,20 +865,21 @@ export async function submitSurveyCreation({ openImmediately = true } = {}) {
     cycle,
     model,
     groupIds,
+    startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
     endsAt: new Date(endsAtTime).toISOString()
   };
 
-  const btnLaunch = document.getElementById('btn-launch-survey');
+  const btnLaunch = document.getElementById('btn-wizard-launch');
   if (btnLaunch) {
     btnLaunch.disabled = true;
-    btnLaunch.textContent = 'Salvando ciclo...';
+    btnLaunch.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Salvando...';
   }
 
   try {
     const survey = await post('/surveys', payload);
 
     if (openImmediately) {
-      if (btnLaunch) btnLaunch.textContent = 'Abrindo coleta e gerando links...';
+      if (btnLaunch) btnLaunch.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abrindo coleta...';
       const ch = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'whatsapp';
       await post(`/surveys/${survey.id}/open`, { collectionChannel: ch });
       if (ch === 'whatsapp') {
@@ -835,14 +890,27 @@ export async function submitSurveyCreation({ openImmediately = true } = {}) {
       router.navigate(`pesquisas/${survey.id}/distribuicao`);
     } else {
       await store.loadSurveys();
-      showToast('Rascunho de pesquisa salvo com sucesso.', 'success');
+      showToast('Pesquisa salva com sucesso. A coleta está pronta para ser aberta manualmente ou na data agendada.', 'success');
       router.navigate('pesquisas');
     }
   } catch (err) {
     showToast(err.message || 'Erro ao criar pesquisa.', 'error');
     if (btnLaunch) {
       btnLaunch.disabled = false;
-      btnLaunch.innerHTML = '<i class="fa-solid fa-rocket" aria-hidden="true"></i> Iniciar Ciclo & Abrir Coleta';
+      updateLaunchButtonLabel();
     }
+  }
+}
+
+export function updateLaunchButtonLabel() {
+  const isImmediate = document.getElementById('launch-mode-immediate')?.checked || false;
+  const btnLaunch = document.getElementById('btn-wizard-launch');
+  if (!btnLaunch) return;
+  if (isImmediate) {
+    btnLaunch.className = 'btn btn-primary btn-lg wizard-launch-btn';
+    btnLaunch.innerHTML = '<i class="fa-solid fa-rocket" aria-hidden="true"></i> Criar e Iniciar Coleta Agora';
+  } else {
+    btnLaunch.className = 'btn btn-secondary btn-lg wizard-launch-btn';
+    btnLaunch.innerHTML = '<i class="fa-regular fa-bookmark" aria-hidden="true"></i> Salvar Pesquisa (Coleta Manual)';
   }
 }

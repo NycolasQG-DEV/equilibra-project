@@ -3,7 +3,7 @@
 import { renderShell } from '../../ui/shell.js';
 import { esc, attr, fmtPercent, date } from '../../domain/formatters.js';
 import { surveyStatusLabels } from '../../domain/labels.js';
-import { post, del } from '../../core/api.js';
+import { post, put, del } from '../../core/api.js';
 import { store } from '../../core/store.js';
 import { router } from '../../core/router.js';
 import { openDialog, closeDialog } from '../../ui/dialog.js';
@@ -110,15 +110,39 @@ export function renderSurveysList({ state }) {
                     <div class="table-actions-inline survey-row-actions">
                       ${s.status === 'open' ? `
                         <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm survey-open-link" data-survey-open="true">
-                          <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais informações
+                          <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Ver mais
                         </a>
+                        ${rate >= 0.70 ? `
+                          <button type="button" class="btn btn-secondary btn-sm" data-action="open-close-survey-modal" data-id="${attr(s.id)}">
+                            <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar Coleta
+                          </button>
+                        ` : `
+                          <span class="survey-close-wrapper" title="Necessário atingir mais de 70% de respostas para encerrar a coleta e consolidar os dados (atual: ${Math.round(rate * 100)}%).">
+                            <button type="button" class="btn btn-secondary btn-sm" disabled>
+                              <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar
+                            </button>
+                          </span>
+                        `}
+                        ${!isViewer ? `
+                          <button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="open-edit-dates-modal" data-id="${attr(s.id)}" title="Editar datas da pesquisa">
+                            <i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
+                          </button>
+                        ` : ''}
                       ` : s.status === 'closed' ? `
                         <a href="#resultados/ciclo/${attr(s.id)}" class="btn btn-secondary btn-sm survey-open-link" data-survey-open="true">
                           <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Relatório
                         </a>
+                        ${!isViewer ? `
+                          <button type="button" class="btn btn-ghost btn-sm" data-action="start-next-cycle-instant" data-previous-id="${attr(s.id)}" title="Iniciar próximo ciclo imediatamente">
+                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Novo Ciclo
+                          </button>
+                        ` : ''}
                       ` : !isViewer ? `
                         <button type="button" class="btn btn-primary btn-sm survey-open-link" data-action="open-survey-direct" data-id="${attr(s.id)}" data-survey-open="true">
-                          Abrir Coleta
+                          <i class="fa-solid fa-rocket" aria-hidden="true"></i> Abrir Coleta
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm btn-icon" data-action="open-edit-dates-modal" data-id="${attr(s.id)}" title="Editar datas da pesquisa">
+                          <i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
                         </button>
                       ` : `
                         <span class="badge badge-neutral">Rascunho</span>
@@ -205,12 +229,33 @@ export function renderSurveyDistribution({ params, state }) {
         </div>
         ${!isViewer ? `
           <div class="flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
-              <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
-            </button>
-            <button type="button" class="btn btn-secondary" data-action="open-close-early-modal" data-id="${attr(survey.id)}">
-              <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar
-            </button>
+            ${survey.status !== 'closed' ? `
+              <button type="button" class="btn btn-secondary" data-action="open-edit-dates-modal" data-id="${attr(survey.id)}">
+                <i class="fa-regular fa-calendar-days" aria-hidden="true"></i> Editar Datas
+              </button>
+            ` : ''}
+            ${survey.status === 'open' ? `
+              <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
+                <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
+              </button>
+              ${(() => {
+                const target = survey.participationTarget || 0.70;
+                const canClose = rate >= target;
+                const pct = Math.round(rate * 100);
+                const tooltipMsg = canClose
+                  ? ''
+                  : `Necessário atingir mais de 70% de respostas para encerrar a coleta e consolidar os dados (atual: ${pct}%).`;
+                return canClose
+                  ? `<button type="button" class="btn btn-secondary" data-action="open-close-survey-modal" data-id="${attr(survey.id)}">
+                      <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar Coleta
+                    </button>`
+                  : `<span class="survey-close-wrapper" title="${attr(tooltipMsg)}">
+                      <button type="button" class="btn btn-secondary" disabled>
+                        <i class="fa-solid fa-lock" aria-hidden="true"></i> Encerrar Coleta
+                      </button>
+                    </span>`;
+              })()}
+            ` : ''}
             <button type="button" class="btn btn-ghost color-danger" data-action="open-delete-survey-modal" data-id="${attr(survey.id)}" data-title="${attr(survey.title)}" title="Excluir pesquisa">
               <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Pesquisa
             </button>
@@ -306,11 +351,96 @@ Prazo final: ${date(survey.endsAt)}.</pre>
         </div>
 
         <div class="kpi-card">
-          <span class="kpi-title">Quórum Mínimo Configurado</span>
-          <div class="kpi-val color-success">Meta 70%</div>
+          <span class="kpi-title">Quórum da Amostra</span>
+          <div class="kpi-val ${rate >= 0.70 ? 'color-success' : 'color-neutral'}">${rate >= 0.70 ? 'Quórum Atingido' : 'Em Andamento'}</div>
           <span class="kpi-sub">Anonimato assegurado (N ≥ 5)</span>
         </div>
       </div>
+
+      <!-- PRÓXIMO CICLO: exibido após encerramento -->
+      ${(() => {
+        if (survey.status !== 'closed' || isViewer) return '';
+        const allSurveys = state.surveys || [];
+        const nextScheduled = allSurveys.find(s => s.status === 'draft' && (s.previousSurveyId === survey.id || (s.model === survey.model && s.id !== survey.id)));
+        if (nextScheduled) {
+          return `
+            <div class="card mb-6 border-2 border-card-success bg-surface p-5">
+              <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 class="card-title text-lg flex items-center gap-2 m-0">
+                    <i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Ciclo Concluído & Próximo Ciclo Agendado
+                  </h2>
+                  <p class="table-subtext m-0 mt-1">
+                    Este ciclo foi encerrado. O próximo ciclo (<strong>${esc(nextScheduled.title || nextScheduled.cycle)}</strong>) está agendado para <strong>${date(nextScheduled.startsAt || nextScheduled.endsAt)}</strong> e iniciará automaticamente nessa data.
+                  </p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                  <a href="#resultados/ciclo/${attr(survey.id)}" class="btn btn-secondary">
+                    <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Ver Relatório
+                  </a>
+                  <button type="button" class="btn btn-primary" data-action="open-survey-direct" data-id="${attr(nextScheduled.id)}">
+                    <i class="fa-solid fa-bolt" aria-hidden="true"></i> Iniciar Próximo Ciclo Agora
+                  </button>
+                  <button type="button" class="btn btn-ghost" data-action="open-edit-dates-modal" data-id="${attr(nextScheduled.id)}" title="Editar data do próximo ciclo">
+                    <i class="fa-regular fa-calendar-days" aria-hidden="true"></i> Editar Data Agendada
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        return `
+          <div class="card mb-6 border-2 border-card-success bg-surface p-5">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 class="card-title text-lg flex items-center gap-2 m-0">
+                  <i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Ciclo Concluído
+                </h2>
+                <p class="table-subtext m-0 mt-1">
+                  Este ciclo de coleta foi encerrado. Você pode ver o relatório consolidado ou liberar o próximo ciclo instantaneamente pelo botão abaixo.
+                </p>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <a href="#resultados/ciclo/${attr(survey.id)}" class="btn btn-secondary">
+                  <i class="fa-solid fa-chart-column" aria-hidden="true"></i> Ver Relatório
+                </a>
+                <button type="button" class="btn btn-primary" data-action="start-next-cycle-instant" data-previous-id="${attr(survey.id)}">
+                  <i class="fa-solid fa-bolt" aria-hidden="true"></i> Iniciar Próximo Ciclo Agora
+                </button>
+                <button type="button" class="btn btn-secondary" data-action="schedule-next-cycle-modal" data-previous-id="${attr(survey.id)}">
+                  <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Agendar Próximo Ciclo
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      })()}
+
+      <!-- INICIAR COLETA: exibido para rascunhos -->
+      ${survey.status === 'draft' && !isViewer ? `
+        <div class="card mb-6 border-2 border-card-warning bg-surface p-5">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 class="card-title text-lg flex items-center gap-2 m-0">
+                <i class="fa-regular fa-bookmark color-warning" aria-hidden="true"></i> Pesquisa em Rascunho / Agendada
+              </h2>
+              <p class="table-subtext m-0 mt-1">
+                ${survey.startsAt
+                  ? `Início agendado para <strong>${date(survey.startsAt)}</strong> (iniciará automaticamente). Você também pode abrir a coleta agora mesmo.`
+                  : `A coleta ainda não foi iniciada. Clique em "Iniciar Coleta Agora" quando estiver pronto para distribuir aos participantes.`}
+              </p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-secondary" data-action="open-edit-dates-modal" data-id="${attr(survey.id)}">
+                <i class="fa-regular fa-calendar-days" aria-hidden="true"></i> Editar Datas
+              </button>
+              <button type="button" class="btn btn-primary" data-action="open-survey-direct" data-id="${attr(survey.id)}">
+                <i class="fa-solid fa-rocket" aria-hidden="true"></i> Iniciar Coleta Agora
+              </button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
 
       <!-- DETALHES DO MODELO & AFIRMAÇÕES -->
       <div class="card mb-6">
@@ -357,15 +487,20 @@ Prazo final: ${date(survey.endsAt)}.</pre>
 }
 
 export function openExtendModal(surveyId) {
+  const state = store.getState();
+  const survey = (state.surveys || []).find(s => s.id === surveyId);
+  // Build a min date value (today) for the input
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const minDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
   const content = `
     <form id="extend-survey-form">
-      ${field({
-        id: 'ext-date',
-        name: 'newEndsAt',
-        label: 'Nova data de encerramento',
-        type: 'date',
-        required: true
-      })}
+      <div class="form-group">
+        <label for="ext-date" class="form-label">Nova data de encerramento <span class="form-required">*</span></label>
+        <input type="datetime-local" id="ext-date" name="newEndsAt" class="input" required />
+        <span class="form-help">Deve ser uma data futura e posterior à data atual (${survey ? date(survey.endsAt) : ''}).</span>
+      </div>
     </form>
   `;
   const footer = `
@@ -378,11 +513,12 @@ export function openExtendModal(surveyId) {
 export async function submitExtendSurvey(surveyId) {
   const form = document.getElementById('extend-survey-form');
   if (!form) return;
-  const newEndsAt = form.newEndsAt.value;
-  if (!newEndsAt) {
+  const rawDate = form.newEndsAt?.value;
+  if (!rawDate) {
     showToast('Informe a nova data.', 'error');
     return;
   }
+  const newEndsAt = new Date(rawDate).toISOString();
   try {
     await post(`/surveys/${surveyId}/extend`, { newEndsAt });
     await store.loadSurveys();
@@ -428,12 +564,317 @@ export async function submitCloseEarly(surveyId) {
   }
   try {
     await post(`/surveys/${surveyId}/close`, { confirmEarlyClose: true, reason });
-    await store.loadSurveys();
+    await Promise.all([store.loadSurveys(), store.loadReports()]);
     closeDialog();
     showToast('Pesquisa encerrada com sucesso.', 'info');
     router.navigate(`resultados/ciclo/${surveyId}`);
   } catch (err) {
     showToast(err.message || 'Erro ao encerrar.', 'error');
+  }
+}
+
+export function openCloseSurveyModal(surveyId) {
+  const state = store.getState();
+  const survey = (state.surveys || []).find(s => s.id === surveyId);
+  const invitedCount = survey?.invitedCount || survey?.groupSize || survey?.memberIds?.length || 0;
+  const responsesCount = survey?.responsesCount || survey?.responseCount || 0;
+  const rate = survey?.participationRate != null ? survey.participationRate : (invitedCount > 0 ? responsesCount / invitedCount : 0);
+  const pct = Math.round(rate * 100);
+
+  const content = `
+    <div class="py-2">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="color-success text-2xl">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+        </span>
+        <div>
+          <h3 class="font-bold text-base m-0">Encerrar Coleta e Consolidar Relatório</h3>
+          <p class="table-subtext m-0">Adesão atingida: <strong>${pct}%</strong> (${responsesCount} respostas de ${invitedCount} participantes).</p>
+        </div>
+      </div>
+      <p class="view-subtitle mb-3">
+        Deseja encerrar a coleta deste ciclo? O quórum de respostas foi atingido e o relatório consolidado dos dados será disponibilizado imediatamente.
+      </p>
+    </div>
+  `;
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-primary" data-action="confirm-close-survey" data-id="${attr(surveyId)}">
+      <i class="fa-solid fa-lock" aria-hidden="true"></i> Confirmar e Obter Dados
+    </button>
+  `;
+  openDialog({ title: 'Encerrar Ciclo de Coleta', content, footer });
+}
+
+export async function confirmCloseSurvey(surveyId) {
+  closeDialog();
+  showToast('Encerrando coleta e consolidando dados...', 'info');
+  try {
+    await post(`/surveys/${surveyId}/close`, {
+      confirmEarlyClose: true,
+      reason: 'Ciclo concluído com quórum atingido'
+    });
+    await Promise.all([store.loadSurveys(), store.loadReports()]);
+    showToast('Coleta encerrada com sucesso! Relatório gerado.', 'success');
+    router.navigate(`resultados/ciclo/${surveyId}`);
+  } catch (err) {
+    showToast(err.message || 'Erro ao encerrar coleta.', 'error');
+  }
+}
+
+export function openEditDatesModal(surveyId) {
+  const state = store.getState();
+  const survey = (state.surveys || []).find(s => s.id === surveyId);
+  if (!survey) {
+    showToast('Pesquisa não encontrada.', 'error');
+    return;
+  }
+
+  const toInputDate = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return '';
+    }
+  };
+
+  const startVal = toInputDate(survey.startsAt);
+  const endVal = toInputDate(survey.endsAt);
+
+  const content = `
+    <div class="py-2">
+      <p class="view-subtitle mb-4">
+        Ajuste as datas de início e encerramento para a pesquisa <strong>${esc(survey.title)}</strong> (${esc(survey.cycle || 'Geral')}).
+      </p>
+      
+      <div class="form-group mb-3">
+        <label for="edit-starts-at" class="form-label font-semibold">Data de Início da Coleta</label>
+        <input type="datetime-local" id="edit-starts-at" name="startsAt" class="input" value="${attr(startVal)}" ${survey.status === 'open' ? 'disabled' : ''} />
+        <span class="form-help">
+          ${survey.status === 'open' 
+            ? 'A coleta já está em andamento (data de início não editável).' 
+            : 'Se configurada no futuro, a pesquisa iniciará automaticamente nesta data.'}
+        </span>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="edit-ends-at" class="form-label font-semibold">Data de Encerramento da Coleta <span class="form-required">*</span></label>
+        <input type="datetime-local" id="edit-ends-at" name="endsAt" class="input" value="${attr(endVal)}" required />
+        <span class="form-help">Prazo final para o recebimento das respostas dos colaboradores.</span>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="edit-survey-cycle" class="form-label font-semibold">Identificador do Ciclo</label>
+        <input type="text" id="edit-survey-cycle" name="cycle" class="input" value="${attr(survey.cycle || '')}" />
+        <span class="form-help">Nome de referência do ciclo (ex: Novembro 2026).</span>
+      </div>
+    </div>
+  `;
+
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-primary" data-action="submit-edit-dates" data-id="${attr(surveyId)}">
+      <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Salvar Datas
+    </button>
+  `;
+
+  openDialog({ title: 'Editar Datas da Pesquisa', content, footer });
+}
+
+export async function submitEditDates(surveyId) {
+  const form = document.querySelector('.dialog-body');
+  const startsAtInput = form?.querySelector('input[name="startsAt"]');
+  const endsAtInput = form?.querySelector('input[name="endsAt"]');
+  const cycleInput = form?.querySelector('input[name="cycle"]');
+
+  const endsAtVal = endsAtInput?.value;
+  if (!endsAtVal) {
+    showToast('Informe a data de encerramento.', 'warning');
+    return;
+  }
+  const endsAtTime = new Date(endsAtVal).getTime();
+  if (isNaN(endsAtTime) || endsAtTime <= Date.now()) {
+    showToast('A data de encerramento deve ser no futuro.', 'warning');
+    return;
+  }
+
+  const payload = {
+    endsAt: new Date(endsAtTime).toISOString()
+  };
+
+  if (startsAtInput && !startsAtInput.disabled && startsAtInput.value) {
+    const startsAtTime = new Date(startsAtInput.value).getTime();
+    if (!isNaN(startsAtTime)) {
+      if (endsAtTime <= startsAtTime) {
+        showToast('A data de encerramento deve ser posterior à data de início.', 'warning');
+        return;
+      }
+      payload.startsAt = new Date(startsAtTime).toISOString();
+    }
+  }
+
+  if (cycleInput?.value?.trim()) {
+    payload.cycle = cycleInput.value.trim();
+  }
+
+  try {
+    await put(`/surveys/${surveyId}/dates`, payload);
+    await store.loadSurveys();
+    closeDialog();
+    showToast('Datas da pesquisa atualizadas com sucesso.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Erro ao atualizar datas.', 'error');
+  }
+}
+
+export async function startNextCycleInstant(previousSurveyId) {
+  const state = store.getState();
+  const prev = (state.surveys || []).find(s => s.id === previousSurveyId);
+  if (!prev) {
+    showToast('Pesquisa de referência não encontrada.', 'error');
+    return;
+  }
+
+  showToast('Iniciando próximo ciclo de pesquisa...', 'info');
+
+  const currentCycle = prev.cycle || 'Ciclo 1';
+  let nextCycle = '';
+  const matchNum = currentCycle.match(/(.*?)(\d+)$/);
+  if (matchNum) {
+    nextCycle = `${matchNum[1]}${parseInt(matchNum[2], 10) + 1}`;
+  } else {
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const now = new Date();
+    nextCycle = `${months[now.getMonth()]} ${now.getFullYear()}`;
+    if (nextCycle === currentCycle) {
+      nextCycle = `${months[(now.getMonth() + 1) % 12]} ${now.getFullYear() + (now.getMonth() === 11 ? 1 : 0)}`;
+    }
+  }
+
+  const baseTitle = (prev.title || 'Pesquisa').replace(/\s*-\s*(Ciclo|\d{4}).*$/i, '');
+  const payload = {
+    title: `${baseTitle} - ${nextCycle}`,
+    cycle: nextCycle,
+    model: prev.model,
+    groupIds: prev.groupIds || (prev.groupId ? [prev.groupId] : []),
+    collectionChannel: prev.collectionChannel || 'web',
+    startsAt: new Date().toISOString(),
+    endsAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+    previousSurveyId: prev.id
+  };
+
+  try {
+    const newSurvey = await post('/surveys', payload);
+    await post(`/surveys/${newSurvey.id}/open`, { collectionChannel: payload.collectionChannel });
+    await store.loadSurveys();
+    showToast('Próximo ciclo iniciado com sucesso! Coleta aberta.', 'success');
+    router.navigate(`pesquisas/${newSurvey.id}/distribuicao`);
+  } catch (err) {
+    showToast(err.message || 'Erro ao iniciar próximo ciclo.', 'error');
+  }
+}
+
+export function scheduleNextCycleModal(previousSurveyId) {
+  const state = store.getState();
+  const prev = (state.surveys || []).find(s => s.id === previousSurveyId);
+  if (!prev) {
+    showToast('Pesquisa de referência não encontrada.', 'error');
+    return;
+  }
+
+  const toInputDate = (d) => {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const defaultStart = new Date(Date.now() + 30 * 86400000);
+  const defaultEnd = new Date(defaultStart.getTime() + 15 * 86400000);
+
+  const content = `
+    <div class="py-2">
+      <p class="view-subtitle mb-3">
+        Agende a data em que o próximo ciclo iniciará automaticamente.
+      </p>
+
+      <div class="form-group mb-3">
+        <label for="sched-start-input" class="form-label font-semibold">Data e Hora de Início Automático <span class="form-required">*</span></label>
+        <input type="datetime-local" id="sched-start-input" name="startsAt" class="input" value="${attr(toInputDate(defaultStart))}" required />
+        <span class="form-help">Nesta data, o sistema abrirá a coleta automaticamente sem necessidade de ação manual.</span>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="sched-end-input" class="form-label font-semibold">Data de Encerramento <span class="form-required">*</span></label>
+        <input type="datetime-local" id="sched-end-input" name="endsAt" class="input" value="${attr(toInputDate(defaultEnd))}" required />
+        <span class="form-help">Prazo final para recebimento das respostas.</span>
+      </div>
+    </div>
+  `;
+
+  const footer = `
+    <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    <button type="button" class="btn btn-primary" data-action="submit-schedule-next-cycle" data-previous-id="${attr(previousSurveyId)}">
+      <i class="fa-regular fa-calendar-check" aria-hidden="true"></i> Salvar Agendamento
+    </button>
+  `;
+
+  openDialog({ title: 'Agendar Próximo Ciclo', content, footer });
+}
+
+export async function submitScheduleNextCycle(previousSurveyId) {
+  const form = document.querySelector('.dialog-body');
+  const startsAtInput = form?.querySelector('input[name="startsAt"]');
+  const endsAtInput = form?.querySelector('input[name="endsAt"]');
+
+  const startsAtVal = startsAtInput?.value;
+  const endsAtVal = endsAtInput?.value;
+
+  if (!startsAtVal || !endsAtVal) {
+    showToast('Preencha as datas de início e encerramento.', 'warning');
+    return;
+  }
+
+  const startTime = new Date(startsAtVal).getTime();
+  const endTime = new Date(endsAtVal).getTime();
+
+  if (isNaN(startTime) || startTime <= Date.now()) {
+    showToast('A data de início agendado deve ser no futuro.', 'warning');
+    return;
+  }
+  if (isNaN(endTime) || endTime <= startTime) {
+    showToast('A data de encerramento deve ser posterior à data de início.', 'warning');
+    return;
+  }
+
+  const state = store.getState();
+  const prev = (state.surveys || []).find(s => s.id === previousSurveyId);
+
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const startDateObj = new Date(startTime);
+  const nextCycle = `${months[startDateObj.getMonth()]} ${startDateObj.getFullYear()}`;
+
+  const baseTitle = (prev?.title || 'Pesquisa').replace(/\s*-\s*(Ciclo|\d{4}).*$/i, '');
+  const payload = {
+    title: `${baseTitle} - ${nextCycle}`,
+    cycle: nextCycle,
+    model: prev?.model || 'Diagnóstico Psicossocial',
+    groupIds: prev?.groupIds || (prev?.groupId ? [prev.groupId] : []),
+    collectionChannel: prev?.collectionChannel || 'web',
+    startsAt: new Date(startTime).toISOString(),
+    endsAt: new Date(endTime).toISOString(),
+    previousSurveyId: prev?.id || null
+  };
+
+  try {
+    await post('/surveys', payload);
+    await store.loadSurveys();
+    closeDialog();
+    showToast('Próximo ciclo agendado com sucesso! Iniciará automaticamente na data configurada.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Erro ao agendar próximo ciclo.', 'error');
   }
 }
 
@@ -790,6 +1231,17 @@ export async function handleOpenSurveyDirect(surveyId) {
   } catch (err) {
     showToast(err.message || 'Erro ao abrir pesquisa.', 'error');
   }
+}
+
+/**
+ * Navega para o wizard de criação de nova pesquisa pré-configurado com o
+ * mesmo modelo/ciclo da pesquisa encerrada. Permite iniciar um novo ciclo
+ * imediatamente após o encerramento.
+ */
+export function openNewCycle(surveyId) {
+  // Simply navigate to the creation wizard; the previous survey context is optional
+  router.navigate('pesquisas/nova');
+  showToast('Configure o próximo ciclo de pesquisa.', 'info');
 }
 
 export function openSurveyDetailsModal(surveyId) {

@@ -40,14 +40,17 @@ app.use((error, _request, response, _next) => {
 });
 const storage = require('./config/equilibraStorage');
 const { runDataMigration } = require('./services/dataMigration');
-initializeStorage();
-// Inicialização do Supabase se configurado no ambiente
-if (storage.initSupabaseIfEnabled) {
-  storage.initSupabaseIfEnabled().catch((err) => {
-    console.error('[Supabase] Falha ao sincronizar inicialização:', err.message);
-  });
-}
-try { runDataMigration(storage); } catch (e) { console.error('Aviso migraÃ§Ã£o:', e.message); }
+async function startServer() {
+  initializeStorage();
+  // Inicialização obrigatória do Supabase antes de abrir o servidor
+  if (storage.initSupabaseIfEnabled) {
+    try {
+      await storage.initSupabaseIfEnabled();
+    } catch (err) {
+      console.error('[Supabase] Falha ao sincronizar inicialização:', err.message);
+    }
+  }
+  try { runDataMigration(storage); } catch (e) { console.error('Aviso migração:', e.message); }
 if (require.main === module) {
   process.on('uncaughtException', (error) => {
     console.error('[FATAL] uncaughtException — servidor continuando:', error.message);
@@ -86,4 +89,6 @@ if (require.main === module) {
     }
   });
 }
+}
+startServer();
 module.exports = app;

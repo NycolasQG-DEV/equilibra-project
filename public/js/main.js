@@ -44,6 +44,13 @@ import {
   submitExtendSurvey,
   openCloseEarlyModal,
   submitCloseEarly,
+  openCloseSurveyModal,
+  confirmCloseSurvey,
+  openEditDatesModal,
+  submitEditDates,
+  startNextCycleInstant,
+  scheduleNextCycleModal,
+  submitScheduleNextCycle,
   openDeleteSurveyModal,
   submitDeleteSurvey,
   openBulkDeleteSurveysModal,
@@ -51,6 +58,7 @@ import {
   updateSurveySelectionUI,
   getSelectedSurveyIds,
   handleOpenSurveyDirect,
+  openNewCycle,
   openSurveyDetailsModal
 } from './features/surveys/surveysView.js';
 import {
@@ -363,6 +371,20 @@ document.addEventListener('click', async (e) => {
     openCloseEarlyModal(trigger.dataset.id);
   } else if (action === 'submit-close-early') {
     await submitCloseEarly(trigger.dataset.id);
+  } else if (action === 'open-close-survey-modal') {
+    openCloseSurveyModal(trigger.dataset.id);
+  } else if (action === 'confirm-close-survey') {
+    await confirmCloseSurvey(trigger.dataset.id);
+  } else if (action === 'open-edit-dates-modal') {
+    openEditDatesModal(trigger.dataset.id);
+  } else if (action === 'submit-edit-dates') {
+    await submitEditDates(trigger.dataset.id);
+  } else if (action === 'start-next-cycle-instant') {
+    await startNextCycleInstant(trigger.dataset.previousId);
+  } else if (action === 'schedule-next-cycle-modal') {
+    scheduleNextCycleModal(trigger.dataset.previousId);
+  } else if (action === 'submit-schedule-next-cycle') {
+    await submitScheduleNextCycle(trigger.dataset.previousId);
   } else if (action === 'open-accept-modal') {
     openAcceptModal(trigger.dataset.id);
   } else if (action === 'submit-accept-report') {
@@ -451,6 +473,8 @@ document.addEventListener('click', async (e) => {
     }
   } else if (action === 'open-survey-direct') {
     await handleOpenSurveyDirect(trigger.dataset.id);
+  } else if (action === 'open-new-cycle') {
+    openNewCycle(trigger.dataset.surveyId);
   } else if (action === 'open-survey-details') {
     openSurveyDetailsModal(trigger.dataset.id);
   } else if (action === 'open-delete-survey-modal') {
@@ -504,7 +528,7 @@ document.addEventListener('click', async (e) => {
     await submitSurveyCreation({ openImmediately: false });
   } else if (action === 'submit-create-survey-btn') {
     e.preventDefault();
-    await submitSurveyCreation({ openImmediately: true });
+    await submitSurveyCreation();
   } else if (action === 'wizard-goto-step') {
     goToWizardStep(trigger.dataset.step);
   } else if (action === 'wizard-next-step') {
@@ -610,9 +634,70 @@ document.addEventListener('click', async (e) => {
     try {
       await put('/meta/account', { companyName });
       await store.loadMeta();
+      await store.loadAccount();
       showToast('Nome da empresa atualizado com sucesso.', 'success');
     } catch (err) {
       showToast(err.message || 'Erro ao atualizar dados.', 'error');
+    }
+  } else if (action === 'open-delete-account-modal') {
+    const content = `
+      <div class="delete-survey-modal-content">
+        <div class="delete-survey-warning">
+          <div class="delete-survey-warning__header">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <span>Atenção: Exclusão Permanente da Organização</span>
+          </div>
+          <p class="delete-survey-warning__body">
+            Você está prestes a excluir permanentemente a conta da sua organização e todos os dados associados:
+          </p>
+          <ul class="delete-survey-warning__list">
+            <li>Todos os colaboradores cadastrados serão excluídos.</li>
+            <li>Todas as pesquisas, questionários e respostas serão apagados do banco.</li>
+            <li>Todos os relatórios gerados e planos de ação serão removidos.</li>
+            <li>Sua sessão será encerrada e o acesso revogado imediatamente.</li>
+          </ul>
+        </div>
+        <div class="form-group mt-3">
+          <label class="form-label" for="confirm-delete-account-text">Para confirmar a exclusão definitiva, digite <strong>EXCLUIR</strong>:</label>
+          <input type="text" id="confirm-delete-account-text" class="input" placeholder="EXCLUIR" autocomplete="off" />
+        </div>
+      </div>
+    `;
+    const footer = `
+      <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btn-confirm-delete-account" data-action="confirm-delete-account" disabled>
+        <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir Organização Definitivamente
+      </button>
+    `;
+    openDialog({
+      title: 'Excluir Organização e Conta',
+      content,
+      footer
+    });
+    setTimeout(() => {
+      const input = document.getElementById('confirm-delete-account-text');
+      const btn = document.getElementById('btn-confirm-delete-account');
+      if (input && btn) {
+        input.addEventListener('input', () => {
+          btn.disabled = input.value.trim().toUpperCase() !== 'EXCLUIR';
+        });
+        input.focus();
+      }
+    }, 50);
+  } else if (action === 'confirm-delete-account') {
+    const input = document.getElementById('confirm-delete-account-text');
+    if (!input || input.value.trim().toUpperCase() !== 'EXCLUIR') {
+      showToast('Digite EXCLUIR para confirmar.', 'warning');
+      return;
+    }
+    try {
+      await del('/auth/me');
+      closeDialog();
+      showToast('Organização e conta excluídas com sucesso.', 'success');
+      window.location.hash = '#login';
+      window.location.reload();
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir conta.', 'error');
     }
   } else if (action === 'save-user-profile') {
     const form = document.getElementById('profile-settings-form');
@@ -708,7 +793,7 @@ document.addEventListener('submit', async (e) => {
     await handleRegisterSubmit(form);
   } else if (form.dataset.action === 'submit-create-survey') {
     e.preventDefault();
-    await submitSurveyCreation({ openImmediately: true });
+    await submitSurveyCreation();
   }
 });
 
