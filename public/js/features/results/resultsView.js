@@ -182,7 +182,7 @@ export function renderCycleReport({ params, state }) {
   const acceptance = report.formalAcceptance || report.acceptance;
   const isViewer = state.account?.role === 'viewer';
 
-  const executiveText = `Relatório técnico de escuta coletiva processado sob a metodologia <strong>${esc(report.model)}</strong>. Apuração realizada com quórum protegido de <strong>${report.responsesCount || report.responseCount || 0} respondentes</strong> (${fmtPercent(report.participationRate)} de adesão). A média global apurada para o coletivo foi de <strong>${fmt(report.generalAverage)}</strong> / 5,00.`;
+  const executiveText = `Relatório técnico de escuta coletiva processado sob a metodologia <strong>${esc(report.model)}</strong>. Apuração realizada com <strong>${report.responsesCount || report.responseCount || 0} respondentes</strong> (${fmtPercent(report.participationRate)} de adesão). A média global apurada para o coletivo foi de <strong>${fmt(report.generalAverage)}</strong> / 5,00.`;
 
   const content = `
     <div class="report-view-page">
@@ -420,7 +420,7 @@ export function renderCycleReport({ params, state }) {
                 </div>
                 <div class="card-body">
                   <p class="table-subtext mb-3">
-                    Segmentos com quórum protegido (N ≥ 5). Áreas menores são agregadas automaticamente em "Demais áreas (agrupadas)".
+                    Resultado por segmento organizacional. Áreas com número reduzido de participantes são agregadas automaticamente.
                   </p>
                   <div class="table-wrap">
                     <table class="table matrix-table">
@@ -473,7 +473,7 @@ export function renderCycleReport({ params, state }) {
                   <strong>Não Substituição de Laudo:</strong> Este documento não constitui diagnóstico clínico individual, laudo pericial ou atestado automático de conformidade legal. Serve como subsídio técnico de entrada para o Programa de Gerenciamento de Riscos (PGR) conforme a Norma Regulamentadora NR-1.
                 </p>
                 <p class="m-0">
-                  <strong>Proteção de Privacidade:</strong> Nenhum resultado individual é acessível. O limiar mínimo de 5 respondentes por segmento é garantido no servidor.
+                  <strong>Proteção de Privacidade:</strong> Nenhum resultado individual é acessível. Os dados são sempre apresentados de forma agregada por segmento.
                 </p>
               </div>
             </section>
@@ -1245,7 +1245,7 @@ function renderComplianceAssedioDashboard(report, factors) {
 
         <div class="card p-3 bg-subtle text-xs color-text-secondary flex items-center gap-2">
           <i class="fa-solid fa-file-circle-check color-success" aria-hidden="true"></i>
-          <span>Dossiê autoverificado com quórum protegido, pronto para instruir atas da CIPA e inspeções do MTE.</span>
+          <span>Dossiê autoverificado e pronto para instruir atas da CIPA e inspeções do MTE.</span>
         </div>
       </div>
     </section>
@@ -1595,7 +1595,10 @@ function renderSolutionsPortal(report, factors, isViewer) {
 
 export function mountedCycleReport({ params, state }) {
   document.querySelectorAll('[data-width]').forEach(el => {
-    el.style.width = `${el.dataset.width}%`;
+    const w = el.dataset.width;
+    if (w != null && w !== '') {
+      el.style.width = w.endsWith('%') ? w : `${w}%`;
+    }
   });
 
   const reportId = params?.id;

@@ -29,7 +29,6 @@ app.post('/api/billing/webhook', management.webhook);
 app.use('/api', require('./routes/recoveryRoutes'));
 app.use('/api/management', management.createRouter(api.protectedRoute));
 app.use('/api', api);
-app.use('/', require('./routes/waConnectRoutes'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/health', (_request, response) => response.json({ status: 'ok' }));
 app.get('*path', (_request, response) => response.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
@@ -64,13 +63,11 @@ if (require.main === module) {
     const run = () => { try { scheduler.tick(); } catch (error) { console.error('Agendador indisponÃ­vel:', error.name); } };
     run(); setInterval(run, 60000).unref();
 
-    // Conexão nativa do WhatsApp (exibe QR Code no terminal para conectar aparelho)
+    // Retoma silenciosamente conexões do WhatsApp previamente autenticadas pelos administradores
     if (process.env.WA_DISABLE_DIRECT !== 'true') {
       try {
-        const { initWhatsAppClient } = require('./services/whatsappLocalClient');
-        initWhatsAppClient().catch((err) => {
-          console.error('[WhatsApp] Falha ao iniciar cliente:', err.message);
-        });
+        const { resumeExistingSessions } = require('./services/whatsappLocalClient');
+        if (resumeExistingSessions) resumeExistingSessions();
       } catch (err) {
         console.error('[WhatsApp] Cliente local indisponível:', err.message);
       }

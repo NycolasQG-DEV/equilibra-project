@@ -59,7 +59,11 @@ import {
   getSelectedSurveyIds,
   handleOpenSurveyDirect,
   openNewCycle,
-  openSurveyDetailsModal
+  openSurveyDetailsModal,
+  openWhatsAppDispatchModal,
+  submitWhatsAppDispatch,
+  renderWhatsAppModalContent,
+  disconnectWhatsAppDevice
 } from './features/surveys/surveysView.js';
 import {
   renderSurveyCreate,
@@ -73,6 +77,7 @@ import {
   goToWizardStep,
   nextWizardStep,
   prevWizardStep,
+  openWizardWhatsAppWarningModal,
   mountedSurveyCreate
 } from './features/surveys/surveyCreateView.js';
 import {
@@ -104,6 +109,8 @@ setAuthFailureHandler(() => {
 });
 
 // Register routes
+let deleteAccountCountdownTimer = null;
+
 router.register({
   path: 'hoje',
   title: 'Visão Geral',
@@ -541,22 +548,41 @@ document.addEventListener('click', async (e) => {
     prevReportSlide();
   } else if (action === 'report-next-slide') {
     nextReportSlide();
+  } else if (action === 'open-whatsapp-dispatch-modal') {
+    openWhatsAppDispatchModal(trigger.dataset.id);
+  } else if (action === 'submit-whatsapp-dispatch') {
+    submitWhatsAppDispatch(trigger.dataset.id);
+  } else if (action === 'refresh-wa-qr') {
+    renderWhatsAppModalContent(trigger.dataset.id);
+  } else if (action === 'disconnect-wa-device' || action === 'reset-wa-auth') {
+    disconnectWhatsAppDevice(trigger.dataset.id);
+  } else if (action === 'open-wizard-wa-modal') {
+    openWizardWhatsAppWarningModal();
+  } else if (action === 'wizard-disconnect-wa') {
+    post('/whatsapp/reset', {}).then(() => {
+      showToast('Aparelho desconectado.', 'info');
+      openWizardWhatsAppWarningModal();
+    });
   } else if (action === 'dispatch-survey-whatsapp') {
+    openWhatsAppDispatchModal(trigger.dataset.id);
+  } else if (action === 'dispatch-survey-email') {
     const surveyId = trigger.dataset.id;
     if (!surveyId) return;
     trigger.disabled = true;
-    const oldText = trigger.innerHTML;
-    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Disparando...';
-    try {
-      const res = await post(`/surveys/${surveyId}/dispatch-whatsapp`, {});
-      showToast(res.message || 'Disparo WhatsApp concluído!', res.errors > 0 ? 'warning' : 'success');
-      await store.loadSurveys();
-    } catch (err) {
-      showToast(err.message || 'Erro ao disparar mensagens pelo WhatsApp.', 'error');
-    } finally {
-      trigger.disabled = false;
-      trigger.innerHTML = oldText;
-    }
+    const originalText = trigger.innerHTML;
+    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Enviando...';
+
+    post(`/surveys/${surveyId}/dispatch-email`, {})
+      .then((res) => {
+        showToast(res.message || 'Disparo de e-mails concluído!', res.ok ? 'success' : 'warning');
+      })
+      .catch((err) => {
+        showToast(err.message || 'Falha ao enviar convites por e-mail.', 'error');
+      })
+      .finally(() => {
+        trigger.disabled = false;
+        trigger.innerHTML = originalText;
+      });
   } else if (action === 'copy-invite-template') {
     const pre = document.getElementById('invite-template-text');
     if (pre) {
@@ -640,6 +666,11 @@ document.addEventListener('click', async (e) => {
       showToast(err.message || 'Erro ao atualizar dados.', 'error');
     }
   } else if (action === 'open-delete-account-modal') {
+    if (deleteAccountCountdownTimer) {
+      clearInterval(deleteAccountCountdownTimer);
+      deleteAccountCountdownTimer = null;
+    }
+
     const content = `
       <div class="delete-survey-modal-content">
         <div class="delete-survey-warning">
@@ -656,10 +687,25 @@ document.addEventListener('click', async (e) => {
             <li>Todos os relatórios gerados e planos de ação serão removidos.</li>
             <li>Sua sessão será encerrada e o acesso revogado imediatamente.</li>
           </ul>
+
+          <div class="delete-survey-timer-box" id="delete-account-timer-container">
+            <div class="delete-survey-timer-text">
+              <span id="delete-account-timer-msg">
+                <i class="fa-regular fa-clock" aria-hidden="true"></i> Leia o aviso com atenção antes de confirmar:
+              </span>
+              <span class="delete-survey-timer-badge" id="delete-account-timer-badge">
+                <span id="delete-account-seconds-count">10</span>s
+              </span>
+            </div>
+            <div class="delete-survey-progress">
+              <div class="delete-survey-progress-bar" id="delete-account-progress-bar"></div>
+            </div>
+          </div>
         </div>
         <div class="form-group mt-3">
           <label class="form-label" for="confirm-delete-account-text">Para confirmar a exclusão definitiva, digite <strong>EXCLUIR</strong>:</label>
-          <input type="text" id="confirm-delete-account-text" class="input" placeholder="EXCLUIR" autocomplete="off" />
+          <input type="text" id="confirm-delete-account-text" class="input" placeholder="EXCLUIR" autocomplete="off" disabled />
+          <span class="table-subtext mt-1" id="confirm-delete-account-hint">Aguarde o tempo de leitura para habilitar a digitação.</span>
         </div>
       </div>
     `;
@@ -672,18 +718,79 @@ document.addEventListener('click', async (e) => {
     openDialog({
       title: 'Excluir Organização e Conta',
       content,
-      footer
+      footer,
+      onClose: () => {
+        if (deleteAccountCountdownTimer) {
+          clearInterval(deleteAccountCountdownTimer);
+          deleteAccountCountdownTimer = null;
+        }
+      }
     });
-    setTimeout(() => {
-      const input = document.getElementById('confirm-delete-account-text');
-      const btn = document.getElementById('btn-confirm-delete-account');
-      if (input && btn) {
-        input.addEventListener('input', () => {
-          btn.disabled = input.value.trim().toUpperCase() !== 'EXCLUIR';
-        });
-        input.focus();
+
+    const duration = 10;
+    const totalMs = duration * 1000;
+    const startTime = Date.now();
+
+    const timerContainer = document.getElementById('delete-account-timer-container');
+    const timerBadge = document.getElementById('delete-account-timer-badge');
+    const secondsSpan = document.getElementById('delete-account-seconds-count');
+    const progressBar = document.getElementById('delete-account-progress-bar');
+    const timerMsg = document.getElementById('delete-account-timer-msg');
+    const input = document.getElementById('confirm-delete-account-text');
+    const hint = document.getElementById('confirm-delete-account-hint');
+    const btn = document.getElementById('btn-confirm-delete-account');
+
+    if (progressBar) {
+      progressBar.style.width = '100%';
+    }
+    if (secondsSpan) {
+      secondsSpan.textContent = String(duration);
+    }
+
+    deleteAccountCountdownTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remainingMs = Math.max(0, totalMs - elapsed);
+      const secondsRemaining = Math.ceil(remainingMs / 1000);
+      const pct = Math.max(0, (remainingMs / totalMs) * 100);
+
+      if (secondsSpan) {
+        secondsSpan.textContent = String(secondsRemaining);
+      }
+      if (progressBar) {
+        progressBar.style.width = `${pct.toFixed(1)}%`;
+      }
+
+      if (remainingMs <= 0) {
+        clearInterval(deleteAccountCountdownTimer);
+        deleteAccountCountdownTimer = null;
+
+        if (timerContainer) {
+          timerContainer.classList.add('timer-completed');
+        }
+        if (timerMsg) {
+          timerMsg.innerHTML = '<i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Tempo de leitura concluído. Digite <strong>EXCLUIR</strong> abaixo:';
+        }
+        if (timerBadge) {
+          timerBadge.style.display = 'none';
+        }
+        if (progressBar) {
+          progressBar.style.width = '0%';
+        }
+        if (input) {
+          input.disabled = false;
+          input.focus();
+        }
+        if (hint) {
+          hint.textContent = 'Digite EXCLUIR em letras maiúsculas para habilitar a exclusão.';
+        }
       }
     }, 50);
+
+    if (input && btn) {
+      input.addEventListener('input', () => {
+        btn.disabled = input.value.trim().toUpperCase() !== 'EXCLUIR';
+      });
+    }
   } else if (action === 'confirm-delete-account') {
     const input = document.getElementById('confirm-delete-account-text');
     if (!input || input.value.trim().toUpperCase() !== 'EXCLUIR') {

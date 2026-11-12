@@ -145,6 +145,14 @@ class Router {
         });
         this.container.innerHTML = html;
 
+        // ── Auto-apply dynamic widths for progress & distribution bars ──
+        this.container.querySelectorAll('[data-width]').forEach(el => {
+          const w = el.dataset.width;
+          if (w != null && w !== '') {
+            el.style.width = w.endsWith('%') ? w : `${w}%`;
+          }
+        });
+
         // ── Post-render lifecycle ──
         if (typeof route.mounted === 'function') {
           try {
@@ -189,6 +197,14 @@ class Router {
       router: this
     });
     this.container.innerHTML = html;
+
+    // ── Auto-apply dynamic widths for progress & distribution bars ──
+    this.container.querySelectorAll('[data-width]').forEach(el => {
+      const w = el.dataset.width;
+      if (w != null && w !== '') {
+        el.style.width = w.endsWith('%') ? w : `${w}%`;
+      }
+    });
 
     if (typeof this.currentRoute.mounted === 'function') {
       try {

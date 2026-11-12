@@ -6,7 +6,7 @@ import { openDialog, closeDialog } from '../../ui/dialog.js';
 import { showToast } from '../../ui/toast.js';
 import { router } from '../../core/router.js';
 import { store } from '../../core/store.js';
-import { post } from '../../core/api.js';
+import { get, post } from '../../core/api.js';
 
 const MODEL_ICONS = {
   'equilibra-organizacao': 'fa-solid fa-briefcase',
@@ -93,7 +93,7 @@ export function renderSurveyCreate({ state }) {
         <div class="wizard-stepper-divider"></div>
         <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="3">
           <span class="wizard-stepper-num">3</span>
-          <span class="wizard-stepper-label">Público & Quórum</span>
+          <span class="wizard-stepper-label">Público</span>
         </button>
         <div class="wizard-stepper-divider"></div>
         <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="4">
@@ -236,7 +236,7 @@ export function renderSurveyCreate({ state }) {
                         Público Participante & Equipes
                       </h2>
                       <p class="wizard-section-subtitle">
-                        Selecione os grupos e verifique a conformidade com a regra de anonimato psicossocial (N ≥ 5).
+                        Selecione os grupos que participarão deste ciclo de pesquisa.
                       </p>
                     </div>
                     <div class="flex gap-2">
@@ -276,14 +276,14 @@ export function renderSurveyCreate({ state }) {
                     <div class="privacy-note privacy-success">
                       <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
                       <div>
-                        <strong>Quórum Protegido:</strong> <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores nos grupos selecionados. Atende plenamente à diretriz de anonimato psicossocial (mínimo de 5 respostas para emissão de relatório).
+                        <strong>Público selecionado:</strong> <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores nos grupos selecionados.
                       </div>
                     </div>
                   ` : `
                     <div class="privacy-note privacy-warning">
                       <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
                       <div>
-                        <strong>Atenção ao Quórum:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores selecionados. Para proteger o anonimato dos respondentes, a plataforma só consolida resultados com ao menos 5 participantes respondentes.
+                        <strong>Atenção:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${initialMembersCount}</span> colaboradores selecionados. Adicione mais grupos para garantir uma amostra representativa.
                       </div>
                     </div>
                   `}
@@ -312,40 +312,39 @@ export function renderSurveyCreate({ state }) {
                 <div class="form-group mb-4">
                   <label class="form-label font-bold text-base">Canal de Coleta e Envio <span class="form-required">*</span></label>
                   <div class="grid grid-cols-2 gap-4 mt-2">
-                    <label class="channel-card cursor-pointer border-2 border-primary rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-whatsapp">
+                    <label class="channel-card cursor-pointer border-2 border-primary rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-web">
                       <div class="flex items-start gap-3">
-                        <input type="radio" name="collectionChannel" value="whatsapp" checked class="mt-1" />
+                        <input type="radio" name="collectionChannel" value="web" checked class="mt-1" />
                         <div>
                           <div class="font-bold text-base flex items-center gap-2">
-                            <i class="fa-brands fa-whatsapp color-success text-xl" aria-hidden="true"></i> WhatsApp Bot Interativo
+                            <i class="fa-solid fa-globe color-primary text-xl" aria-hidden="true"></i> Link Web Confidencial (Padrão)
                           </div>
                           <p class="text-sm table-subtext mt-1 mb-0">
-                            Dispara as perguntas individualmente no WhatsApp de cada colaborador participante.
-                          </p>
-                        </div>
-                      </div>
-                      <div class="mt-3 pt-3 border-t text-xs flex items-center justify-between" id="wizard-wa-status-box">
-                        <span id="wizard-wa-status-badge"><i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i> Conectar Aparelho</span>
-                        <a href="/wa/connect" target="_blank" class="btn btn-ghost btn-xs">
-                          <i class="fa-solid fa-qrcode" aria-hidden="true"></i> Ver QR Code
-                        </a>
-                      </div>
-                    </label>
-
-                    <label class="channel-card cursor-pointer border-2 rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-web">
-                      <div class="flex items-start gap-3">
-                        <input type="radio" name="collectionChannel" value="web" class="mt-1" />
-                        <div>
-                          <div class="font-bold text-base flex items-center gap-2">
-                            <i class="fa-solid fa-globe color-primary text-xl" aria-hidden="true"></i> Link Web Anônimo
-                          </div>
-                          <p class="text-sm table-subtext mt-1 mb-0">
-                            Gera links únicos e link de acesso geral para preenchimento direto no navegador.
+                            Gera link único para resposta direta no navegador, sem necessidade de aplicativo.
                           </p>
                         </div>
                       </div>
                       <div class="mt-3 pt-3 border-t text-xs table-subtext">
-                        Ideal para envio por e-mail ou totens na empresa.
+                        Ideal para compartilhamento em e-mail corporativo, intranet ou cartazes/totens.
+                      </div>
+                    </label>
+
+                    <label class="channel-card cursor-pointer border-2 rounded-xl p-4 flex flex-col justify-between bg-surface" id="channel-card-whatsapp">
+                      <div class="flex items-start gap-3">
+                        <input type="radio" name="collectionChannel" value="whatsapp" class="mt-1" />
+                        <div>
+                          <div class="font-bold text-base flex items-center gap-2">
+                            <i class="fa-brands fa-whatsapp color-success text-xl" aria-hidden="true"></i> Convites via WhatsApp (Opcional)
+                          </div>
+                          <p class="text-sm table-subtext mt-1 mb-0">
+                            Dispara mensagem de convite com o link individual diretamente para colaboradores cadastrados com telefone.
+                          </p>
+                        </div>
+                      </div>
+                      <div class="mt-3 pt-3 border-t text-xs flex items-center justify-between" id="wizard-wa-status-box">
+                        <button type="button" class="btn btn-ghost btn-xs" data-action="open-wizard-wa-modal">
+                          <i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Conexão Segura & Avisos
+                        </button>
                       </div>
                     </label>
                   </div>
@@ -440,7 +439,7 @@ export function renderSurveyCreate({ state }) {
 const STEP_TITLES = {
   1: 'Etapa 1 de 4: Instrumento & Modelo',
   2: 'Etapa 2 de 4: Periodicidade & Ciclo',
-  3: 'Etapa 3 de 4: Público & Quórum',
+  3: 'Etapa 3 de 4: Público',
   4: 'Etapa 4 de 4: Título & Lançamento'
 };
 
@@ -510,12 +509,24 @@ export function goToWizardStep(step) {
   if (stepPct) {
     stepPct.textContent = STEP_PCTS[s] || `${s * 25}%`;
   }
+  const progressFill = document.getElementById('wizard-progress-fill');
+  if (progressFill) {
+    progressFill.style.width = `${s * 25}%`;
+  }
 
   // Update slide classes
   document.querySelectorAll('.wizard-slide').forEach(slide => {
     const slideStep = parseInt(slide.dataset.slideStep, 10);
     slide.classList.toggle('active', slideStep === s);
   });
+
+  // Motion Design: animate elements in the newly active slide
+  setTimeout(() => {
+    const activeSlide = document.querySelector('.wizard-slide.active');
+    if (typeof window.__wizAnimateSlide === 'function') {
+      window.__wizAnimateSlide(activeSlide);
+    }
+  }, 80);
 
   // Update stepper buttons
   document.querySelectorAll('.wizard-stepper-item').forEach(item => {
@@ -585,6 +596,75 @@ export function prevWizardStep() {
 export function mountedSurveyCreate() {
   goToWizardStep(1);
 
+  // ── Motion Design: Typewriter no view-title ──────────────────────────────
+  (function startTypewriter() {
+    const titleEl = document.querySelector('.survey-wizard-container .view-title');
+    if (!titleEl) return;
+
+    const fullText = titleEl.textContent.trim();
+    titleEl.textContent = '';
+
+    // Cursor element
+    const cursor = document.createElement('span');
+    cursor.className = 'wiz-typewriter-cursor';
+    titleEl.appendChild(cursor);
+
+    let charIndex = 0;
+    const BASE_DELAY = 62;   // ms por caractere (mais lento = mais suave)
+    const JITTER     = 28;   // variação aleatória para feel orgânico
+
+    function typeNext() {
+      if (charIndex >= fullText.length) {
+        // Remove cursor suavemente após 2.5s
+        setTimeout(() => {
+          cursor.style.transition = 'opacity 0.5s ease';
+          cursor.style.opacity = '0';
+          setTimeout(() => cursor.remove(), 600);
+        }, 2500);
+        return;
+      }
+      const textNode = document.createTextNode(fullText[charIndex]);
+      titleEl.insertBefore(textNode, cursor);
+      charIndex++;
+      const delay = BASE_DELAY + (Math.random() * JITTER) - (JITTER / 2);
+      setTimeout(typeNext, Math.max(30, delay));
+    }
+
+    // Pequeno delay inicial para o layout assentar
+    setTimeout(typeNext, 280);
+  })();
+
+  // ── Motion Design: Fade-up stagger nos elementos do slide ativa ──────────
+  function animateSlideElements(slideEl) {
+    if (!slideEl) return;
+    const animatables = slideEl.querySelectorAll(
+      '.wizard-section-header, .models-grid > .model-card, ' +
+      '.periodicity-pills, .grid.grid-cols-3, .grid.grid-cols-2, ' +
+      '.group-picker-grid > label, .form-group, .privacy-note, ' +
+      '.channel-card, .survey-launch-option'
+    );
+    animatables.forEach((el, i) => {
+      const delay = Math.min(i, 9); // cap em delay-9
+      el.classList.remove(...[...el.classList].filter(c => c.startsWith('wiz-')));
+      el.classList.add('wiz-animate', `wiz-delay-${delay}`);
+
+      // Remove classes após animação para não bloquear re-entrada
+      const duration = 55 + delay * 60 + 550;
+      setTimeout(() => {
+        el.classList.remove('wiz-animate', `wiz-delay-${delay}`);
+      }, duration);
+    });
+  }
+
+  // Anima o slide 1 imediatamente
+  setTimeout(() => {
+    const firstSlide = document.querySelector('.wizard-slide.active');
+    animateSlideElements(firstSlide);
+  }, 100);
+
+  // Expõe para goToWizardStep usar
+  window.__wizAnimateSlide = animateSlideElements;
+
   // Setup input listeners for dynamic validation
   const cycleInput = document.getElementById('survey-cycle-input');
   const endInput = document.getElementById('survey-end-input');
@@ -605,6 +685,99 @@ export function mountedSurveyCreate() {
   };
   if (radioManual) radioManual.addEventListener('change', onModeChange);
   if (radioImmediate) radioImmediate.addEventListener('change', onModeChange);
+
+  const radioWeb = document.querySelector('input[name="collectionChannel"][value="web"]');
+  const radioWa = document.querySelector('input[name="collectionChannel"][value="whatsapp"]');
+  const cardWa = document.getElementById('channel-card-whatsapp');
+  const cardWeb = document.getElementById('channel-card-web');
+  const waStatusBox = document.getElementById('wizard-wa-status-box');
+
+  let isWhatsAppConnected = false;
+
+  async function checkAndUpdateWhatsAppConnection() {
+    try {
+      const res = await get('/whatsapp/status');
+      isWhatsAppConnected = Boolean(res && res.connected);
+
+      if (radioWa) {
+        if (!isWhatsAppConnected) {
+          radioWa.disabled = true;
+          if (radioWa.checked) {
+            radioWa.checked = false;
+            if (radioWeb) radioWeb.checked = true;
+          }
+          cardWa?.classList.add('opacity-60', 'cursor-not-allowed');
+          cardWa?.classList.remove('border-primary');
+          cardWeb?.classList.add('border-primary');
+          if (waStatusBox) {
+            waStatusBox.innerHTML = `
+              <div class="flex items-center gap-1 color-text-muted">
+                <i class="fa-solid fa-circle-xmark color-danger" aria-hidden="true"></i>
+                <span>Desconectado</span>
+              </div>
+              <button type="button" class="btn btn-secondary btn-xs" data-action="open-wizard-wa-modal">
+                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Conectar Aparelho
+              </button>
+            `;
+          }
+        } else {
+          radioWa.disabled = false;
+          cardWa?.classList.remove('opacity-60', 'cursor-not-allowed');
+          if (waStatusBox) {
+            waStatusBox.innerHTML = `
+              <div class="flex items-center gap-1 color-success font-medium">
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <span>+${esc(res.phone || 'Conectado')}</span>
+              </div>
+              <button type="button" class="btn btn-ghost btn-xs" data-action="open-wizard-wa-modal">
+                <i class="fa-solid fa-gear" aria-hidden="true"></i> Gerenciar
+              </button>
+            `;
+          }
+        }
+      }
+    } catch {
+      // Falha silenciosa de checagem, mantém WhatsApp desabilitado por precaução
+      if (radioWa) {
+        radioWa.disabled = true;
+        if (radioWa.checked && radioWeb) radioWeb.checked = true;
+        cardWa?.classList.add('opacity-60', 'cursor-not-allowed');
+      }
+    }
+  }
+
+  // Verifica status imediatamente ao abrir a tela
+  checkAndUpdateWhatsAppConnection();
+
+  const onChannelChange = () => {
+    const isWa = radioWa?.checked || false;
+    if (isWa && !isWhatsAppConnected) {
+      if (radioWeb) radioWeb.checked = true;
+      if (radioWa) radioWa.checked = false;
+      cardWa?.classList.remove('border-primary');
+      cardWeb?.classList.add('border-primary');
+      showToast('Conecte seu WhatsApp via QR Code antes de selecionar este canal.', 'warning');
+      openWizardWhatsAppWarningModal();
+      return;
+    }
+    cardWa?.classList.toggle('border-primary', isWa);
+    cardWeb?.classList.toggle('border-primary', !isWa);
+    if (isWa) {
+      openWizardWhatsAppWarningModal();
+    }
+  };
+
+  if (cardWa) {
+    cardWa.addEventListener('click', (e) => {
+      if (!isWhatsAppConnected && !e.target.closest('button')) {
+        showToast('WhatsApp não está conectado. Conecte o aparelho para habilitar.', 'warning');
+        openWizardWhatsAppWarningModal();
+      }
+    });
+  }
+
+  if (radioWeb) radioWeb.addEventListener('change', onChannelChange);
+  if (radioWa) radioWa.addEventListener('change', onChannelChange);
 }
 
 
@@ -772,7 +945,7 @@ export function updateWizardQuorum() {
         <div class="privacy-note privacy-success">
           <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
           <div>
-            <strong>Quórum Protegido:</strong> <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores convidados. Atende à diretriz de anonimato psicossocial (mínimo de 5 respostas para emissão de relatório).
+            <strong>Público selecionado:</strong> <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores convidados.
           </div>
         </div>
       `;
@@ -781,7 +954,7 @@ export function updateWizardQuorum() {
         <div class="privacy-note privacy-warning">
           <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
           <div>
-            <strong>Atenção ao Quórum:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores nos grupos selecionados. Para proteger a confidencialidade dos colaboradores, a plataforma exige quórum mínimo de 5 respondentes.
+            <strong>Atenção:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores nos grupos selecionados. Adicione mais grupos para uma amostra representativa.
           </div>
         </div>
       `;
@@ -859,8 +1032,10 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
     return;
   }
 
+  const selectedChannel = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'web';
+
   const payload = {
-    collectionChannel: (document.querySelector('input[name="collectionChannel"]:checked')?.value || 'whatsapp'),
+    collectionChannel: selectedChannel,
     title,
     cycle,
     model,
@@ -876,17 +1051,31 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
   }
 
   try {
+    if (selectedChannel === 'whatsapp') {
+      const waCheck = await get('/whatsapp/status');
+      if (!waCheck || !waCheck.connected) {
+        showToast('WhatsApp não está conectado. Conecte o aparelho ou escolha o canal Web.', 'error');
+        if (btnLaunch) {
+          btnLaunch.disabled = false;
+          btnLaunch.innerHTML = '<i class="fa-solid fa-rocket" aria-hidden="true"></i> Iniciar Pesquisa';
+        }
+        openWizardWhatsAppWarningModal();
+        return;
+      }
+    }
+
     const survey = await post('/surveys', payload);
 
     if (openImmediately) {
       if (btnLaunch) btnLaunch.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abrindo coleta...';
-      const ch = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'whatsapp';
+      const ch = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'web';
       await post(`/surveys/${survey.id}/open`, { collectionChannel: ch });
       if (ch === 'whatsapp') {
         showToast('Ciclo iniciado! Convites sendo enviados pelo WhatsApp.', 'success');
+      } else {
+        showToast('Ciclo iniciado! Convites com link sendo enviados por e-mail para os colaboradores.', 'success');
       }
       await store.loadSurveys();
-      showToast('Ciclo de pesquisa iniciado com sucesso! Coleta aberta.', 'success');
       router.navigate(`pesquisas/${survey.id}/distribuicao`);
     } else {
       await store.loadSurveys();
@@ -914,3 +1103,103 @@ export function updateLaunchButtonLabel() {
     btnLaunch.innerHTML = '<i class="fa-regular fa-bookmark" aria-hidden="true"></i> Salvar Pesquisa (Coleta Manual)';
   }
 }
+
+/**
+ * Modal de alerta e conexão segura do WhatsApp exibido durante a criação do ciclo
+ */
+export async function openWizardWhatsAppWarningModal() {
+  openDialog({
+    title: 'Aviso de Segurança & Envio via WhatsApp',
+    content: `
+      <div id="wizard-wa-modal-body" class="p-2">
+        <div class="flex items-center justify-center p-8">
+          <i class="fa-solid fa-spinner fa-spin color-primary" aria-hidden="true"></i>
+          <span class="ml-2 font-medium">Verificando status do aparelho...</span>
+        </div>
+      </div>
+    `,
+    footer: `
+      <button type="button" class="btn btn-secondary" data-action="close-dialog">Entendi</button>
+    `,
+    size: 'lg'
+  });
+
+  const container = document.getElementById('wizard-wa-modal-body');
+  if (!container) return;
+
+  try {
+    const status = await get('/whatsapp/qr');
+    const isConnected = Boolean(status.connected);
+
+    container.innerHTML = `
+      <div class="wa-warning-banner">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <div>
+          <div class="wa-warning-title">Aviso de Responsabilidade e Diretrizes da Meta</div>
+          <p class="wa-warning-desc">
+            • <strong>Disparo a partir do seu número:</strong> As mensagens serão enviadas diretamente em nome do aparelho que você conectar.<br>
+            • <strong>Riscos de Banimento:</strong> O WhatsApp (Meta) pune envios em massa de mensagens padronizadas. Dispare apenas para colaboradores que esperam o contato e nunca utilize chips novos sem histórico prévio.<br>
+            • <strong>Coleta Confidencial:</strong> A IA e as perguntas não funcionam dentro do WhatsApp. O colaborador receberá apenas o convite fixo com link individual e seguro para responder no navegador.
+          </p>
+        </div>
+      </div>
+
+      <div class="card bg-surface p-4 border mb-4">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid ${isConnected ? 'fa-circle-check color-success' : 'fa-circle-exclamation color-warning'}" aria-hidden="true"></i>
+            <span class="font-bold">Status do Aparelho:</span>
+            <span class="badge ${isConnected ? 'badge-success' : 'badge-neutral'}">${isConnected ? '+' + esc(status.phone || 'Conectado') : 'Desconectado'}</span>
+          </div>
+          ${isConnected ? `
+            <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="wizard-disconnect-wa">
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Desconectar
+            </button>
+          ` : ''}
+        </div>
+
+        ${!isConnected ? `
+          <div class="wa-qr-container my-3">
+            ${status.qrDataUrl ? `
+              <img src="${status.qrDataUrl}" alt="QR Code WhatsApp" class="wa-qr-image mb-3" />
+              <div class="text-center">
+                <h4 class="font-bold mb-1">Aponte a câmera do seu WhatsApp</h4>
+                <p class="table-subtext m-0">No celular: WhatsApp &gt; Configurações/Menu &gt; Aparelhos Conectados &gt; Conectar um Aparelho</p>
+              </div>
+            ` : `
+              <div class="text-center p-6">
+                <i class="fa-solid fa-spinner fa-spin color-primary text-3xl mb-3" aria-hidden="true"></i>
+                <p class="font-medium mb-1">Inicializando conexão segura...</p>
+                <p class="table-subtext m-0">O QR Code aparecerá aqui em instantes.</p>
+              </div>
+            `}
+          </div>
+          <div class="flex justify-end">
+            <button type="button" class="btn btn-secondary btn-sm" data-action="open-wizard-wa-modal">
+              <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Atualizar Status
+            </button>
+          </div>
+        ` : `
+          <div class="wa-message-preview-box">
+            <div class="text-xs font-semibold mb-1 color-primary">Prévia da Mensagem Fixa de Envio:</div>
+            Olá! O RH convida você a participar da nossa Pesquisa Confidencial sobre Condições de Trabalho: {link}
+
+Leva menos de 3 minutos. Sua percepção é fundamental para construirmos um ambiente de trabalho mais saudável!
+          </div>
+        `}
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state p-4">
+        <i class="fa-solid fa-circle-exclamation color-danger mb-2" aria-hidden="true"></i>
+        <p class="font-medium">Falha ao obter status do WhatsApp.</p>
+        <p class="table-subtext">${esc(err.message || 'Erro de conexão')}</p>
+      </div>
+    `;
+  }
+}
+
+
+
+

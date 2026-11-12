@@ -306,7 +306,7 @@ export function renderSettings({ params, state }) {
             <strong>Pseudonimização e Anonimização:</strong> Ao registrar uma resposta em uma pesquisa, os tokens individuais são invalidados para impedir qualquer reidentificação individual.
           </p>
           <p class="mb-3">
-            <strong>Quórum de Segurança (N ≥ 5):</strong> Nenhum relatório ou matriz divulga respostas de grupos ou interseções com menos de 5 respondentes.
+            <strong>Quórum de Segurança:</strong> Nenhum relatório ou matriz divulga respostas de grupos com número reduzido de respondentes, garantindo a proteção de todos os participantes.
           </p>
           <p class="m-0">
             <strong>Retenção de Laudos e Planos de Ação:</strong> Conforme os prazos previstos na NR-1, os relatórios e registros de ações preventivas são preservados para fins de comprovação em auditorias e fiscalizações.

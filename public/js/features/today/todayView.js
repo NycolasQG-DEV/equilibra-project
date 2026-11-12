@@ -129,6 +129,11 @@ export function renderToday({ state }) {
             ? `${totalOpenResponses} de ${totalOpenInvited} pessoas responderam (${fmtPercent(aggregateRate)})`
             : 'Nenhuma coleta aberta no momento'}
         </div>
+        ${openSurveys.length > 0 ? `
+          <div class="dist-bar dist-bar-sm mt-2" title="Taxa agregada de adesão: ${fmtPercent(aggregateRate)}">
+            <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(aggregateRate * 100))}"></div>
+          </div>
+        ` : ''}
         <span class="kpi-sub mt-2">Visão geral em tempo real</span>
       </div>
 
@@ -194,6 +199,9 @@ export function renderToday({ state }) {
                       <span>${esc(s.cycle || 'Geral')}</span>
                       <span class="dot-separator">•</span>
                       <span class="color-muted">${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}</span>
+                    </div>
+                    <div class="dist-bar dist-bar-sm mt-2" title="Adesão: ${fmtPercent(s.participationRate)}">
+                      <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(s.participationRate * 100))}"></div>
                     </div>
                   </div>
 
@@ -397,7 +405,10 @@ function renderQueueItem(item, isViewer = false) {
 
 export function mountedToday({ state }) {
   document.querySelectorAll('[data-width]').forEach(el => {
-    el.style.width = `${el.dataset.width}%`;
+    const w = el.dataset.width;
+    if (w != null && w !== '') {
+      el.style.width = w.endsWith('%') ? w : `${w}%`;
+    }
   });
 
   const charts = state.today?.charts;

@@ -1,16 +1,14 @@
 /**
- * WhatsApp Local Client (Baileys)
- * Conexão direta via WhatsApp Web sem emuladores ou gateways externos.
- * Exibe o QR Code diretamente no terminal para login rápido.
+ * WhatsApp Local Client (Baileys) — Multi-Tenant & Sessões Privadas por Usuário/Conta
  *
- * Persistência: salva credenciais em data/wa-auth/ para manter conectado
- * após reiniciar o servidor.
+ * Cada conta (accountId) possui sua própria sessão, credenciais isoladas e QR Code privado.
+ * O QR Code é exibido EXCLUSIVAMENTE no navegador do administrador autenticado e
+ * NUNCA é impresso no terminal público do servidor.
  */
 
 const path = require('node:path');
 const fs = require('node:fs');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -25,23 +23,48 @@ const crypto = require('node:crypto');
 
 const HASH = (v) => crypto.createHash('sha256').update(v).digest('hex');
 
-const AUTH_DIR = process.env.EQUILIBRA_WA_AUTH_DIR || path.join(__dirname, '..', '..', 'data', 'wa-auth');
+const AUTH_BASE_DIR = process.env.EQUILIBRA_WA_AUTH_DIR || path.join(__dirname, '..', '..', 'data', 'wa-auth');
 
-let sock = null;
-let status = {
-  connected: false,
-  connecting: false,
-  user: null,
-  lastQr: null
-};
+/**
+ * Mapa de sessões ativas indexadas por accountId.
+ * Estrutura de cada sessão:
+ * {
+ *   accountId: string,
+ *   authDir: string,
+ *   sock: BaileysSocket | null,
+ *   status: { connected: boolean, connecting: boolean, user: object | null, lastQr: string | null },
+ *   msgCache: Map
+ * }
+ */
+const sessions = new Map();
 
-// Cache mínimo de mensagens enviadas — necessário para Baileys processar
-// retransmissões do WhatsApp sem descartar mensagens silenciosamente.
-const msgCache = new Map();
+function sanitizeAccountId(id) {
+  if (!id || typeof id !== 'string') return 'default';
+  return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function getSession(rawAccountId = 'default') {
+  const accountId = sanitizeAccountId(rawAccountId);
+  if (!sessions.has(accountId)) {
+    const authDir = path.join(AUTH_BASE_DIR, accountId);
+    sessions.set(accountId, {
+      accountId,
+      authDir,
+      sock: null,
+      status: {
+        connected: false,
+        connecting: false,
+        user: null,
+        lastQr: null
+      },
+      msgCache: new Map()
+    });
+  }
+  return sessions.get(accountId);
+}
 
 /**
  * Extrai texto da mensagem do Baileys tratando wrappers de mensagem
- * (ephemeralMessage, viewOnce, quoted message, etc.)
  */
 function extractMessageText(message) {
   if (!message) return '';
@@ -76,7 +99,7 @@ function toJid(phone) {
 }
 
 /**
- * Submissão anônima de respostas ao concluir questionário
+ * Submete respostas anonimizadas
  */
 async function submitAnswersDirect({ token, answers, segmentId }) {
   const tokenH = HASH(token);
@@ -100,7 +123,6 @@ async function submitAnswersDirect({ token, answers, segmentId }) {
   const submittedDay = new Date().toISOString().slice(0, 10);
   const responses = read('responses');
 
-  // Grava resposta anonimizada (apenas valores das notas e segmento)
   const newResponse = {
     id: crypto.randomUUID(),
     accountId: survey.accountId,
@@ -121,15 +143,20 @@ async function submitAnswersDirect({ token, answers, segmentId }) {
 }
 
 /**
- * Inicia ou reinicia o cliente WhatsApp Baileys
+ * Inicia ou reinicia o cliente WhatsApp Baileys para uma conta específica
+ * O QR Code NUNCA é impresso no terminal. Fica armazenado na sessão privada.
  */
-async function initWhatsAppClient() {
-  if (status.connecting || status.connected) return sock;
+async function initWhatsAppClient(rawAccountId = 'default') {
+  const session = getSession(rawAccountId);
 
-  status.connecting = true;
-  fs.mkdirSync(AUTH_DIR, { recursive: true });
+  if (session.status.connecting || session.status.connected) {
+    return session.sock;
+  }
 
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+  session.status.connecting = true;
+  fs.mkdirSync(session.authDir, { recursive: true });
+
+  const { state, saveCreds } = await useMultiFileAuthState(session.authDir);
   let version = [2, 3000, 1015901307];
   try {
     const v = await fetchLatestBaileysVersion();
@@ -138,22 +165,23 @@ async function initWhatsAppClient() {
 
   const logger = pino({ level: 'silent' });
 
-  sock = makeWASocket({
+  const sock = makeWASocket({
     version,
     logger,
-    printQRInTerminal: false, // Controlamos a exibição manualmente para layout limpo
+    printQRInTerminal: false, // JAMAIS imprime no terminal
     auth: state,
     browser: ['Equilibra Pesquisas', 'Chrome', '1.0.0'],
     syncFullHistory: false,
     keepAliveIntervalMs: 25000,
     defaultQueryTimeoutMs: 60000,
     markOnlineOnConnect: true,
-    // CRÍTICO: getMessage deve retornar a mensagem ou undefined se não encontrada
     getMessage: async (key) => {
-      const cached = msgCache.get(key.id);
+      const cached = session.msgCache.get(key.id);
       return cached || undefined;
     }
   });
+
+  session.sock = sock;
 
   sock.ev.on('creds.update', saveCreds);
 
@@ -161,45 +189,33 @@ async function initWhatsAppClient() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      status.lastQr = qr;
-      status.connected = false;
-      console.log('\n' + '='.repeat(64));
-      console.log('📲 CONEXÃO DO WHATSAPP (EQUILIBRA)');
-      console.log('Abra o WhatsApp no seu celular:');
-      console.log('  → Configurações > Aparelhos Conectados > Conectar um Aparelho');
-      console.log('  → Aponte a câmera para o QR Code abaixo:');
-      console.log('='.repeat(64));
-      qrcode.generate(qr, { small: true });
-      console.log('='.repeat(64) + '\n');
+      session.status.lastQr = qr;
+      session.status.connected = false;
+      console.log(`📲 [WhatsApp] Novo QR Code gerado para a conta "${session.accountId}" (disponível no modal privado do operador).`);
     }
 
     if (connection === 'close') {
-      status.connected = false;
-      status.connecting = false;
+      session.status.connected = false;
+      session.status.connecting = false;
       const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
       const isLoggedOut = (lastDisconnect?.error)?.output?.statusCode === DisconnectReason.loggedOut;
 
       if (isLoggedOut) {
-        console.log('⚠️ [WhatsApp] Sessão encerrada no celular. Limpando credenciais antigas...');
+        console.log(`⚠️ [WhatsApp] Sessão encerrada no aparelho para a conta "${session.accountId}". Limpando credenciais...`);
         try {
-          fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+          fs.rmSync(session.authDir, { recursive: true, force: true });
         } catch { }
-        setTimeout(initWhatsAppClient, 2000);
       } else if (shouldReconnect) {
-        console.log('🔄 [WhatsApp] Reconectando ao WhatsApp...');
-        setTimeout(initWhatsAppClient, 3000);
+        console.log(`🔄 [WhatsApp] Reconectando WhatsApp para a conta "${session.accountId}"...`);
+        setTimeout(() => initWhatsAppClient(session.accountId), 3000);
       }
     } else if (connection === 'open') {
-      status.connected = true;
-      status.connecting = false;
-      status.lastQr = null;
-      status.user = sock.user;
+      session.status.connected = true;
+      session.status.connecting = false;
+      session.status.lastQr = null;
+      session.status.user = sock.user;
       const phone = sock.user?.id ? sock.user.id.split(':')[0] : 'Conectado';
-      console.log('\n' + '━'.repeat(64));
-      console.log(`✅ [WhatsApp] Conectado com sucesso!`);
-      console.log(`   Número: +${phone} (${sock.user?.name || 'Equilibra'})`);
-      console.log(`   Pronto para despachar e receber pesquisas.`);
-      console.log('━'.repeat(64) + '\n');
+      console.log(`✅ [WhatsApp] Conta "${session.accountId}" conectada com sucesso (+${phone}).`);
 
       try {
         await sock.sendPresenceUpdate('available');
@@ -211,45 +227,22 @@ async function initWhatsAppClient() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (!messages || !Array.isArray(messages)) return;
 
-    console.log(`📥 [WhatsApp] messages.upsert type="${type}" count=${messages.length}`);
-
     for (const msg of messages) {
-      // Ignora mensagens enviadas pelo próprio bot ou de grupos (@g.us) / status
       if (msg.key?.fromMe) continue;
       const rawRemoteJid = msg.key?.remoteJid || '';
       if (!rawRemoteJid || rawRemoteJid.endsWith('@g.us') || rawRemoteJid === 'status@broadcast') continue;
 
-      // Limpa JID removendo sufixo de device (:1@s.whatsapp.net -> @s.whatsapp.net ou :1@lid -> @lid)
       const cleanJid = rawRemoteJid.replace(/:\d+@/, '@');
       if (!cleanJid.endsWith('@s.whatsapp.net') && !cleanJid.endsWith('@lid')) continue;
 
-      // Se for @lid, tenta obter o número de telefone (PN) correspondente do repositório Baileys
-      let resolvedPn = null;
-      if (cleanJid.endsWith('@lid')) {
-        try {
-          const res = await sock.signalRepository?.lidMapping?.getPNForLID?.(cleanJid);
-          if (typeof res === 'string') resolvedPn = res;
-        } catch { }
-      }
-
-      // Log de diagnóstico — mostra estrutura da mensagem para depuração
-      const msgType = msg.message ? Object.keys(msg.message)[0] : 'null';
-      console.log(`📩 [WhatsApp] Mensagem de ${cleanJid} (PN: ${resolvedPn || 'n/a'}) | tipo: ${msgType}`);
-
       const text = extractMessageText(msg.message);
-      if (!text) {
-        console.log(`⚠️ [WhatsApp] Texto vazio para mensagem tipo "${msgType}" de ${cleanJid} — ignorando.`);
-        continue;
-      }
-
-      console.log(`\n💬 [WhatsApp Recebido] De: ${cleanJid} | Mensagem: "${text}"`);
+      if (!text) continue;
 
       try {
-        const { reply, bubbles, submitted } = await handleIncomingMessage(
+        const { reply, bubbles } = await handleIncomingMessage(
           cleanJid,
           text,
-          submitAnswersDirect,
-          resolvedPn
+          submitAnswersDirect
         );
 
         const messagesToSend = bubbles || (Array.isArray(reply) ? reply : (reply ? [reply] : []));
@@ -259,34 +252,14 @@ async function initWhatsAppClient() {
             const msgItem = messagesToSend[i];
             if (!msgItem) continue;
 
-            // Simula digitação humana antes de enviar cada balão
-            try {
-              await sock.sendPresenceUpdate('composing', rawRemoteJid);
-              const charDelay = Math.min(2200, Math.max(900, msgItem.length * 28));
-              await new Promise(r => setTimeout(r, charDelay));
-              await sock.sendPresenceUpdate('paused', rawRemoteJid);
-            } catch (pErr) {
-              // Não bloqueia envio caso atualização de presença falhe
-            }
-
-            console.log(`🤖 [WhatsApp Resposta ${i + 1}/${messagesToSend.length}] Enviando para ${rawRemoteJid}: "${msgItem.slice(0, 50)}..."`);
             await sock.sendMessage(rawRemoteJid, { text: msgItem });
-
-            // Se houver mais uma mensagem complementar na fila, breve pausa natural entre balões
             if (i < messagesToSend.length - 1) {
-              await new Promise(r => setTimeout(r, 1200));
+              await new Promise(r => setTimeout(r, 800));
             }
           }
-          console.log(`✅ [WhatsApp Resposta] Enviada com sucesso para ${rawRemoteJid}`);
-        } else {
-          console.log(`🔇 [WhatsApp] Nenhuma pesquisa ativa para ${cleanJid} — ignorado silenciosamente.`);
-        }
-
-        if (submitted) {
-          console.log(`🎉 [WhatsApp] Resposta coletada e armazenada de forma 100% anônima para ${cleanJid}.`);
         }
       } catch (err) {
-        console.error('❌ [WhatsApp] Erro ao processar mensagem do colaborador:', err.message);
+        console.error(`❌ [WhatsApp] Erro ao responder mensagem para conta ${session.accountId}:`, err.message);
       }
     }
   });
@@ -295,12 +268,15 @@ async function initWhatsAppClient() {
 }
 
 /**
- * Envia mensagem direta de texto usando o socket do WhatsApp
+ * Envia mensagem direta de texto usando o socket do WhatsApp de uma conta específica
  */
-async function sendDirect(phone, text) {
-  if (!status.connected || !sock) {
+async function sendDirect(phone, text, rawAccountId = 'default') {
+  const session = getSession(rawAccountId);
+  if (!session.status.connected || !session.sock) {
     return { ok: false, error: 'not_connected' };
   }
+
+  const sock = session.sock;
   const jid = toJid(phone);
   try {
     let targetJid = jid;
@@ -316,13 +292,11 @@ async function sendDirect(phone, text) {
     } catch { }
 
     const sent = await sock.sendMessage(targetJid, { text });
-    // Armazena no cache para getMessage() do Baileys
     if (sent?.key?.id) {
-      msgCache.set(sent.key.id, { conversation: text });
-      // Limita tamanho do cache a 200 mensagens
-      if (msgCache.size > 200) {
-        const firstKey = msgCache.keys().next().value;
-        msgCache.delete(firstKey);
+      session.msgCache.set(sent.key.id, { conversation: text });
+      if (session.msgCache.size > 200) {
+        const firstKey = session.msgCache.keys().next().value;
+        session.msgCache.delete(firstKey);
       }
     }
     return { ok: true, messageId: sent.key.id, targetJid, targetLid };
@@ -332,40 +306,69 @@ async function sendDirect(phone, text) {
 }
 
 /**
- * Reseta as credenciais e reinicia o socket para forçar geração de novo QR Code
+ * Reseta as credenciais e reinicia o socket para forçar geração de novo QR Code para a conta
  */
-async function resetAuth() {
-  status.connected = false;
-  status.connecting = false;
-  status.lastQr = null;
-  status.user = null;
+async function resetAuth(rawAccountId = 'default') {
+  const session = getSession(rawAccountId);
+  session.status.connected = false;
+  session.status.connecting = false;
+  session.status.lastQr = null;
+  session.status.user = null;
+
   try {
-    if (sock) {
-      sock.end();
-      sock = null;
+    if (session.sock) {
+      session.sock.end();
+      session.sock = null;
     }
   } catch { }
 
   try {
-    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-    console.log('🗑️ [WhatsApp] Credenciais resetadas. Novo QR Code será gerado.');
+    fs.rmSync(session.authDir, { recursive: true, force: true });
+    console.log(`🗑️ [WhatsApp] Credenciais da conta "${session.accountId}" resetadas.`);
   } catch { }
 
   setTimeout(() => {
-    initWhatsAppClient().catch((err) => {
-      console.error('[WhatsApp] Falha ao reiniciar após reset:', err.message);
+    initWhatsAppClient(session.accountId).catch((err) => {
+      console.error(`[WhatsApp] Falha ao reiniciar conta ${session.accountId} após reset:`, err.message);
     });
   }, 1000);
 }
 
-function getStatus() {
-  return { ...status };
+/**
+ * Retorna o status de conexão da conta informada
+ */
+function getStatus(rawAccountId = 'default') {
+  const session = getSession(rawAccountId);
+  return { ...session.status };
+}
+
+/**
+ * Retoma silenciosamente sessões que já estavam conectadas antes da reinicialização
+ */
+function resumeExistingSessions() {
+  try {
+    if (!fs.existsSync(AUTH_BASE_DIR)) return;
+    const entries = fs.readdirSync(AUTH_BASE_DIR, { withFileTypes: true });
+    for (const ent of entries) {
+      if (ent.isDirectory()) {
+        const credsFile = path.join(AUTH_BASE_DIR, ent.name, 'creds.json');
+        if (fs.existsSync(credsFile)) {
+          console.log(`[WhatsApp] Restaurando sessão salva para a conta "${ent.name}"...`);
+          initWhatsAppClient(ent.name).catch((err) => {
+            console.error(`[WhatsApp] Falha ao restaurar conta ${ent.name}:`, err.message);
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[WhatsApp] Erro ao retomar sessões existentes:', err.message);
+  }
 }
 
 module.exports = {
   initWhatsAppClient,
   sendDirect,
   getStatus,
-  resetAuth
+  resetAuth,
+  resumeExistingSessions
 };
-

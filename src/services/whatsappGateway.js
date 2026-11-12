@@ -38,13 +38,13 @@ function normalizePhone(raw) {
  * @param {string} text  - conteúdo da mensagem
  * @returns {Promise<{ ok: boolean, messageId?: string, dryRun?: boolean, channel?: string }>}
  */
-async function sendText(phone, text) {
+async function sendText(phone, text, accountId = 'default') {
   if (Array.isArray(text)) {
     let lastResult = { ok: true };
     for (let i = 0; i < text.length; i++) {
       const bubble = text[i];
       if (!bubble) continue;
-      lastResult = await sendText(phone, bubble);
+      lastResult = await sendText(phone, bubble, accountId);
       if (i < text.length - 1) {
         await new Promise(r => setTimeout(r, 1200));
       }
@@ -55,12 +55,12 @@ async function sendText(phone, text) {
   const normalized = normalizePhone(phone);
   if (!normalized) return { ok: false, error: 'phone_invalid' };
 
-  // 1. Tenta envio pelo cliente direto (conectado via QR Code no terminal)
+  // 1. Tenta envio pelo cliente direto Baileys isolado por conta
   const client = getLocalClient();
   if (client) {
-    const localStatus = client.getStatus();
+    const localStatus = client.getStatus(accountId);
     if (localStatus.connected) {
-      const res = await client.sendDirect(normalized, text);
+      const res = await client.sendDirect(normalized, text, accountId);
       if (res.ok) {
         return {
           ok: true,
@@ -115,7 +115,7 @@ async function sendText(phone, text) {
     const localStatus = client ? client.getStatus() : null;
     if (!localStatus || !localStatus.connected) {
       console.warn(`[WA-GATEWAY] Falha: WhatsApp não está conectado em produção para enviar para ${normalized}.`);
-      return { ok: false, error: 'whatsapp_not_connected', message: 'Aparelho WhatsApp não está conectado. Escaneie o QR Code em /wa/connect para ativar os envios.' };
+      return { ok: false, error: 'whatsapp_not_connected', message: 'Aparelho WhatsApp não está conectado. Acesse o painel de envio para conectar o aparelho com segurança via QR Code.' };
     }
   }
   console.log(`[WA-DRY-RUN] → ${normalized}: ${text.slice(0, 80)}...`);
@@ -152,13 +152,13 @@ function parseWebhook(body) {
 }
 
 /**
- * Verifica conectividade do WhatsApp (local Baileys ou Gateway REST).
+ * Verifica conectividade do WhatsApp (local Baileys ou Gateway REST) para uma conta.
  */
-async function healthCheck() {
-  // Verifica cliente direto (QR Code)
+async function healthCheck(accountId = 'default') {
+  // Verifica cliente direto (QR Code) isolado por conta
   const client = getLocalClient();
   if (client) {
-    const localStatus = client.getStatus();
+    const localStatus = client.getStatus(accountId);
     if (localStatus.connected) {
       const phone = localStatus.user?.id ? localStatus.user.id.split(':')[0] : 'Conectado';
       return {

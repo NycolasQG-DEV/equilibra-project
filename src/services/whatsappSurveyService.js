@@ -21,72 +21,58 @@ const { decryptPhone } = require('../config/identityCrypto');
 const { surveyInstrument } = require('../domain/instruments');
 
 /**
+ * Template padrão de mensagem para envio via WhatsApp com a tag {link}.
+ */
+const DEFAULT_INVITE_TEMPLATE = 
+  'Olá! O RH convida você a participar da nossa Pesquisa Confidencial de Fatores Psicossociais: {link}\n\n' +
+  '🔒 Sua resposta é 100% anônima e leva cerca de 3 minutos. Sua opinião é essencial para a melhoria das condições de trabalho.';
+
+/**
  * Envia a pesquisa para todos os membros com telefone cadastrado via WhatsApp.
- * Chamado internamente por openSurvey() quando channel === 'whatsapp'.
+ * Envia uma mensagem fixa (com link único confidencial) sem chatbot interativo.
  *
  * @param {object} survey - objeto survey completo (com status 'open')
- * @param {Array}  links  - array de { token, phone, memberId, segmentId, name }
+ * @param {Array}  links  - array de { token, phone, memberId, segmentId, name, link }
+ * @param {string} [customTemplate] - template personalizado contendo obrigatoriamente '{link}'
  * @returns {Promise<{ dispatched: number, skipped: number, errors: number }>}
  */
-async function dispatchSurveyViaWhatsApp(survey, links) {
-  const instrument = surveyInstrument(survey);
+async function dispatchSurveyViaWhatsApp(survey, links, customTemplate = null) {
   const surveyTitle = survey.title || 'Pesquisa de Clima';
+  const template = (customTemplate && customTemplate.includes('{link}'))
+    ? customTemplate
+    : (survey.whatsappMessageTemplate && survey.whatsappMessageTemplate.includes('{link}'))
+      ? survey.whatsappMessageTemplate
+      : DEFAULT_INVITE_TEMPLATE;
 
   let dispatched = 0;
   let skipped = 0;
   let errors = 0;
 
   for (const link of links) {
-    // Descriptografar phone apenas para envio — nunca persistir
     const rawPhone = decryptPhone(link.phone);
 
     if (!rawPhone) {
       skipped++;
-      continue; // membro sem telefone
+      continue;
     }
 
     try {
-      // Cria sessão no engine usando waId baseado no phone normalizado
-      // O waId é um identificador temporário de sessão, não vinculado às respostas
       const normalizedPhone = gateway.normalizePhone(rawPhone);
       if (!normalizedPhone) {
         skipped++;
         continue;
       }
 
-      const waId = `${normalizedPhone}@s.whatsapp.net`;
+      const surveyUrl = link.link || `/responder/${link.token}`;
+      const messageToSend = template.replace(/\{link\}/g, surveyUrl);
 
-      // Se já tem sessão ativa (ex: pesquisa re-enviada), não sobrescreve
-      if (engine.hasSession(waId)) {
-        skipped++;
-        continue;
-      }
-
-      const { introMessage, introBubbles } = engine.startSession(
-        waId,
-        link.token,
-        link.segmentId,
-        instrument,
-        surveyTitle
-      );
-
-      // Envia pelo gateway — suporta envio em bolhas encadeadas
-      const payloadToSend = Array.isArray(introBubbles) && introBubbles.length > 0 ? introBubbles : introMessage;
-      const result = await gateway.sendText(rawPhone, payloadToSend);
+      const result = await gateway.sendText(rawPhone, messageToSend, survey.accountId);
 
       if (result.ok) {
         dispatched++;
-        if (result.targetJid && result.targetJid !== waId) {
-          engine.addSessionAlias(waId, result.targetJid);
-        }
-        if (result.targetLid) {
-          engine.addSessionAlias(waId, result.targetLid);
-        }
       } else {
-        // Falha no envio — remove sessão criada para evitar sessão órfã
-        engine.processMessage(waId, 'N');
         errors++;
-        console.error(`[WA-DISPATCH] Falha ao enviar para membro (sem identificação): ${result.error}`);
+        console.error(`[WA-DISPATCH] Falha ao enviar para membro: ${result.error}`);
       }
     } catch (err) {
       errors++;
@@ -94,58 +80,66 @@ async function dispatchSurveyViaWhatsApp(survey, links) {
     }
   }
 
-  console.log(`[WA-DISPATCH] Pesquisa "${surveyTitle}": ${dispatched} enviados, ${skipped} sem telefone, ${errors} erros.`);
+  console.log(`[WA-DISPATCH] Pesquisa "${surveyTitle}": ${dispatched} mensagens enviadas, ${skipped} sem telefone, ${errors} erros.`);
   return { dispatched, skipped, errors };
 }
 
 /**
- * Processa uma mensagem recebida de um colaborador via webhook.
- * Retorna a resposta que deve ser enviada de volta.
+ * Processa mensagens recebidas pelo WhatsApp.
+ * Se houver sessão iniciada no engine (ex: testes de regressão), conduz o fluxo.
+ * Caso contrário (padrão de produção), responde orientando a utilizar o link web seguro.
  *
  * @param {string} waId  - remoteJid do WhatsApp
  * @param {string} text  - texto da mensagem recebida
- * @param {Function} submitAnswers - função para submeter respostas (injetada para testabilidade)
+ * @param {Function} [submitAnswers] - função para submeter respostas
  * @param {string} [resolvedPn] - número de telefone real caso waId seja um @lid
- * @returns {Promise<{ reply: string | null, submitted: boolean }>}
+ * @returns {Promise<{ reply: string, bubbles: string[], submitted: boolean }>}
  */
-async function handleIncomingMessage(waId, text, submitAnswers, resolvedPn = null) {
-  let result = await engine.processMessage(waId, text);
-
-  // Se não achou por LID mas temos o número de telefone (PN), tenta pelo PN e associa o LID
-  if (result.state === 'NO_SESSION' && typeof resolvedPn === 'string' && resolvedPn.length > 0) {
-    const pnResult = await engine.processMessage(resolvedPn, text);
-    if (pnResult.state !== 'NO_SESSION') {
-      result = pnResult;
-      engine.addSessionAlias(resolvedPn, waId);
+async function handleIncomingMessage(waId, text, submitAnswers = null, resolvedPn = null) {
+  if (engine.hasSession(waId) || (resolvedPn && engine.hasSession(resolvedPn))) {
+    let result = await engine.processMessage(waId, text);
+    if (result.state === 'NO_SESSION' && typeof resolvedPn === 'string' && resolvedPn.length > 0) {
+      const pnResult = await engine.processMessage(resolvedPn, text);
+      if (pnResult.state !== 'NO_SESSION') {
+        result = pnResult;
+        engine.addSessionAlias(resolvedPn, waId);
+      }
     }
+
+    let submitted = false;
+    if (result.done && result.token && result.answers && typeof submitAnswers === 'function') {
+      try {
+        await submitAnswers({
+          token: result.token,
+          answers: result.answers,
+          segmentId: result.segmentId
+        });
+        submitted = true;
+      } catch (err) {
+        console.error('[WA-SUBMIT] Erro ao submeter respostas:', err.message);
+        return {
+          reply: '✅ Pesquisa finalizada. Obrigado! pela participação!',
+          bubbles: ['✅ Pesquisa finalizada. Obrigado! pela participação!'],
+          submitted: false
+        };
+      }
+    }
+
+    return {
+      reply: result.reply,
+      bubbles: result.bubbles || (Array.isArray(result.reply) ? result.reply : (result.reply ? [result.reply] : [])),
+      submitted
+    };
   }
 
-  let submitted = false;
-
-  // Quando o engine sinaliza conclusão com token+answers, submete anonimamente
-  if (result.done && result.token && result.answers) {
-    try {
-      await submitAnswers({
-        token: result.token,
-        answers: result.answers,
-        segmentId: result.segmentId
-      });
-      submitted = true;
-    } catch (err) {
-      console.error('[WA-SUBMIT] Erro ao submeter respostas:', err.message);
-      // Resposta de fallback — mesmo com erro, não re-tentamos para preservar anonimato
-      return {
-        reply: '✅ Pesquisa finalizada. Obrigado! pela participação!',
-        bubbles: ['✅ Pesquisa finalizada. Obrigado! pela participação!'],
-        submitted: false
-      };
-    }
-  }
+  const infoReply = 
+    'Olá! Este canal é utilizado exclusivamente para o envio de convites de pesquisas.\n\n' +
+    'Para responder à pesquisa de forma segura e com anonimato garantido, por favor acesse o link enviado na mensagem anterior. Muito obrigado pela sua participação!';
 
   return {
-    reply: result.reply,
-    bubbles: result.bubbles || (Array.isArray(result.reply) ? result.reply : (result.reply ? [result.reply] : [])),
-    submitted
+    reply: infoReply,
+    bubbles: [infoReply],
+    submitted: false
   };
 }
 

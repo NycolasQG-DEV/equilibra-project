@@ -198,7 +198,7 @@ export function renderGroups({ state }) {
             <tr>
               <th>Nome do Grupo</th>
               <th>Integrantes</th>
-              <th>Privacidade (Mínimo N ≥ 5)</th>
+              <th>Elegibilidade</th>
               <th class="text-right">Ações</th>
             </tr>
           </thead>
@@ -226,12 +226,12 @@ export function renderGroups({ state }) {
                   <td><span class="num">${count}</span> colaboradores</td>
                   <td>
                     ${isBelowMin ? `
-                      <span class="badge badge-warning" title="Grupos com menos de 5 pessoas são agrupados automaticamente em 'Demais áreas' nos relatórios">
-                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Abaixo do mínimo (N < 5)
+                      <span class="badge badge-warning" title="Grupos menores são agregados automaticamente nos relatórios">
+                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Poucos integrantes
                       </span>
                     ` : `
                       <span class="badge badge-success">
-                        <i class="fa-solid fa-check" aria-hidden="true"></i> Apto para matriz individual
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> Apto para relatório
                       </span>
                     `}
                   </td>
@@ -445,7 +445,6 @@ function startMemberDeleteCountdown({
     deleteMemberCountdownTimer = null;
   }
 
-  let secondsLeft = duration;
   const timerContainer = document.getElementById(containerId);
   const timerBadge = document.getElementById(badgeId);
   const secondsSpan = document.getElementById(secondsId);
@@ -455,26 +454,30 @@ function startMemberDeleteCountdown({
   const consentCheckbox = document.getElementById(consentCheckboxId);
   const confirmBtn = document.getElementById(confirmBtnId);
 
-  // Animação contínua e suave da barra de progresso (10s linear)
+  const totalMs = duration * 1000;
+  const startTime = Date.now();
+
   if (progressBar) {
     progressBar.style.width = '100%';
-    progressBar.style.transition = 'none';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        progressBar.style.transition = `width ${duration}s linear`;
-        progressBar.style.width = '0%';
-      });
-    });
+  }
+  if (secondsSpan) {
+    secondsSpan.textContent = String(duration);
   }
 
   deleteMemberCountdownTimer = setInterval(() => {
-    secondsLeft -= 1;
+    const elapsed = Date.now() - startTime;
+    const remainingMs = Math.max(0, totalMs - elapsed);
+    const secondsRemaining = Math.ceil(remainingMs / 1000);
+    const pct = Math.max(0, (remainingMs / totalMs) * 100);
 
     if (secondsSpan) {
-      secondsSpan.textContent = String(Math.max(0, secondsLeft));
+      secondsSpan.textContent = String(secondsRemaining);
+    }
+    if (progressBar) {
+      progressBar.style.width = `${pct.toFixed(1)}%`;
     }
 
-    if (secondsLeft <= 0) {
+    if (remainingMs <= 0) {
       clearInterval(deleteMemberCountdownTimer);
       deleteMemberCountdownTimer = null;
 
@@ -496,7 +499,7 @@ function startMemberDeleteCountdown({
         consentLabel.classList.remove('disabled');
       }
     }
-  }, 1000);
+  }, 50);
 
   if (consentCheckbox && confirmBtn) {
     consentCheckbox.addEventListener('change', (e) => {
@@ -1156,8 +1159,8 @@ function setupTeamModalEvents(isEditing = false) {
         privacyIndicator.innerHTML = `
           <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
           <div>
-            <strong>Regra de Anonimato (N < 5)</strong>
-            <p class="m-0 text-xs">Equipes com menos de 5 colaboradores são agrupadas em "Demais áreas" nos relatórios para assegurar o sigilo das respostas.</p>
+            <strong>Equipe com poucos integrantes</strong>
+            <p class="m-0 text-xs">Adicione mais colaboradores para que esta equipe gere relatório próprio nos ciclos de pesquisa.</p>
           </div>
         `;
       } else {
@@ -1165,8 +1168,8 @@ function setupTeamModalEvents(isEditing = false) {
         privacyIndicator.innerHTML = `
           <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
           <div>
-            <strong>Apto para matriz individual (N ≥ 5)</strong>
-            <p class="m-0 text-xs">Esta equipe atende ao quórum mínimo e terá visualização própria de fatores e relatórios.</p>
+            <strong>Elegível para relatório individual</strong>
+            <p class="m-0 text-xs">Esta equipe terá visualização própria de fatores e relatórios nos ciclos de pesquisa.</p>
           </div>
         `;
       }
@@ -1236,8 +1239,8 @@ export function openAddGroupModal() {
       <div id="team-privacy-indicator" class="privacy-notice privacy-warning">
         <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
         <div>
-          <strong>Regra de Anonimato (N < 5)</strong>
-          <p class="m-0 text-xs">Equipes com menos de 5 colaboradores são agrupadas em "Demais áreas" nos relatórios para assegurar o sigilo das respostas.</p>
+          <strong>Equipe com poucos integrantes</strong>
+          <p class="m-0 text-xs">Adicione mais colaboradores para que esta equipe gere relatório próprio nos ciclos de pesquisa.</p>
         </div>
       </div>
 
@@ -1364,11 +1367,11 @@ export function openEditGroupModal(groupId) {
       <div id="team-privacy-indicator" class="privacy-notice ${groupMemberIds.size < 5 ? 'privacy-warning' : 'privacy-success'}">
         <i class="fa-solid ${groupMemberIds.size < 5 ? 'fa-shield-halved' : 'fa-circle-check'}" aria-hidden="true"></i>
         <div>
-          <strong>${groupMemberIds.size < 5 ? 'Regra de Anonimato (N < 5)' : 'Apto para matriz individual (N ≥ 5)'}</strong>
+          <strong>${groupMemberIds.size < 5 ? 'Equipe com poucos integrantes' : 'Elegível para relatório individual'}</strong>
           <p class="m-0 text-xs">
             ${groupMemberIds.size < 5
-              ? 'Equipes com menos de 5 colaboradores são agrupadas em "Demais áreas" nos relatórios para assegurar o sigilo das respostas.'
-              : 'Esta equipe atende ao quórum mínimo e terá visualização própria de fatores e relatórios.'}
+              ? 'Adicione mais colaboradores para que esta equipe gere relatório próprio nos ciclos de pesquisa.'
+              : 'Esta equipe terá visualização própria de fatores e relatórios nos ciclos de pesquisa.'}
           </p>
         </div>
       </div>
@@ -1498,3 +1501,5 @@ export async function confirmDeleteGroup(groupId) {
     showToast(err.message || 'Erro ao excluir equipe.', 'error');
   }
 }
+
+

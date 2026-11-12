@@ -3,7 +3,7 @@
 import { renderShell } from '../../ui/shell.js';
 import { esc, attr, fmtPercent, date } from '../../domain/formatters.js';
 import { surveyStatusLabels } from '../../domain/labels.js';
-import { post, put, del } from '../../core/api.js';
+import { get, post, put, del } from '../../core/api.js';
 import { store } from '../../core/store.js';
 import { router } from '../../core/router.js';
 import { openDialog, closeDialog } from '../../ui/dialog.js';
@@ -103,6 +103,9 @@ export function renderSurveysList({ state }) {
                     <div class="flex items-center gap-2">
                       <span class="num font-semibold">${fmtPercent(rate)}</span>
                       <span class="table-subtext">(${responsesCount} resp.)</span>
+                    </div>
+                    <div class="dist-bar dist-bar-sm mt-1" title="Adesão: ${fmtPercent(rate)}">
+                      <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(rate * 100))}"></div>
                     </div>
                   </td>
                   <td>${date(s.endsAt)}</td>
@@ -263,75 +266,7 @@ export function renderSurveyDistribution({ params, state }) {
         ` : ''}
       </div>
 
-      <!-- ENVIO E COLETA VIA WHATSAPP -->
-      <div class="card mb-6 border-2 border-primary bg-surface p-5">
-        <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
-          <div>
-            <h2 class="card-title text-lg flex items-center gap-2 m-0">
-              <i class="fa-brands fa-whatsapp color-success" aria-hidden="true"></i> Envio e Coleta via WhatsApp
-            </h2>
-            <p class="table-subtext m-0 mt-1">
-              Dispare as perguntas diretamente no WhatsApp dos colaboradores cadastrados com telefone.
-            </p>
-          </div>
-          <div class="flex gap-2 flex-wrap">
-            <a href="/wa/connect" target="_blank" class="btn btn-secondary" title="Ver QR Code e status da conexão">
-              <i class="fa-solid fa-qrcode" aria-hidden="true"></i> Conectar Aparelho
-            </a>
-            ${!isViewer && survey.status === 'open' ? `
-              <button type="button" class="btn btn-primary" data-action="dispatch-survey-whatsapp" data-id="${attr(survey.id)}">
-                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Disparar Mensagens Agora
-              </button>
-            ` : ''}
-          </div>
-        </div>
-        <div class="card bg-subtle p-3 flex items-center justify-between text-sm flex-wrap gap-2">
-          <span>Canal configurado: <strong>${survey.collectionChannel === 'whatsapp' ? 'WhatsApp (Bot Interativo)' : 'Web (Links)'}</strong></span>
-          <span class="text-xs table-subtext"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Certifique-se de que o aparelho esteja conectado antes de disparar.</span>
-        </div>
-      </div>
 
-      <!-- LINK ÚNICO DA PESQUISA (Destaque Principal) -->
-      <div class="card mb-6 border-2 border-primary bg-surface p-5">
-        <div class="flex items-center justify-between gap-4 mb-3 flex-wrap">
-          <div>
-            <h2 class="card-title text-lg flex items-center gap-2 m-0">
-              <i class="fa-solid fa-link color-primary" aria-hidden="true"></i> Link Único da Pesquisa
-            </h2>
-            <p class="table-subtext m-0 mt-1">
-              Todos os colaboradores dos grupos participantes podem responder através deste link único confidencial.
-            </p>
-          </div>
-          <button type="button" class="btn btn-primary" data-action="copy-survey-url" data-url="${attr(surveyDirectUrl)}">
-            <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar Link Único
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2 mb-4">
-          <input type="text" id="survey-direct-link-input" class="input input-lg font-mono flex-1 bg-surface-subtle" value="${attr(surveyDirectUrl)}" readonly />
-          <button type="button" class="btn btn-secondary btn-lg" data-action="copy-survey-url" data-url="${attr(surveyDirectUrl)}">
-            Copiar
-          </button>
-          <a href="${attr(surveyDirectUrl)}" target="_blank" class="btn btn-ghost btn-lg" title="Abrir questionário em nova aba">
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-          </a>
-        </div>
-
-        <div class="card bg-subtle p-4">
-          <div class="flex items-center justify-between mb-2">
-            <strong class="text-sm">Modelo de Mensagem Pronto (WhatsApp / E-mail):</strong>
-            <button type="button" class="btn btn-ghost btn-sm" data-action="copy-invite-template">
-              <i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar Mensagem
-            </button>
-          </div>
-          <pre id="invite-template-text" class="table-subtext m-0 whitespace-pre-wrap font-sans">Olá! Sua voz é fundamental para construirmos um ambiente de trabalho mais saudável.
-Participe da nossa pesquisa confidencial sobre fatores psicossociais e condições de trabalho.
-Leva apenas alguns minutos e suas respostas são 100% confidenciais e anônimas (processadas de forma agregada).
-
-Acesse pelo link: ${surveyDirectUrl}
-Prazo final: ${date(survey.endsAt)}.</pre>
-        </div>
-      </div>
 
       <!-- KPIS DE ADESÃO E QUÓRUM -->
       <div class="grid grid-cols-3 gap-4 mb-6">
@@ -353,7 +288,7 @@ Prazo final: ${date(survey.endsAt)}.</pre>
         <div class="kpi-card">
           <span class="kpi-title">Quórum da Amostra</span>
           <div class="kpi-val ${rate >= 0.70 ? 'color-success' : 'color-neutral'}">${rate >= 0.70 ? 'Quórum Atingido' : 'Em Andamento'}</div>
-          <span class="kpi-sub">Anonimato assegurado (N ≥ 5)</span>
+          <span class="kpi-sub">Taxa de resposta do ciclo</span>
         </div>
       </div>
 
@@ -896,7 +831,6 @@ function startDeleteCountdown({
     deleteCountdownTimer = null;
   }
 
-  let secondsLeft = duration;
   const timerContainer = document.getElementById(containerId);
   const timerBadge = document.getElementById(badgeId);
   const secondsSpan = document.getElementById(secondsId);
@@ -906,26 +840,30 @@ function startDeleteCountdown({
   const consentCheckbox = document.getElementById(consentCheckboxId);
   const confirmBtn = document.getElementById(confirmBtnId);
 
-  // Animação suave e contínua da barra de progresso (transição de 10s linear)
+  const totalMs = duration * 1000;
+  const startTime = Date.now();
+
   if (progressBar) {
     progressBar.style.width = '100%';
-    progressBar.style.transition = 'none';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        progressBar.style.transition = `width ${duration}s linear`;
-        progressBar.style.width = '0%';
-      });
-    });
+  }
+  if (secondsSpan) {
+    secondsSpan.textContent = String(duration);
   }
 
   deleteCountdownTimer = setInterval(() => {
-    secondsLeft -= 1;
+    const elapsed = Date.now() - startTime;
+    const remainingMs = Math.max(0, totalMs - elapsed);
+    const secondsRemaining = Math.ceil(remainingMs / 1000);
+    const pct = Math.max(0, (remainingMs / totalMs) * 100);
 
     if (secondsSpan) {
-      secondsSpan.textContent = String(Math.max(0, secondsLeft));
+      secondsSpan.textContent = String(secondsRemaining);
+    }
+    if (progressBar) {
+      progressBar.style.width = `${pct.toFixed(1)}%`;
     }
 
-    if (secondsLeft <= 0) {
+    if (remainingMs <= 0) {
       clearInterval(deleteCountdownTimer);
       deleteCountdownTimer = null;
 
@@ -948,7 +886,7 @@ function startDeleteCountdown({
         consentLabel.classList.remove('disabled');
       }
     }
-  }, 1000);
+  }, 50);
 
   // Escuta alteração da checkbox para liberar o botão de exclusão
   if (consentCheckbox && confirmBtn) {
@@ -1314,7 +1252,7 @@ export function openSurveyDetailsModal(surveyId) {
 
       <div class="flex items-center justify-between mb-2">
         <h3 class="font-semibold text-base m-0">Afirmações do Modelo (${questions.length} itens)</h3>
-        <span class="badge badge-subtle">Anonimato assegurado</span>
+        <span class="badge badge-subtle">${questions.length} afirmações</span>
       </div>
 
       <div class="questions-preview-list max-h-60 overflow-y-auto pr-1">
@@ -1353,4 +1291,191 @@ export function openSurveyDetailsModal(surveyId) {
     size: 'lg'
   });
 }
+
+/**
+ * Modal profissional de envio de convites via WhatsApp com verificação de status,
+ * avisos de responsabilidade/banimento e edição de template fixo obrigatório com {link}.
+ */
+export async function openWhatsAppDispatchModal(surveyId) {
+  const survey = store.getState().surveys?.find(s => s.id === surveyId);
+  if (!survey) return showToast('Pesquisa não encontrada.', 'error');
+
+  openDialog({
+    title: 'Disparo de Convites via WhatsApp',
+    content: `
+      <div id="wa-modal-body" class="p-2">
+        <div class="flex items-center justify-center p-8">
+          <i class="fa-solid fa-spinner fa-spin color-primary" aria-hidden="true"></i>
+          <span class="ml-2 font-medium">Verificando status do aparelho...</span>
+        </div>
+      </div>
+    `,
+    footer: `
+      <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+    `,
+    size: 'lg'
+  });
+
+  await renderWhatsAppModalContent(surveyId);
+}
+
+export async function renderWhatsAppModalContent(surveyId) {
+  const container = document.getElementById('wa-modal-body');
+  if (!container) return;
+
+  const survey = store.getState().surveys?.find(s => s.id === surveyId);
+  if (!survey) return;
+
+  try {
+    const status = await get('/whatsapp/qr');
+    const isConnected = Boolean(status.connected);
+
+    const warningHtml = `
+      <div class="wa-warning-banner">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <div>
+          <div class="wa-warning-title">Aviso de Responsabilidade e Segurança do Aparelho</div>
+          <p class="wa-warning-desc">
+            1. <strong>Conexão direta:</strong> O envio é realizado a partir da sessão do seu próprio aparelho/número corporativo conectado.<br>
+            2. <strong>Risco de Banimento (Diretrizes Meta):</strong> O WhatsApp aplica bloqueios temporários ou permanentes a números que disparam mensagens repetitivas em lote, especialmente números novos. Dispare com moderação.<br>
+            3. <strong>Coleta Segura via Link:</strong> O bot interativo foi desativado. Seus colaboradores receberão uma mensagem com o link oficial e responderão no navegador com sigilo absoluto.
+          </p>
+        </div>
+      </div>
+    `;
+
+    if (isConnected) {
+      const defaultTemplate = survey.whatsappMessageTemplate || 
+        'Olá! O RH convida você a participar da nossa Pesquisa Confidencial sobre Condições de Trabalho: {link}\n\n' +
+        'Leva menos de 3 minutos. Sua percepção é fundamental para construirmos um ambiente mais saudável!';
+
+      container.innerHTML = `
+        ${warningHtml}
+        <div class="card bg-surface p-4 border mb-4">
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i>
+              <span class="font-bold">Aparelho Conectado:</span>
+              <span class="badge badge-success">+${esc(status.phone || 'Ativo')}</span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="disconnect-wa-device" data-id="${attr(surveyId)}">
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Desconectar Aparelho
+            </button>
+          </div>
+          
+          <div class="form-group mb-2">
+            <label for="wa-dispatch-message-input" class="form-label font-bold mb-1">
+              Mensagem de Convite <span class="form-required">*</span>
+            </label>
+            <p class="table-subtext mt-0 mb-2">
+              A marcação <code>{link}</code> é obrigatória e será substituída automaticamente pelo link seguro e confidencial de cada colaborador.
+            </p>
+            <textarea id="wa-dispatch-message-input" class="input font-sans w-full" rows="4">${esc(defaultTemplate)}</textarea>
+          </div>
+        </div>
+      `;
+
+      // Atualiza footer do dialog
+      const footerEl = container.closest('.dialog-box')?.querySelector('.dialog-footer');
+      if (footerEl) {
+        footerEl.innerHTML = `
+          <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+          <button type="button" class="btn btn-primary" data-action="submit-whatsapp-dispatch" data-id="${attr(surveyId)}">
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Disparar Convites com Link
+          </button>
+        `;
+      }
+    } else {
+      container.innerHTML = `
+        ${warningHtml}
+        <div class="wa-qr-container mb-4">
+          ${status.qrDataUrl ? `
+            <img src="${status.qrDataUrl}" alt="QR Code WhatsApp" class="wa-qr-image mb-3" />
+            <div class="text-center">
+              <h4 class="font-bold mb-1">Aponte a câmera do seu WhatsApp</h4>
+              <p class="table-subtext m-0">No celular: WhatsApp &gt; Configurações/Menu &gt; Aparelhos Conectados &gt; Conectar um Aparelho</p>
+            </div>
+          ` : `
+            <div class="text-center p-6">
+              <i class="fa-solid fa-spinner fa-spin color-primary text-3xl mb-3" aria-hidden="true"></i>
+              <p class="font-medium mb-1">Inicializando conexão segura...</p>
+              <p class="table-subtext m-0">O QR Code aparecerá aqui em instantes. Clique em Atualizar se demorar.</p>
+            </div>
+          `}
+        </div>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="refresh-wa-qr" data-id="${attr(surveyId)}">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Atualizar Status / QR Code
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm color-danger" data-action="reset-wa-auth" data-id="${attr(surveyId)}">
+            <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Resetar Sessão
+          </button>
+        </div>
+      `;
+
+      const footerEl = container.closest('.dialog-box')?.querySelector('.dialog-footer');
+      if (footerEl) {
+        footerEl.innerHTML = `
+          <button type="button" class="btn btn-secondary" data-action="close-dialog">Cancelar</button>
+          <button type="button" class="btn btn-primary" data-action="refresh-wa-qr" data-id="${attr(surveyId)}">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Já Escaneei / Atualizar
+          </button>
+        `;
+      }
+    }
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state p-4">
+        <i class="fa-solid fa-triangle-exclamation color-danger mb-2" aria-hidden="true"></i>
+        <p class="font-medium">Falha ao verificar status do WhatsApp.</p>
+        <p class="table-subtext">${esc(err.message || 'Erro de comunicação com o servidor.')}</p>
+        <button type="button" class="btn btn-secondary btn-sm mt-3" data-action="refresh-wa-qr" data-id="${attr(surveyId)}">
+          Tentar Novamente
+        </button>
+      </div>
+    `;
+  }
+}
+
+export async function submitWhatsAppDispatch(surveyId) {
+  const textarea = document.getElementById('wa-dispatch-message-input');
+  const customMessage = textarea ? textarea.value.trim() : '';
+
+  if (!customMessage.includes('{link}')) {
+    return showToast('A mensagem deve conter obrigatoriamente a marcação {link}.', 'error');
+  }
+
+  const submitBtn = document.querySelector('[data-action="submit-whatsapp-dispatch"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Disparando...';
+  }
+
+  try {
+    const res = await post(`/surveys/${surveyId}/dispatch-whatsapp`, { customMessage });
+    closeDialog();
+    showToast(res.message || 'Convites disparados com sucesso!', res.errors > 0 ? 'warning' : 'success');
+    await store.loadSurveys();
+  } catch (err) {
+    showToast(err.message || 'Erro ao disparar mensagens pelo WhatsApp.', 'error');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Disparar Convites com Link';
+    }
+  }
+}
+
+export async function disconnectWhatsAppDevice(surveyId) {
+  try {
+    await post('/whatsapp/reset', {});
+    showToast('Aparelho desconectado.', 'info');
+    await renderWhatsAppModalContent(surveyId);
+  } catch (err) {
+    showToast(err.message || 'Erro ao desconectar aparelho.', 'error');
+  }
+}
+
+
+
+
 

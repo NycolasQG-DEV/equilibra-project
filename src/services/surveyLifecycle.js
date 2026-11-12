@@ -3,6 +3,7 @@ const storage = require('../config/equilibraStorage');
 const { snapshotInstrument, surveyInstrument, instrumentForModel } = require('../domain/instruments');
 const { aggregate, summarizeDistribution } = require('../domain/analysis');
 const { dispatchSurveyViaWhatsApp } = require('./whatsappSurveyService');
+const { dispatchSurveyViaEmail } = require('./emailService');
 
 const MIN_RESULTS = 5;
 
@@ -139,12 +140,23 @@ function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
         console.error('[WA-LIFECYCLE] Erro no despacho WhatsApp:', err.message);
       });
     });
+  } else {
+    // Opção padrão do Equilibra (Web): envia convites por e-mail para quem tem e-mail cadastrado
+    setImmediate(() => {
+      dispatchSurveyViaEmail(survey, links).then((result) => {
+        if (result.dispatched > 0 || result.skipped > 0) {
+          console.log(`[EMAIL-LIFECYCLE] Ciclo aberto: ${result.dispatched} e-mails enviados, ${result.skipped} sem e-mail cadastrado.`);
+        }
+      }).catch((err) => {
+        console.error('[EMAIL-LIFECYCLE] Erro no envio de e-mails:', err.message);
+      });
+    });
   }
 
   return {
     ok: true,
     survey,
-    link: survey.collectionChannel === 'whatsapp' ? null : `/responder/${survey.id}`,
+    link: `/responder/${survey.id}`,
     links
   };
 }

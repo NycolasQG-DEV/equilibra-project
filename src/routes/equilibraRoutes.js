@@ -581,19 +581,37 @@ router.delete('/auth/me', protectedRoute, (req, res) => {
 });
 
 router.get('/surveys', protectedRoute, (req, res) => { closeExpired(req.account.id, req); res.json(scoped('surveys', req.account.id).filter(item => !item.archivedAt).map((item) => surveySummary(item, req.account.id)).reverse()); });
-router.post('/surveys', protectedRoute, (req, res) => {
+router.post('/surveys', protectedRoute, async (req, res) => {
   const validation = validateSurveyInput(req, req.account.id);
   if (validation.error) return fail(res, 400, validation.error);
   const fields = validation.fields;
+
+  if (fields.collectionChannel === 'whatsapp') {
+    const { healthCheck } = require('../services/whatsappGateway');
+    const waStatus = await healthCheck(req.account.id);
+    if (!waStatus.connected) {
+      return fail(res, 400, 'WhatsApp não está conectado. Conecte o aparelho via QR Code antes de criar uma pesquisa com este canal.');
+    }
+  }
+
   const surveys = read('surveys'), survey = { id: id(), accountId: req.account.id, ...fields, status: 'draft', createdAt: new Date().toISOString() };
   surveys.push(survey); write('surveys', surveys); res.status(201).json(surveySummary(survey, req.account.id));
 });
-router.put('/surveys/:id', protectedRoute, (req, res) => {
+router.put('/surveys/:id', protectedRoute, async (req, res) => {
   const surveys = read('surveys'), survey = surveys.find((item) => item.id === req.params.id && item.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
   if (survey.status !== 'draft') return fail(res, 409, 'Somente rascunhos podem ser editados.');
   const validation = validateSurveyInput(req, req.account.id);
   if (validation.error) return fail(res, 400, validation.error);
+
+  if (validation.fields.collectionChannel === 'whatsapp') {
+    const { healthCheck } = require('../services/whatsappGateway');
+    const waStatus = await healthCheck(req.account.id);
+    if (!waStatus.connected) {
+      return fail(res, 400, 'WhatsApp não está conectado. Conecte o aparelho via QR Code antes de definir este canal.');
+    }
+  }
+
   Object.assign(survey, validation.fields); write('surveys', surveys); res.json(surveySummary(survey, req.account.id));
 });
 router.put('/surveys/:id/dates', protectedRoute, (req, res) => {
@@ -724,13 +742,63 @@ router.get('/surveys/preflight', protectedRoute, (req, res) => {
   res.json(result);
 });
 
-router.get('/whatsapp/status', protectedRoute, async (_req, res) => {
+router.get('/whatsapp/status', protectedRoute, async (req, res) => {
   try {
     const { healthCheck } = require('../services/whatsappGateway');
-    const status = await healthCheck();
+    const status = await healthCheck(req.account.id);
     res.json(status);
   } catch (err) {
     res.json({ connected: false, error: err.message });
+  }
+});
+
+router.get('/whatsapp/qr', protectedRoute, async (req, res) => {
+  try {
+    let client = null;
+    try { client = require('../services/whatsappLocalClient'); } catch {}
+    const accountId = req.account.id;
+
+    if (client) {
+      const current = client.getStatus(accountId);
+      // Inicia a sessão sob demanda se o operador ainda não estiver conectado nem conectando
+      if (!current.connected && !current.connecting) {
+        client.initWhatsAppClient(accountId).catch((err) => {
+          console.error(`[WA-QR] Falha iniciando cliente para conta ${accountId}:`, err.message);
+        });
+      }
+    }
+
+    const status = client ? client.getStatus(accountId) : { connected: false };
+    let qrDataUrl = null;
+    if (status.lastQr) {
+      try {
+        const QRCode = require('qrcode');
+        qrDataUrl = await QRCode.toDataURL(status.lastQr, { width: 280, margin: 2 });
+      } catch (qrErr) {
+        console.error('[WA-QR] Erro gerando DataURL:', qrErr.message);
+      }
+    }
+    res.json({
+      connected: Boolean(status.connected),
+      connecting: Boolean(status.connecting),
+      phone: status.user?.id ? status.user.id.split(':')[0] : null,
+      qrDataUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/whatsapp/reset', protectedRoute, async (req, res) => {
+  try {
+    let client = null;
+    try { client = require('../services/whatsappLocalClient'); } catch {}
+    if (client && client.resetAuth) {
+      await client.resetAuth(req.account.id);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -740,6 +808,19 @@ router.post('/surveys/:id/dispatch-whatsapp', protectedRoute, async (req, res) =
   const survey = surveys.find((s) => s.id === req.params.id && s.accountId === req.account.id);
   if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
   if (survey.status !== 'open') return fail(res, 409, 'Apenas pesquisas abertas podem ter mensagens enviadas.');
+
+  const { healthCheck } = require('../services/whatsappGateway');
+  const waStatus = await healthCheck(req.account.id);
+  if (!waStatus.connected) {
+    return fail(res, 400, 'WhatsApp não está conectado. Conecte o aparelho via QR Code antes de disparar convites.');
+  }
+
+  const customMessage = req.body && req.body.customMessage;
+  if (customMessage) {
+    if (typeof customMessage !== 'string' || !customMessage.includes('{link}')) {
+      return fail(res, 400, 'A mensagem personalizada deve conter obrigatoriamente a marcação {link}.');
+    }
+  }
 
   const invitations = scoped('invitations', req.account.id).filter((inv) => inv.surveyId === survey.id && !inv.used);
   if (invitations.length === 0) return fail(res, 400, 'Não há convites pendentes para envio.');
@@ -772,11 +853,14 @@ router.post('/surveys/:id/dispatch-whatsapp', protectedRoute, async (req, res) =
 
   write('invitations', allInvitations);
   survey.collectionChannel = 'whatsapp';
+  if (customMessage) {
+    survey.whatsappMessageTemplate = customMessage;
+  }
   write('surveys', surveys);
 
-  const result = await dispatchSurveyViaWhatsApp(survey, links);
+  const result = await dispatchSurveyViaWhatsApp(survey, links, customMessage);
   const userMessage = (result.dispatched === 0 && result.errors > 0)
-    ? `Falha no envio: WhatsApp não está conectado ou houve erro nos números. Acesse "Conectar Aparelho" para verificar o status.`
+    ? `Falha no envio: WhatsApp não está conectado ou houve erro nos números. Verifique o status do aparelho.`
     : `Disparo concluído: ${result.dispatched} mensagens enviadas, ${result.skipped} ignoradas (sem telefone), ${result.errors} erros.`;
 
   res.json({
@@ -786,8 +870,72 @@ router.post('/surveys/:id/dispatch-whatsapp', protectedRoute, async (req, res) =
   });
 });
 
-router.post('/surveys/:id/open', protectedRoute, (req, res) => {
+router.post('/surveys/:id/dispatch-email', protectedRoute, async (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem disparar e-mails.');
+  const surveys = read('surveys');
+  const survey = surveys.find((s) => s.id === req.params.id && s.accountId === req.account.id);
+  if (!survey) return fail(res, 404, 'Pesquisa não encontrada.');
+  if (survey.status !== 'open') return fail(res, 409, 'Apenas pesquisas abertas permitem envio de convites.');
+
+  const invitations = scoped('invitations', req.account.id).filter((inv) => inv.surveyId === survey.id && !inv.used);
+  if (invitations.length === 0) return fail(res, 400, 'Não há convites pendentes para envio.');
+
+  const members = scoped('members', req.account.id);
+  const { dispatchSurveyViaEmail } = require('../services/emailService');
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  const allInvitations = read('invitations');
+  const links = [];
+  for (const inv of invitations) {
+    const member = members.find((m) => m.id === inv.memberId);
+    if (member) {
+      const token = crypto.randomBytes(24).toString('hex');
+      const invInStore = allInvitations.find((item) => item.id === inv.id);
+      if (invInStore) {
+        invInStore.tokenHash = hash(token);
+      }
+      links.push({
+        memberId: member.id,
+        name: member.name,
+        email: member.email || '',
+        phone: member.phone || '',
+        segmentId: inv.segmentId,
+        token,
+        link: `${baseUrl}/responder/${token}`
+      });
+    }
+  }
+
+  write('invitations', allInvitations);
+
+  const result = await dispatchSurveyViaEmail(survey, links);
+  const userMessage = result.dispatched === 0 && result.skipped > 0
+    ? `Nenhum e-mail enviado: ${result.skipped} colaboradores selecionados não possuem e-mail cadastrado. Atualize o cadastro em Pessoas.`
+    : `Envio concluído: ${result.dispatched} convites enviados por e-mail, ${result.skipped} ignorados (sem e-mail cadastrado), ${result.errors} falhas.`;
+
+  res.json({
+    ok: result.dispatched > 0,
+    message: userMessage,
+    ...result
+  });
+});
+
+router.post('/surveys/:id/open', protectedRoute, async (req, res) => {
   if (req.account.role === 'viewer') return fail(res, 403, 'Apenas administradores podem abrir pesquisas.');
+
+  const surveys = read('surveys');
+  const targetSurvey = surveys.find((s) => s.id === req.params.id && s.accountId === req.account.id);
+  if (!targetSurvey) return fail(res, 404, 'Pesquisa não encontrada.');
+
+  const channel = req.body?.collectionChannel || targetSurvey.collectionChannel || 'web';
+  if (channel === 'whatsapp') {
+    const { healthCheck } = require('../services/whatsappGateway');
+    const waStatus = await healthCheck(req.account.id);
+    if (!waStatus.connected) {
+      return fail(res, 400, 'WhatsApp não está conectado. Conecte o aparelho via QR Code antes de abrir a pesquisa por este canal.');
+    }
+  }
+
   const result = openSurvey({
     surveyId: req.params.id,
     accountId: req.account.id,
