@@ -284,12 +284,10 @@ export const RespondView: React.FC<RespondViewProps> = ({
         <div className="dialogue-card" ref={cardRef}>
           <div className="dialogue-speaker-badge">
             <i className="fa-solid fa-circle-dot" aria-hidden="true" /> Questão {currentStep + 1} de {questions.length}
-            {currentQ.label && ` • ${currentQ.label}`}
           </div>
 
           <div className="dialogue-typewriter-container my-4">
             <span className="text-lg font-medium">{displayedText}</span>
-            <span className="wiz-typewriter-cursor" />
           </div>
 
           <div className="dialogue-options-wrap" ref={optionsRef}>
