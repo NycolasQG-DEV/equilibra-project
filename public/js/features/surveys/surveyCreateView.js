@@ -497,20 +497,21 @@ export function goToWizardStep(step) {
   const btnNext = document.getElementById('btn-wizard-next');
   const btnLaunch = document.getElementById('btn-wizard-launch');
 
-  if (track) {
-    track.dataset.currentStep = String(s);
-  }
-  if (footer) {
-    footer.dataset.step = String(s);
-  }
-  if (stepTitle) {
-    stepTitle.textContent = STEP_TITLES[s] || `Etapa ${s} de 4`;
-  }
-  if (stepPct) {
-    stepPct.textContent = STEP_PCTS[s] || `${s * 25}%`;
-  }
+  if (track) track.dataset.currentStep = String(s);
+  if (footer) footer.dataset.step = String(s);
+  if (stepTitle) stepTitle.textContent = STEP_TITLES[s] || `Etapa ${s} de 4`;
+  if (stepPct) stepPct.textContent = STEP_PCTS[s] || `${s * 25}%`;
+
+  // ── Anime.js: Progress bar do wizard ──
   const progressFill = document.getElementById('wizard-progress-fill');
-  if (progressFill) {
+  if (progressFill && window.anime) {
+    window.anime({
+      targets: progressFill,
+      width: `${s * 25}%`,
+      duration: 650,
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+    });
+  } else if (progressFill) {
     progressFill.style.width = `${s * 25}%`;
   }
 
@@ -520,13 +521,13 @@ export function goToWizardStep(step) {
     slide.classList.toggle('active', slideStep === s);
   });
 
-  // Motion Design: animate elements in the newly active slide
+  // ── Anime.js: Animate active slide entrance ──
   setTimeout(() => {
     const activeSlide = document.querySelector('.wizard-slide.active');
     if (typeof window.__wizAnimateSlide === 'function') {
       window.__wizAnimateSlide(activeSlide);
     }
-  }, 80);
+  }, 60);
 
   // Update stepper buttons
   document.querySelectorAll('.wizard-stepper-item').forEach(item => {
@@ -596,7 +597,9 @@ export function prevWizardStep() {
 export function mountedSurveyCreate() {
   goToWizardStep(1);
 
-  // ── Motion Design: Typewriter no view-title ──────────────────────────────
+  const anm = window.anime || null;
+
+  // ── Anime.js: Typewriter suave no view-title ──────────────────────────────
   (function startTypewriter() {
     const titleEl = document.querySelector('.survey-wizard-container .view-title');
     if (!titleEl) return;
@@ -604,66 +607,158 @@ export function mountedSurveyCreate() {
     const fullText = titleEl.textContent.trim();
     titleEl.textContent = '';
 
-    // Cursor element
     const cursor = document.createElement('span');
     cursor.className = 'wiz-typewriter-cursor';
     titleEl.appendChild(cursor);
 
+    // Cursor piscante com Anime.js
+    if (anm) {
+      anm({
+        targets: cursor,
+        opacity: [1, 0],
+        duration: 850,
+        easing: 'steps(1)',
+        loop: true
+      });
+    }
+
     let charIndex = 0;
-    const BASE_DELAY = 62;   // ms por caractere (mais lento = mais suave)
-    const JITTER     = 28;   // variação aleatória para feel orgânico
+    const BASE_DELAY = 70;
+    const JITTER = 30;
 
     function typeNext() {
       if (charIndex >= fullText.length) {
-        // Remove cursor suavemente após 2.5s
         setTimeout(() => {
-          cursor.style.transition = 'opacity 0.5s ease';
-          cursor.style.opacity = '0';
-          setTimeout(() => cursor.remove(), 600);
-        }, 2500);
+          if (anm) {
+            anm({ targets: cursor, opacity: 0, duration: 500, easing: 'easeOutQuad',
+              complete: () => cursor.remove() });
+          } else {
+            cursor.remove();
+          }
+        }, 2200);
         return;
       }
       const textNode = document.createTextNode(fullText[charIndex]);
       titleEl.insertBefore(textNode, cursor);
       charIndex++;
-      const delay = BASE_DELAY + (Math.random() * JITTER) - (JITTER / 2);
+
+      let delay = BASE_DELAY + (Math.random() * JITTER) - (JITTER / 2);
+      const ch = fullText[charIndex - 1];
+      if (ch === ',' || ch === ';') delay += 100;
+      else if (ch === '.' || ch === '!' || ch === '?') delay += 200;
+      else if (ch === ' ') delay += 10;
+
       setTimeout(typeNext, Math.max(30, delay));
     }
 
-    // Pequeno delay inicial para o layout assentar
-    setTimeout(typeNext, 280);
+    setTimeout(typeNext, 350);
   })();
 
-  // ── Motion Design: Fade-up stagger nos elementos do slide ativa ──────────
+  // ── Anime.js: Stagger de entrada dos elementos do slide ──────────────────
   function animateSlideElements(slideEl) {
-    if (!slideEl) return;
-    const animatables = slideEl.querySelectorAll(
+    if (!slideEl || !anm) {
+      // Fallback sem Anime.js: usa classes CSS simples
+      if (slideEl) {
+        const els = slideEl.querySelectorAll(
+          '.wizard-section-header, .models-grid > .model-card, ' +
+          '.periodicity-pills, .grid.grid-cols-3, .grid.grid-cols-2, ' +
+          '.group-picker-grid > label, .form-group, .privacy-note, ' +
+          '.channel-card, .survey-launch-option'
+        );
+        els.forEach((el, i) => {
+          const d = Math.min(i, 9);
+          el.classList.remove(...[...el.classList].filter(c => c.startsWith('wiz-')));
+          el.classList.add('wiz-animate', `wiz-delay-${d}`);
+          setTimeout(() => el.classList.remove('wiz-animate', `wiz-delay-${d}`), 55 + d * 60 + 550);
+        });
+      }
+      return;
+    }
+
+    const targets = Array.from(slideEl.querySelectorAll(
       '.wizard-section-header, .models-grid > .model-card, ' +
       '.periodicity-pills, .grid.grid-cols-3, .grid.grid-cols-2, ' +
       '.group-picker-grid > label, .form-group, .privacy-note, ' +
       '.channel-card, .survey-launch-option'
-    );
-    animatables.forEach((el, i) => {
-      const delay = Math.min(i, 9); // cap em delay-9
-      el.classList.remove(...[...el.classList].filter(c => c.startsWith('wiz-')));
-      el.classList.add('wiz-animate', `wiz-delay-${delay}`);
+    ));
+    if (targets.length === 0) return;
 
-      // Remove classes após animação para não bloquear re-entrada
-      const duration = 55 + delay * 60 + 550;
-      setTimeout(() => {
-        el.classList.remove('wiz-animate', `wiz-delay-${delay}`);
-      }, duration);
+    // Reset estado inicial (evita artefacto de flash)
+    targets.forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(28px)';
     });
+
+    anm({
+      targets,
+      opacity: [0, 1],
+      translateY: [28, 0],
+      duration: 580,
+      delay: anm.stagger(55, { start: 60 }),
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        // Limpa inline styles após animação
+        targets.forEach(el => {
+          el.style.opacity = '';
+          el.style.transform = '';
+        });
+      }
+    });
+  }
+
+  // ── Anime.js: Ripple satisfatório no clique dos botões primários ──────────
+  function setupButtonRipple() {
+    if (!anm) return;
+
+    const container = document.querySelector('.survey-wizard-container');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-primary, .btn-secondary, .periodicity-btn, .model-card');
+      if (!btn) return;
+
+      // Scale punch
+      anm({
+        targets: btn,
+        scale: [1, 0.96, 1.02, 1],
+        duration: 380,
+        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+      });
+    }, { passive: true });
+  }
+
+  // ── Anime.js: Feedback visual ao selecionar model card ───────────────────
+  function setupModelCardFeedback() {
+    if (!anm) return;
+
+    const grid = document.getElementById('survey-models-grid');
+    if (!grid) return;
+
+    grid.addEventListener('click', (e) => {
+      const card = e.target.closest('.model-card');
+      if (!card) return;
+
+      anm({
+        targets: card,
+        scale: [1, 0.97, 1.02, 1],
+        duration: 420,
+        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+      });
+    }, { passive: true });
   }
 
   // Anima o slide 1 imediatamente
   setTimeout(() => {
     const firstSlide = document.querySelector('.wizard-slide.active');
     animateSlideElements(firstSlide);
-  }, 100);
+  }, 120);
 
   // Expõe para goToWizardStep usar
   window.__wizAnimateSlide = animateSlideElements;
+
+  // Setup de ripple e feedback
+  setupButtonRipple();
+  setupModelCardFeedback();
 
   // Setup input listeners for dynamic validation
   const cycleInput = document.getElementById('survey-cycle-input');

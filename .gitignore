@@ -26,6 +26,8 @@ data-demo/
 public/vendor/
 !public/vendor/fonts/
 !public/vendor/fonts/*
+!public/vendor/anime/
+!public/vendor/anime/*
 .env.*
 !.env.example
 *.xlsx

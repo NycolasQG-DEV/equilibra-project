@@ -17,19 +17,19 @@
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: all var(--transition-fast);
+  /* transition controlado pelo Anime.js — CSS apenas para color/bg/border */
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
   white-space: nowrap;
   user-select: none;
-  box-shadow: none !important;
-  transform: none !important;
 }
 
 .btn:hover {
   text-decoration: none;
 }
 
+/* Active: Anime.js cuida do scale — CSS apenas como fallback */
 .btn:active {
-  transform: scale(0.98) !important;
+  opacity: 0.88;
 }
 
 .btn:disabled, .btn[aria-disabled="true"] {
@@ -48,6 +48,7 @@
   background-color: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
   color: var(--color-text-on-primary);
+  /* Sem transform — Anime.js cuida do feedback de clique */
 }
 
 .btn-secondary {
@@ -59,7 +60,8 @@
 .btn-secondary:hover {
   background-color: var(--color-surface-subtle);
   border-color: var(--color-border-strong);
-  color: var(--color-primary);
+  color: var(--color-text-primary);
+  /* Sem transform — hover discreto sem saltar */
 }
 
 .btn-danger {
@@ -1327,7 +1329,8 @@ input[type="radio"]:checked + .likert-option {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1), background-color 0.2s ease;
+  /* Anime.js controla scale/translateY; CSS apenas para border/bg/shadow */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
   cursor: pointer;
   position: relative;
   text-align: left;
@@ -1335,9 +1338,9 @@ input[type="radio"]:checked + .likert-option {
 
 .model-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-  transform: translateY(-2px) scale(1.008);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   background-color: var(--color-surface-hover);
+  /* Sem transform: Anime.js já faz o punch no clique */
 }
 
 .model-card.active {
@@ -1455,15 +1458,15 @@ input[type="radio"]:checked + .likert-option {
   font-weight: var(--font-weight-medium);
   font-size: var(--font-size-sm);
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease;
+  /* Anime.js faz o punch no clique — CSS só para cores */
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
 }
 
 .periodicity-btn:hover {
   border-color: var(--color-border-strong);
   color: var(--color-text-primary);
   background-color: var(--color-surface-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  /* Sem translateY ou box-shadow para hover mais discreto */
 }
 
 .periodicity-btn.active {
@@ -2409,10 +2412,10 @@ input[type="radio"]:checked + .likert-option {
 
 /* ==========================================================================
    Motion Design — Wizard de Criar Pesquisa
-   Fade-up stagger, typewriter cursor, hover/selected distinction, click effect
+   Anime.js controla as animações de movimento — CSS apenas estilos base e fallback
    ========================================================================== */
 
-/* ── Fade-up stagger animation ── */
+/* ── Fallback CSS fade-up (usado quando Anime.js não está disponível) ── */
 @keyframes wiz-fadeSlideUp {
   from {
     opacity: 0;
@@ -2438,7 +2441,7 @@ input[type="radio"]:checked + .likert-option {
 .wiz-delay-8  { animation-delay: 480ms; }
 .wiz-delay-9  { animation-delay: 540ms; }
 
-/* ── Typewriter cursor ── */
+/* ── Typewriter cursor — Anime.js controla o piscar via opacity ── */
 .wiz-typewriter-cursor {
   display: inline-block;
   width: 2px;
@@ -2447,6 +2450,7 @@ input[type="radio"]:checked + .likert-option {
   margin-left: 2px;
   vertical-align: text-bottom;
   border-radius: 1px;
+  /* Fallback blink se Anime.js ainda não carregou */
   animation: wiz-cursor-blink 1s steps(1) infinite;
 }
 
@@ -2455,22 +2459,7 @@ input[type="radio"]:checked + .likert-option {
   50%       { opacity: 0; }
 }
 
-/* ── Satisfying button click ripple ── */
-@keyframes wiz-btn-ripple {
-  from {
-    box-shadow: 0 0 0 0 rgba(107, 33, 168, 0.35);
-    transform: scale(0.96);
-  }
-  to {
-    box-shadow: 0 0 0 10px rgba(107, 33, 168, 0);
-    transform: scale(1);
-  }
-}
-
-.btn-primary:active,
-.btn-secondary:active {
-  animation: wiz-btn-ripple 0.32s cubic-bezier(0.3, 0, 0.5, 1) forwards;
-}
+/* ── Botões: Anime.js faz o punch scale — sem wiz-btn-ripple CSS ── */
 
 /* ==========================================================================
    Wizard de Criar Pesquisa — Slides Horizontais & Footer Fixo de Progresso
@@ -3598,28 +3587,17 @@ button.tab-link.active {
   text-align: left;
   user-select: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.18s ease,
-              background-color 0.18s ease,
-              color 0.18s ease;
-  animation: dialogueFadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Anime.js controla entrada e clique — sem animation CSS aqui */
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
 
-/* Stagger de entrada suave em sequência */
-.dialogue-pill-option:nth-child(1) { animation-delay: 0.15s; }
-.dialogue-pill-option:nth-child(2) { animation-delay: 0.22s; }
-.dialogue-pill-option:nth-child(3) { animation-delay: 0.29s; }
-.dialogue-pill-option:nth-child(4) { animation-delay: 0.36s; }
-.dialogue-pill-option:nth-child(5) { animation-delay: 0.43s; }
-.dialogue-pill-option:nth-child(n+6) { animation-delay: 0.50s; }
+/* Stagger: Anime.js controla — CSS animation removida para evitar conflito */
 
-/* Hover: discreto, elegante e diferente da opção selecionada */
+/* Hover: sutil, sem transform para não parecer "pular" */
 .dialogue-pill-option:hover {
   border-color: var(--color-border-strong);
   background-color: var(--color-surface-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* sem translateY — discreto e elegante */
 }
 
 .dialogue-pill-option:hover .dialogue-pill-score {
@@ -3627,10 +3605,9 @@ button.tab-link.active {
   color: var(--color-text-primary);
 }
 
-/* Clique / Toque satisfatório com micro-compressão */
+/* Active: leve compressão no toque */
 .dialogue-pill-option:active {
-  transform: scale(0.975) translateY(1px);
-  transition: transform 0.06s cubic-bezier(0.3, 0, 0.5, 1);
+  opacity: 0.85;
 }
 
 /* Ícone de check: invisível quando não selecionado, surge animado quando selecionado */

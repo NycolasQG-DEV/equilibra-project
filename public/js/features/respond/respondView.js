@@ -331,6 +331,103 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
   let currentStep = -1; // -1: tela de boas-vindas / início de som
   let currentTw = null;
 
+  const anm = window.anime || null;
+
+  // Anime.js helper: anima entrada do dialogue-card com fade+slide
+  function animateCardEntrance() {
+    if (!anm) return;
+    const card = container.querySelector('.dialogue-card, .dialogue-welcome-card');
+    if (!card) return;
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(32px)';
+    anm({
+      targets: card,
+      opacity: [0, 1],
+      translateY: [32, 0],
+      duration: 540,
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        card.style.opacity = '';
+        card.style.transform = '';
+      }
+    });
+  }
+
+  // Anime.js helper: stagger das pills de resposta
+  function animatePillsEntrance() {
+    if (!anm) return;
+    const pills = container.querySelectorAll('.dialogue-pill-option');
+    if (!pills.length) return;
+    pills.forEach(p => {
+      p.style.opacity = '0';
+      p.style.transform = 'translateY(18px)';
+    });
+    anm({
+      targets: pills,
+      opacity: [0, 1],
+      translateY: [18, 0],
+      duration: 480,
+      delay: anm.stagger(60, { start: 220 }),
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        pills.forEach(p => { p.style.opacity = ''; p.style.transform = ''; });
+      }
+    });
+  }
+
+  // Anime.js helper: anima progress bar
+  function animateProgress(fillEl, pct) {
+    if (!fillEl) return;
+    if (anm) {
+      anm({
+        targets: fillEl,
+        width: `${pct}%`,
+        duration: 520,
+        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+      });
+    } else {
+      fillEl.style.width = `${pct}%`;
+    }
+  }
+
+  // Anime.js helper: punch scale ao clicar em uma pill
+  function animatePillSelect(clickedBtn, otherBtns) {
+    if (!anm) return;
+    anm({
+      targets: clickedBtn,
+      scale: [1, 0.93, 1.04, 1],
+      duration: 400,
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+    });
+    if (otherBtns.length > 0) {
+      anm({
+        targets: Array.from(otherBtns),
+        opacity: [1, 0.35],
+        duration: 180,
+        easing: 'easeOutQuad'
+      });
+    }
+  }
+
+  // Anime.js helper: bounce nos botões primários de boas-vindas
+  function animateWelcomeButtons() {
+    if (!anm) return;
+    const btns = container.querySelectorAll('.dialogue-welcome-buttons .btn');
+    if (!btns.length) return;
+    btns.forEach(b => { b.style.opacity = '0'; b.style.transform = 'translateY(20px)'; });
+    anm({
+      targets: btns,
+      opacity: [0, 1],
+      translateY: [20, 0],
+      duration: 500,
+      delay: anm.stagger(80, { start: 300 }),
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        btns.forEach(b => { b.style.opacity = ''; b.style.transform = ''; });
+      }
+    });
+  }
+
   function renderStep() {
     stopSpeech();
 
@@ -372,6 +469,9 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         </div>
       `;
 
+      animateCardEntrance();
+      animateWelcomeButtons();
+
       document.getElementById('btn-dialogue-to-standard')?.addEventListener('click', () => {
         onSwitchMode('standard');
       });
@@ -406,7 +506,7 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
             </div>
           </header>
           <div class="dialogue-progress-line-wrap">
-            <div class="dialogue-progress-line-fill" data-progress="${progressPercent}"></div>
+            <div class="dialogue-progress-line-fill" id="dialogue-prog-fill"></div>
           </div>
 
           <main class="dialogue-main">
@@ -429,18 +529,52 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         </div>
       `;
 
+      // Anime progress bar 100%
+      animateProgress(document.getElementById('dialogue-prog-fill'), progressPercent);
+      animateCardEntrance();
+
       const targetEl = document.getElementById('typewriter-target');
       const cursorEl = document.getElementById('typewriter-cursor');
       const finalMsg = 'Muito obrigada pela sua dedicação! Suas respostas apoiarão melhorias fundamentais e transparentes no nosso ambiente de trabalho.';
 
+      // Cursor piscante com Anime.js
+      if (anm && cursorEl) {
+        anm({ targets: cursorEl, opacity: [1, 0], duration: 850, easing: 'steps(1)', loop: true });
+      }
+
       speakSpeech(finalMsg, isMuted);
       currentTw = runTypewriter(targetEl, finalMsg, 34, () => {
-        if (cursorEl) cursorEl.remove();
+        if (anm && cursorEl) {
+          anm({ targets: cursorEl, opacity: 0, duration: 400, easing: 'easeOutQuad',
+            complete: () => cursorEl.remove() });
+        } else if (cursorEl) {
+          cursorEl.remove();
+        }
       });
+
+      // Anima o botão de enviar após pequeno delay
+      if (anm) {
+        const submitBtn = document.getElementById('btn-dialogue-submit');
+        if (submitBtn) {
+          submitBtn.style.opacity = '0';
+          submitBtn.style.transform = 'translateY(16px)';
+          anm({
+            targets: submitBtn,
+            opacity: [0, 1],
+            translateY: [16, 0],
+            duration: 500,
+            delay: 800,
+            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+            complete: () => { submitBtn.style.opacity = ''; submitBtn.style.transform = ''; }
+          });
+        }
+      }
 
       document.getElementById('btn-dialogue-submit')?.addEventListener('click', async () => {
         const submitBtn = document.getElementById('btn-dialogue-submit');
         if (submitBtn) {
+          // Ripple no clique
+          if (anm) anm({ targets: submitBtn, scale: [1, 0.96, 1], duration: 300, easing: 'cubicBezier(0.16, 1, 0.3, 1)' });
           submitBtn.disabled = true;
           submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Enviando...';
         }
@@ -489,7 +623,7 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         </header>
 
         <div class="dialogue-progress-line-wrap">
-          <div class="dialogue-progress-line-fill" data-progress="${progressPercent}"></div>
+          <div class="dialogue-progress-line-fill" id="dialogue-prog-fill"></div>
         </div>
 
         <main class="dialogue-main">
@@ -520,11 +654,14 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
       </div>
     `;
 
-    // Atualiza largura da linha de progresso sem inline style
-    const fillEl = container.querySelector('.dialogue-progress-line-fill');
-    if (fillEl) {
-      fillEl.style.width = `${progressPercent}%`;
-    }
+    // Anime.js: progress bar animada
+    animateProgress(document.getElementById('dialogue-prog-fill'), progressPercent);
+
+    // Anime.js: entrada suave do card
+    animateCardEntrance();
+
+    // Anime.js: stagger das pills
+    animatePillsEntrance();
 
     document.getElementById('btn-toggle-audio')?.addEventListener('click', () => {
       isMuted = !isMuted;
@@ -541,12 +678,22 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     const targetEl = document.getElementById('typewriter-target');
     const cursorEl = document.getElementById('typewriter-cursor');
 
+    // Cursor piscante com Anime.js
+    if (anm && cursorEl) {
+      anm({ targets: cursorEl, opacity: [1, 0], duration: 850, easing: 'steps(1)', loop: true });
+    }
+
     speakSpeech(q.text, isMuted);
     currentTw = runTypewriter(targetEl, q.text, 36, () => {
-      if (cursorEl) cursorEl.remove();
+      if (anm && cursorEl) {
+        anm({ targets: cursorEl, opacity: 0, duration: 300, easing: 'easeOutQuad',
+          complete: () => cursorEl.remove() });
+      } else if (cursorEl) {
+        cursorEl.remove();
+      }
     });
 
-    // Permite clicar na caixa de texto para pular o efeito de digitação
+    // Clique na caixa de texto: pula typewriter
     document.getElementById('typewriter-box')?.addEventListener('click', () => {
       if (currentTw) currentTw.cancel();
     });
@@ -561,10 +708,15 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
           localStorage.setItem(draftKey, JSON.stringify(savedAnswers));
         } catch { }
 
+        // Atualiza classes selected
         optionBtns.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
 
-        // Frases acolhedoras curtas de transição
+        // Anime.js: punch scale no btn clicado + fade das demais
+        const others = Array.from(optionBtns).filter(b => b !== btn);
+        animatePillSelect(btn, others);
+
+        // Frases acolhedoras de transição
         const affirmations = [
           'Resposta registrada.',
           'Entendido. Avançando...',
@@ -577,7 +729,7 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         setTimeout(() => {
           currentStep++;
           renderStep();
-        }, 360);
+        }, 420);
       });
     });
   }
