@@ -336,7 +336,7 @@ function renderStandardView({ container, token, surveyId, surveyTitle, surveyDat
  */
 function renderDialogueView({ container, token, surveyId, surveyTitle, surveyData, questions, savedAnswers, draftKey, isMuted: initialMuted, onSwitchMode, onToggleMute }) {
   let isMuted = initialMuted;
-  let currentStep = -1; // -1: tela de boas-vindas / início de som
+  let currentStep = -1; // -1: boas-vindas | -0.5: preparação/intro acolhedora | 0..N: perguntas
   let currentTw = null;
 
   const anm = window.anime || null;
@@ -497,15 +497,85 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
       document.getElementById('btn-start-with-voice')?.addEventListener('click', () => {
         isMuted = false;
         onToggleMute(false);
-        currentStep = 0;
-        renderStep();
+        animateCardExit(() => {
+          currentStep = -0.5;
+          renderStep();
+        });
       });
 
       document.getElementById('btn-start-silent')?.addEventListener('click', () => {
         isMuted = true;
         onToggleMute(true);
-        currentStep = 0;
+        animateCardExit(() => {
+          currentStep = -0.5;
+          renderStep();
+        });
+      });
+      return;
+    }
+
+    // ── Etapa Intermediária: Preparação e Acolhimento Centralizado antes da 1ª Pergunta ──
+    if (currentStep === -0.5) {
+      container.innerHTML = `
+        <div class="dialogue-viewport">
+          <header class="dialogue-top-bar">
+            <div class="dialogue-brand">
+              <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Equilibra
+            </div>
+            <div class="dialogue-top-actions">
+              <button type="button" class="dialogue-audio-btn ${!isMuted ? 'active' : ''}" id="btn-toggle-audio">
+                <i class="fa-solid ${!isMuted ? 'fa-volume-high' : 'fa-volume-xmark'}" aria-hidden="true"></i>
+                <span>${!isMuted ? 'Voz Ativa' : 'Mudo'}</span>
+              </button>
+            </div>
+          </header>
+
+          <div class="dialogue-progress-line-wrap">
+            <div class="dialogue-progress-line-fill" id="dialogue-prog-fill"></div>
+          </div>
+
+          <main class="dialogue-main">
+            <div class="dialogue-card dialogue-intro-stage" id="dialogue-intro-box">
+              <div class="dialogue-speaker-badge">
+                <i class="fa-solid fa-sparkles" aria-hidden="true"></i> Maya • Preparação
+              </div>
+
+              <div class="dialogue-intro-heading">
+                <span id="typewriter-target"></span>
+              </div>
+
+              <p class="dialogue-intro-subtitle">
+                Apresentarei algumas afirmações sobre o seu dia a dia. Responda com tranquilidade de acordo com a sua percepção real.
+              </p>
+
+              <button type="button" class="btn btn-primary btn-lg" id="btn-start-questions">
+                <span>Começar Primeira Pergunta</span>
+                <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i>
+              </button>
+            </div>
+          </main>
+        </div>
+      `;
+
+      updateProgressLine(0);
+      animateCardEntrance();
+
+      document.getElementById('btn-toggle-audio')?.addEventListener('click', () => {
+        isMuted = !isMuted;
+        onToggleMute(isMuted);
         renderStep();
+      });
+
+      const introMsg = 'Vamos começar com tranquilidade.';
+      speakSpeech(introMsg, isMuted);
+      const targetEl = document.getElementById('typewriter-target');
+      currentTw = runSmoothCharTypewriter(targetEl, introMsg);
+
+      document.getElementById('btn-start-questions')?.addEventListener('click', () => {
+        animateCardExit(() => {
+          currentStep = 0;
+          renderStep();
+        });
       });
       return;
     }

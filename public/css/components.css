@@ -3529,29 +3529,53 @@ button.tab-link.active {
 }
 
 .dialogue-typewriter-container {
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 500;
   line-height: 1.6;
   color: var(--color-text-primary);
   margin-bottom: 32px;
-  min-height: 100px;
+  min-height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   text-wrap: balance;
   cursor: pointer;
-  transition: font-size 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: font-size, transform;
 }
 
-/* Modo escrita em destaque: fonte maior, mais centralizado e imersivo */
-.dialogue-typewriter-container.typing-focus {
-  font-size: 1.85rem;
+/* Modo intro pré-pergunta: tela limpa, texto maior e acolhedor centralizado */
+.dialogue-intro-stage {
+  min-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
+  transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialogue-intro-stage .dialogue-speaker-badge {
+  margin-bottom: 28px;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+}
+
+.dialogue-intro-stage .dialogue-intro-heading {
+  font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.5;
-  margin-bottom: 48px;
-  transform: translateY(12px);
+  color: var(--color-text-primary);
+  margin-bottom: 24px;
+}
+
+.dialogue-intro-stage .dialogue-intro-subtitle {
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  max-width: 540px;
 }
 
 /* Letras animadas suavemente de baixo para cima */
