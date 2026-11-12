@@ -537,7 +537,7 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
           <main class="dialogue-main">
             <div class="dialogue-card dialogue-intro-stage" id="dialogue-intro-box">
               <div class="dialogue-speaker-badge">
-                <i class="fa-solid fa-sparkles" aria-hidden="true"></i> Maya • Preparação
+                <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão 0 de ${questions.length}
               </div>
 
               <div class="dialogue-intro-heading">
@@ -547,11 +547,6 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
               <p class="dialogue-intro-subtitle">
                 Apresentarei algumas afirmações sobre o seu dia a dia. Responda com tranquilidade de acordo com a sua percepção real.
               </p>
-
-              <button type="button" class="btn btn-primary btn-lg" id="btn-start-questions">
-                <span>Começar Primeira Pergunta</span>
-                <i class="fa-solid fa-arrow-right ml-1" aria-hidden="true"></i>
-              </button>
             </div>
           </main>
         </div>
@@ -569,13 +564,15 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
       const introMsg = 'Vamos começar com tranquilidade.';
       speakSpeech(introMsg, isMuted);
       const targetEl = document.getElementById('typewriter-target');
-      currentTw = runSmoothCharTypewriter(targetEl, introMsg);
 
-      document.getElementById('btn-start-questions')?.addEventListener('click', () => {
-        animateCardExit(() => {
-          currentStep = 0;
-          renderStep();
-        });
+      // Avança automaticamente para a questão 1 após a mensagem de boas-vindas assentar
+      currentTw = runSmoothCharTypewriter(targetEl, introMsg, () => {
+        setTimeout(() => {
+          animateCardExit(() => {
+            currentStep = 0;
+            renderStep();
+          });
+        }, 1600);
       });
       return;
     }
@@ -701,7 +698,7 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         <main class="dialogue-main">
           <div class="dialogue-card">
             <div class="dialogue-speaker-badge">
-              <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão ${qIndex} de ${totalQ} ${q.label ? `• ${esc(q.label)}` : ''}
+              <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão ${qIndex} de ${totalQ}
             </div>
 
             <div class="dialogue-typewriter-container typing-focus" id="typewriter-box">
