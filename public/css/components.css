@@ -3480,7 +3480,8 @@ button.tab-link.active {
 .dialogue-progress-line-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
-  transition: width 0.4s ease;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width;
 }
 
 .dialogue-main {
@@ -3500,15 +3501,16 @@ button.tab-link.active {
   text-align: center;
 }
 
-@keyframes dialogueFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Letras animadas suavemente de baixo para cima */
+.dialogue-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+  will-change: transform, opacity;
+}
+
+.dialogue-char.space {
+  width: 0.3em;
 }
 
 .dialogue-speaker-badge {
@@ -3524,8 +3526,6 @@ button.tab-link.active {
   background-color: var(--color-primary-subtle);
   color: var(--color-primary-dark);
   margin-bottom: 24px;
-  animation: dialogueFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.04s;
 }
 
 .dialogue-typewriter-container {
@@ -3533,35 +3533,66 @@ button.tab-link.active {
   font-weight: 500;
   line-height: 1.6;
   color: var(--color-text-primary);
-  margin-bottom: 36px;
+  margin-bottom: 32px;
   min-height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   text-wrap: balance;
   cursor: pointer;
-  animation: dialogueFadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.10s;
 }
 
-.dialogue-cursor {
+/* Modo intro pré-pergunta: tela limpa, texto maior e acolhedor centralizado */
+.dialogue-intro-stage {
+  min-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
+  transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialogue-intro-stage .dialogue-speaker-badge {
+  margin-bottom: 28px;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+}
+
+.dialogue-intro-stage .dialogue-intro-heading {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  margin-bottom: 24px;
+}
+
+.dialogue-intro-stage .dialogue-intro-subtitle {
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  max-width: 540px;
+}
+
+/* Letras animadas suavemente de baixo para cima */
+.dialogue-char {
   display: inline-block;
-  width: 3px;
-  height: 1.25em;
-  vertical-align: text-bottom;
-  background-color: var(--color-primary);
-  margin-left: 4px;
-  border-radius: 2px;
-  animation: dialogueCursorBlink 0.9s ease-in-out infinite;
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: transform, opacity;
 }
 
-@keyframes dialogueCursorBlink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.15;
-  }
+.dialogue-char.space {
+  width: 0.3em;
+}
+
+/* Cursor blue/pipe completamente removido */
+.dialogue-cursor {
+  display: none !important;
 }
 
 .dialogue-options-wrap {
@@ -3571,6 +3602,16 @@ button.tab-link.active {
   width: 100%;
   max-width: 580px;
   margin: 0 auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.dialogue-options-wrap.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .dialogue-pill-option {

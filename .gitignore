@@ -1,3 +1,4 @@
+dist/
 node_modules/
 data/accounts.json
 data/members.json

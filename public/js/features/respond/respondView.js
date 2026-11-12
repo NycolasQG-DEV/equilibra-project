@@ -43,51 +43,58 @@ function stopSpeech() {
 }
 
 /**
- * Efeito Máquina de Escrever suave e natural (cadência humana, pausas de pontuação e jitter orgânico)
+ * Efeito Máquina de Escrever suave e natural com animação Anime.js por caractere (sobe de baixo para cima com opacidade)
  */
-function runTypewriter(element, text, speed = 36, onComplete = null) {
-  element.textContent = '';
-  let i = 0;
-  let isCancelled = false;
-  let timerId = null;
+function runSmoothCharTypewriter(containerEl, text, onComplete = null) {
+  containerEl.innerHTML = '';
+  const anm = window.anime || null;
 
-  function typeNext() {
-    if (isCancelled) return;
-    if (i < text.length) {
-      const char = text.charAt(i);
-      element.textContent += char;
-      i++;
-
-      let delay = speed;
-      // Pausa orgânica de respiração em pontuações
-      if (char === ',' || char === ';') {
-        delay += 95;
-      } else if (char === '.' || char === '!' || char === '?') {
-        delay += 180;
-      } else if (char === ' ') {
-        delay += 15;
-      } else {
-        // Micro-jitter sutil (+-8ms) para sensação orgânica de digitação humana
-        delay += Math.floor(Math.random() * 17) - 8;
-      }
-
-      timerId = setTimeout(typeNext, Math.max(20, delay));
-    } else {
-      if (onComplete) onComplete();
-    }
+  // Cria spans individuais para cada caractere
+  const spans = [];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const span = document.createElement('span');
+    span.className = char === ' ' ? 'dialogue-char space' : 'dialogue-char';
+    span.textContent = char;
+    containerEl.appendChild(span);
+    spans.push(span);
   }
 
-  // Respiro inicial para o card e a interface assentarem
-  timerId = setTimeout(typeNext, 140);
+  let isCancelled = false;
 
-  return {
-    cancel: () => {
-      isCancelled = true;
-      if (timerId) clearTimeout(timerId);
-      element.textContent = text;
-      if (onComplete) onComplete();
-    }
-  };
+  if (anm && spans.length > 0) {
+    const animation = anm({
+      targets: spans,
+      opacity: [0, 1],
+      translateY: [14, 0],
+      duration: 380,
+      delay: anm.stagger(48, { start: 100 }), // Ritmo mais lento, pausado e orgânico
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        if (!isCancelled && onComplete) onComplete();
+      }
+    });
+
+    return {
+      cancel: () => {
+        isCancelled = true;
+        try { animation.pause(); } catch { }
+        spans.forEach(s => {
+          s.style.opacity = '1';
+          s.style.transform = 'translateY(0)';
+        });
+        if (onComplete) onComplete();
+      }
+    };
+  }
+
+  // Fallback caso Anime.js não esteja pronto
+  spans.forEach(s => {
+    s.style.opacity = '1';
+    s.style.transform = 'translateY(0)';
+  });
+  if (onComplete) onComplete();
+  return { cancel: () => {} };
 }
 
 export async function renderRespondent({ params }) {
@@ -107,8 +114,9 @@ export async function renderRespondent({ params }) {
     const surveyData = await get(`/responder/${token}`);
     const surveyId = surveyData.id || surveyData.surveyId || token;
 
-    // Trava de navegador / máquina local: se já respondeu, exibe encerramento
-    if (localStorage.getItem(`answered_${surveyId}`) === 'true') {
+    // Trava de navegador / máquina local: se já respondeu, exibe encerramento (ignorado em modo teste/dev)
+    const isDevPreview = token.startsWith('dev-') || window.location.search.includes('preview=true');
+    if (!isDevPreview && localStorage.getItem(`answered_${surveyId}`) === 'true') {
       renderAlreadyAnsweredScreen(container);
       return;
     }
@@ -205,7 +213,6 @@ export async function renderRespondent({ params }) {
 function renderStandardView({ container, token, surveyId, surveyTitle, surveyData, questions, savedAnswers, draftKey, onSwitchMode }) {
   const questionsHtml = questions.map((q, idx) => {
     const qNum = idx + 1;
-    const currentVal = savedAnswers[q.id] || null;
     const labels = q.options || ['Discordo totalmente', 'Discordo', 'Neutro / Não se aplica', 'Concordo', 'Concordo totalmente'];
 
     return `
@@ -216,11 +223,10 @@ function renderStandardView({ container, token, surveyId, surveyTitle, surveyDat
         <div class="flex items-center justify-between gap-2 flex-wrap">
           ${labels.map((lbl, valIdx) => {
             const val = valIdx + 1;
-            const isChecked = String(currentVal) === String(val);
 
             return `
               <label class="form-check likert-option">
-                <input type="radio" name="q_${attr(q.id)}" value="${val}" ${isChecked ? 'checked' : ''} class="mb-1" required>
+                <input type="radio" name="q_${attr(q.id)}" value="${val}" class="mb-1" required>
                 <span class="likert-num">${val}</span>
                 <span class="likert-label">${esc(lbl)}</span>
               </label>
@@ -328,7 +334,7 @@ function renderStandardView({ container, token, surveyId, surveyTitle, surveyDat
  */
 function renderDialogueView({ container, token, surveyId, surveyTitle, surveyData, questions, savedAnswers, draftKey, isMuted: initialMuted, onSwitchMode, onToggleMute }) {
   let isMuted = initialMuted;
-  let currentStep = -1; // -1: tela de boas-vindas / início de som
+  let currentStep = -1; // -1: boas-vindas | -0.5: preparação/intro acolhedora | 0..N: perguntas
   let currentTw = null;
 
   const anm = window.anime || null;
@@ -339,12 +345,12 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     const card = container.querySelector('.dialogue-card, .dialogue-welcome-card');
     if (!card) return;
     card.style.opacity = '0';
-    card.style.transform = 'translateY(32px)';
+    card.style.transform = 'translateY(24px)';
     anm({
       targets: card,
       opacity: [0, 1],
-      translateY: [32, 0],
-      duration: 540,
+      translateY: [24, 0],
+      duration: 620,
       easing: 'cubicBezier(0.16, 1, 0.3, 1)',
       complete: () => {
         card.style.opacity = '';
@@ -353,21 +359,21 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     });
   }
 
-  // Anime.js helper: stagger das pills de resposta
-  function animatePillsEntrance() {
+  // Anime.js helper: stagger das pills de resposta (fade in subindo de baixo para cima ordenado)
+  function animatePillsEntrance(delayStart = 350) {
     if (!anm) return;
     const pills = container.querySelectorAll('.dialogue-pill-option');
     if (!pills.length) return;
     pills.forEach(p => {
       p.style.opacity = '0';
-      p.style.transform = 'translateY(18px)';
+      p.style.transform = 'translateY(22px)';
     });
     anm({
       targets: pills,
       opacity: [0, 1],
-      translateY: [18, 0],
-      duration: 480,
-      delay: anm.stagger(60, { start: 220 }),
+      translateY: [22, 0],
+      duration: 520,
+      delay: anm.stagger(90, { start: delayStart }), // Entrada em ordem bem perceptível e satisfatória
       easing: 'cubicBezier(0.16, 1, 0.3, 1)',
       complete: () => {
         pills.forEach(p => { p.style.opacity = ''; p.style.transform = ''; });
@@ -375,36 +381,46 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     });
   }
 
-  // Anime.js helper: anima progress bar
-  function animateProgress(fillEl, pct) {
-    if (!fillEl) return;
-    if (anm) {
-      anm({
-        targets: fillEl,
-        width: `${pct}%`,
-        duration: 520,
-        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
-      });
-    } else {
-      fillEl.style.width = `${pct}%`;
+  // Anime.js helper: fade-out suave ao sumir elementos para avançar
+  function animateCardExit(onComplete) {
+    if (!anm) {
+      if (onComplete) onComplete();
+      return;
     }
+    const card = container.querySelector('.dialogue-card');
+    if (!card) {
+      if (onComplete) onComplete();
+      return;
+    }
+    anm({
+      targets: card,
+      opacity: [1, 0],
+      translateY: [0, -18],
+      duration: 280,
+      easing: 'cubicBezier(0.4, 0, 0.2, 1)',
+      complete: () => {
+        if (onComplete) onComplete();
+      }
+    });
   }
 
-  // Anime.js helper: punch scale ao clicar em uma pill
+  // Progress bar contínua sem reiniciar do zero
+  function updateProgressLine(pct) {
+    const fillEl = document.getElementById('dialogue-prog-fill');
+    if (!fillEl) return;
+    fillEl.style.width = `${pct}%`;
+  }
+
+  // Anime.js helper: feedback discreto ao selecionar (sem pulso grotesco)
   function animatePillSelect(clickedBtn, otherBtns) {
     if (!anm) return;
-    anm({
-      targets: clickedBtn,
-      scale: [1, 0.93, 1.04, 1],
-      duration: 400,
-      easing: 'cubicBezier(0.16, 1, 0.3, 1)'
-    });
+    // Sem pulso/bounce: apenas fade suave nas outras opções não escolhidas
     if (otherBtns.length > 0) {
       anm({
         targets: Array.from(otherBtns),
-        opacity: [1, 0.35],
-        duration: 180,
-        easing: 'easeOutQuad'
+        opacity: [1, 0.3],
+        duration: 240,
+        easing: 'cubicBezier(0.4, 0, 0.2, 1)'
       });
     }
   }
@@ -479,15 +495,82 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
       document.getElementById('btn-start-with-voice')?.addEventListener('click', () => {
         isMuted = false;
         onToggleMute(false);
-        currentStep = 0;
-        renderStep();
+        animateCardExit(() => {
+          currentStep = -0.5;
+          renderStep();
+        });
       });
 
       document.getElementById('btn-start-silent')?.addEventListener('click', () => {
         isMuted = true;
         onToggleMute(true);
-        currentStep = 0;
+        animateCardExit(() => {
+          currentStep = -0.5;
+          renderStep();
+        });
+      });
+      return;
+    }
+
+    // ── Etapa Intermediária: Preparação e Acolhimento Centralizado antes da 1ª Pergunta ──
+    if (currentStep === -0.5) {
+      container.innerHTML = `
+        <div class="dialogue-viewport">
+          <header class="dialogue-top-bar">
+            <div class="dialogue-brand">
+              <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Equilibra
+            </div>
+            <div class="dialogue-top-actions">
+              <button type="button" class="dialogue-audio-btn ${!isMuted ? 'active' : ''}" id="btn-toggle-audio">
+                <i class="fa-solid ${!isMuted ? 'fa-volume-high' : 'fa-volume-xmark'}" aria-hidden="true"></i>
+                <span>${!isMuted ? 'Voz Ativa' : 'Mudo'}</span>
+              </button>
+            </div>
+          </header>
+
+          <div class="dialogue-progress-line-wrap">
+            <div class="dialogue-progress-line-fill" id="dialogue-prog-fill"></div>
+          </div>
+
+          <main class="dialogue-main">
+            <div class="dialogue-card dialogue-intro-stage" id="dialogue-intro-box">
+              <div class="dialogue-speaker-badge">
+                <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão 0 de ${questions.length}
+              </div>
+
+              <div class="dialogue-intro-heading">
+                <span id="typewriter-target"></span>
+              </div>
+
+              <p class="dialogue-intro-subtitle">
+                Apresentarei algumas afirmações sobre o seu dia a dia. Responda com tranquilidade de acordo com a sua percepção real.
+              </p>
+            </div>
+          </main>
+        </div>
+      `;
+
+      updateProgressLine(0);
+      animateCardEntrance();
+
+      document.getElementById('btn-toggle-audio')?.addEventListener('click', () => {
+        isMuted = !isMuted;
+        onToggleMute(isMuted);
         renderStep();
+      });
+
+      const introMsg = 'Vamos começar com tranquilidade.';
+      speakSpeech(introMsg, isMuted);
+      const targetEl = document.getElementById('typewriter-target');
+
+      // Avança automaticamente para a questão 1 após a mensagem de boas-vindas assentar
+      currentTw = runSmoothCharTypewriter(targetEl, introMsg, () => {
+        setTimeout(() => {
+          animateCardExit(() => {
+            currentStep = 0;
+            renderStep();
+          });
+        }, 1600);
       });
       return;
     }
@@ -515,11 +598,11 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
                 <i class="fa-solid fa-sparkles" aria-hidden="true"></i> Maya • Conclusão
               </div>
 
-              <div class="dialogue-typewriter-container">
-                <span id="typewriter-target"></span><span class="dialogue-cursor" id="typewriter-cursor"></span>
+              <div class="dialogue-typewriter-container" id="typewriter-box">
+                <span id="typewriter-target"></span>
               </div>
 
-              <div class="dialogue-options-wrap">
+              <div class="dialogue-options-wrap visible">
                 <button type="button" class="btn btn-primary btn-lg w-full" id="btn-dialogue-submit">
                   <i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Enviar Minhas Respostas
                 </button>
@@ -529,54 +612,38 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         </div>
       `;
 
-      // Anime progress bar 100%
-      animateProgress(document.getElementById('dialogue-prog-fill'), progressPercent);
+      updateProgressLine(progressPercent);
       animateCardEntrance();
 
       const targetEl = document.getElementById('typewriter-target');
       const cursorEl = document.getElementById('typewriter-cursor');
       const finalMsg = 'Muito obrigada pela sua dedicação! Suas respostas apoiarão melhorias fundamentais e transparentes no nosso ambiente de trabalho.';
 
-      // Cursor piscante com Anime.js
-      if (anm && cursorEl) {
-        anm({ targets: cursorEl, opacity: [1, 0], duration: 850, easing: 'steps(1)', loop: true });
-      }
-
       speakSpeech(finalMsg, isMuted);
-      currentTw = runTypewriter(targetEl, finalMsg, 34, () => {
-        if (anm && cursorEl) {
-          anm({ targets: cursorEl, opacity: 0, duration: 400, easing: 'easeOutQuad',
-            complete: () => cursorEl.remove() });
-        } else if (cursorEl) {
-          cursorEl.remove();
-        }
+      currentTw = runSmoothCharTypewriter(targetEl, finalMsg, () => {
+        if (cursorEl) cursorEl.remove();
       });
 
-      // Anima o botão de enviar após pequeno delay
-      if (anm) {
-        const submitBtn = document.getElementById('btn-dialogue-submit');
-        if (submitBtn) {
-          submitBtn.style.opacity = '0';
-          submitBtn.style.transform = 'translateY(16px)';
-          anm({
-            targets: submitBtn,
-            opacity: [0, 1],
-            translateY: [16, 0],
-            duration: 500,
-            delay: 800,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
-            complete: () => { submitBtn.style.opacity = ''; submitBtn.style.transform = ''; }
-          });
-        }
+      // Anima o botão de envio
+      const submitBtn = document.getElementById('btn-dialogue-submit');
+      if (submitBtn && anm) {
+        submitBtn.style.opacity = '0';
+        submitBtn.style.transform = 'translateY(16px)';
+        anm({
+          targets: submitBtn,
+          opacity: [0, 1],
+          translateY: [16, 0],
+          duration: 500,
+          delay: 400,
+          easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+        });
       }
 
       document.getElementById('btn-dialogue-submit')?.addEventListener('click', async () => {
-        const submitBtn = document.getElementById('btn-dialogue-submit');
-        if (submitBtn) {
-          // Ripple no clique
-          if (anm) anm({ targets: submitBtn, scale: [1, 0.96, 1], duration: 300, easing: 'cubicBezier(0.16, 1, 0.3, 1)' });
-          submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Enviando...';
+        const btn = document.getElementById('btn-dialogue-submit');
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Enviando...';
         }
 
         try {
@@ -588,9 +655,9 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
           renderSuccessScreen(container);
         } catch (err) {
           showToast(err.message || 'Erro ao enviar respostas.', 'error');
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Enviar Minhas Respostas';
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Enviar Minhas Respostas';
           }
         }
       });
@@ -601,9 +668,8 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     const q = questions[currentStep];
     const qIndex = currentStep + 1;
     const totalQ = questions.length;
-    const progressPercent = Math.round((currentStep / totalQ) * 100);
+    const progressPercent = Math.round(((currentStep + 1) / totalQ) * 100);
     const options = q.options || ['Discordo totalmente', 'Discordo', 'Neutro / Não se aplica', 'Concordo', 'Concordo totalmente'];
-    const selectedVal = savedAnswers[q.id] || null;
 
     container.innerHTML = `
       <div class="dialogue-viewport">
@@ -629,19 +695,18 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
         <main class="dialogue-main">
           <div class="dialogue-card">
             <div class="dialogue-speaker-badge">
-              <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão ${qIndex} de ${totalQ} ${q.label ? `• ${esc(q.label)}` : ''}
+              <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Questão ${qIndex} de ${totalQ}
             </div>
 
-            <div class="dialogue-typewriter-container" id="typewriter-box">
-              <span id="typewriter-target"></span><span class="dialogue-cursor" id="typewriter-cursor"></span>
+            <div class="dialogue-typewriter-container typing-focus" id="typewriter-box">
+              <span id="typewriter-target"></span>
             </div>
 
             <div class="dialogue-options-wrap" id="dialogue-options-container">
               ${options.map((optText, optIdx) => {
                 const val = optIdx + 1;
-                const isSelected = selectedVal === val;
                 return `
-                  <button type="button" class="dialogue-pill-option ${isSelected ? 'selected' : ''}" data-score="${val}">
+                  <button type="button" class="dialogue-pill-option" data-score="${val}">
                     <span class="dialogue-pill-score">${val}</span>
                     <span class="dialogue-pill-text">${esc(optText)}</span>
                     <i class="fa-solid fa-check color-primary" aria-hidden="true"></i>
@@ -654,14 +719,11 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
       </div>
     `;
 
-    // Anime.js: progress bar animada
-    animateProgress(document.getElementById('dialogue-prog-fill'), progressPercent);
+    // Atualiza a barra de progresso suavemente contínua (sem reiniciar)
+    updateProgressLine(progressPercent);
 
-    // Anime.js: entrada suave do card
+    // Entrada suave do card
     animateCardEntrance();
-
-    // Anime.js: stagger das pills
-    animatePillsEntrance();
 
     document.getElementById('btn-toggle-audio')?.addEventListener('click', () => {
       isMuted = !isMuted;
@@ -676,29 +738,32 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     });
 
     const targetEl = document.getElementById('typewriter-target');
-    const cursorEl = document.getElementById('typewriter-cursor');
+    const typewriterBox = document.getElementById('typewriter-box');
+    const optionsContainer = document.getElementById('dialogue-options-container');
 
-    // Cursor piscante com Anime.js
-    if (anm && cursorEl) {
-      anm({ targets: cursorEl, opacity: [1, 0], duration: 850, easing: 'steps(1)', loop: true });
+    function onTypingFinished() {
+      // Transição fluida: reduz a fonte para o tamanho padrão e revela as opções
+      if (typewriterBox) {
+        typewriterBox.classList.remove('typing-focus');
+      }
+      if (optionsContainer) {
+        optionsContainer.classList.add('visible');
+        animatePillsEntrance(40);
+      }
     }
 
     speakSpeech(q.text, isMuted);
-    currentTw = runTypewriter(targetEl, q.text, 36, () => {
-      if (anm && cursorEl) {
-        anm({ targets: cursorEl, opacity: 0, duration: 300, easing: 'easeOutQuad',
-          complete: () => cursorEl.remove() });
-      } else if (cursorEl) {
-        cursorEl.remove();
+    currentTw = runSmoothCharTypewriter(targetEl, q.text, onTypingFinished);
+
+    // Pular animação ao clicar no box
+    document.getElementById('typewriter-box')?.addEventListener('click', () => {
+      if (currentTw) {
+        currentTw.cancel();
+        onTypingFinished();
       }
     });
 
-    // Clique na caixa de texto: pula typewriter
-    document.getElementById('typewriter-box')?.addEventListener('click', () => {
-      if (currentTw) currentTw.cancel();
-    });
-
-    // Eventos de escolha de alternativa
+    // Eventos de escolha de alternativa com fade out elegante
     const optionBtns = container.querySelectorAll('.dialogue-pill-option');
     optionBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -708,28 +773,28 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
           localStorage.setItem(draftKey, JSON.stringify(savedAnswers));
         } catch { }
 
-        // Atualiza classes selected
         optionBtns.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
 
-        // Anime.js: punch scale no btn clicado + fade das demais
         const others = Array.from(optionBtns).filter(b => b !== btn);
         animatePillSelect(btn, others);
 
-        // Frases acolhedoras de transição
         const affirmations = [
           'Resposta registrada.',
           'Entendido. Avançando...',
-          'Registrado. Avançando...',
-          'Obrigada, próximo ponto.'
+          'Registrado. Próximo ponto.',
+          'Obrigada, avançando.'
         ];
         const feedback = affirmations[Math.floor(Math.random() * affirmations.length)];
         speakSpeech(feedback, isMuted);
 
+        // Fade-out suave do card antes de renderizar a próxima pergunta
         setTimeout(() => {
-          currentStep++;
-          renderStep();
-        }, 420);
+          animateCardExit(() => {
+            currentStep++;
+            renderStep();
+          });
+        }, 450);
       });
     });
   }
