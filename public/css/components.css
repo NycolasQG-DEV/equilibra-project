@@ -3480,7 +3480,8 @@ button.tab-link.active {
 .dialogue-progress-line-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
-  transition: width 0.4s ease;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width;
 }
 
 .dialogue-main {
@@ -3500,15 +3501,16 @@ button.tab-link.active {
   text-align: center;
 }
 
-@keyframes dialogueFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Letras animadas suavemente de baixo para cima */
+.dialogue-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+  will-change: transform, opacity;
+}
+
+.dialogue-char.space {
+  width: 0.3em;
 }
 
 .dialogue-speaker-badge {
@@ -3524,44 +3526,49 @@ button.tab-link.active {
   background-color: var(--color-primary-subtle);
   color: var(--color-primary-dark);
   margin-bottom: 24px;
-  animation: dialogueFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.04s;
 }
 
 .dialogue-typewriter-container {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   font-weight: 500;
   line-height: 1.6;
   color: var(--color-text-primary);
-  margin-bottom: 36px;
-  min-height: 90px;
+  margin-bottom: 32px;
+  min-height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   text-wrap: balance;
   cursor: pointer;
-  animation: dialogueFadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.10s;
+  transition: font-size 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: font-size, transform;
 }
 
-.dialogue-cursor {
+/* Modo escrita em destaque: fonte maior, mais centralizado e imersivo */
+.dialogue-typewriter-container.typing-focus {
+  font-size: 1.85rem;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 48px;
+  transform: translateY(12px);
+}
+
+/* Letras animadas suavemente de baixo para cima */
+.dialogue-char {
   display: inline-block;
-  width: 3px;
-  height: 1.25em;
-  vertical-align: text-bottom;
-  background-color: var(--color-primary);
-  margin-left: 4px;
-  border-radius: 2px;
-  animation: dialogueCursorBlink 0.9s ease-in-out infinite;
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: transform, opacity;
 }
 
-@keyframes dialogueCursorBlink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.15;
-  }
+.dialogue-char.space {
+  width: 0.3em;
+}
+
+/* Cursor blue/pipe completamente removido */
+.dialogue-cursor {
+  display: none !important;
 }
 
 .dialogue-options-wrap {
@@ -3571,6 +3578,16 @@ button.tab-link.active {
   width: 100%;
   max-width: 580px;
   margin: 0 auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.dialogue-options-wrap.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .dialogue-pill-option {
