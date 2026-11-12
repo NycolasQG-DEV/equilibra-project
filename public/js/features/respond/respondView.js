@@ -213,7 +213,6 @@ export async function renderRespondent({ params }) {
 function renderStandardView({ container, token, surveyId, surveyTitle, surveyData, questions, savedAnswers, draftKey, onSwitchMode }) {
   const questionsHtml = questions.map((q, idx) => {
     const qNum = idx + 1;
-    const currentVal = savedAnswers[q.id] || null;
     const labels = q.options || ['Discordo totalmente', 'Discordo', 'Neutro / Não se aplica', 'Concordo', 'Concordo totalmente'];
 
     return `
@@ -224,11 +223,10 @@ function renderStandardView({ container, token, surveyId, surveyTitle, surveyDat
         <div class="flex items-center justify-between gap-2 flex-wrap">
           ${labels.map((lbl, valIdx) => {
             const val = valIdx + 1;
-            const isChecked = String(currentVal) === String(val);
 
             return `
               <label class="form-check likert-option">
-                <input type="radio" name="q_${attr(q.id)}" value="${val}" ${isChecked ? 'checked' : ''} class="mb-1" required>
+                <input type="radio" name="q_${attr(q.id)}" value="${val}" class="mb-1" required>
                 <span class="likert-num">${val}</span>
                 <span class="likert-label">${esc(lbl)}</span>
               </label>
@@ -672,7 +670,6 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
     const totalQ = questions.length;
     const progressPercent = Math.round(((currentStep + 1) / totalQ) * 100);
     const options = q.options || ['Discordo totalmente', 'Discordo', 'Neutro / Não se aplica', 'Concordo', 'Concordo totalmente'];
-    const selectedVal = savedAnswers[q.id] || null;
 
     container.innerHTML = `
       <div class="dialogue-viewport">
@@ -708,9 +705,8 @@ function renderDialogueView({ container, token, surveyId, surveyTitle, surveyDat
             <div class="dialogue-options-wrap" id="dialogue-options-container">
               ${options.map((optText, optIdx) => {
                 const val = optIdx + 1;
-                const isSelected = selectedVal === val;
                 return `
-                  <button type="button" class="dialogue-pill-option ${isSelected ? 'selected' : ''}" data-score="${val}">
+                  <button type="button" class="dialogue-pill-option" data-score="${val}">
                     <span class="dialogue-pill-score">${val}</span>
                     <span class="dialogue-pill-text">${esc(optText)}</span>
                     <i class="fa-solid fa-check color-primary" aria-hidden="true"></i>

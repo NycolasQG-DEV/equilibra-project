@@ -21,6 +21,7 @@ export const RespondView: React.FC<RespondViewProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(-1); // -1 = boas-vindas
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [mode, setMode] = useState<'dialogue' | 'standard'>('dialogue');
@@ -94,6 +95,7 @@ export const RespondView: React.FC<RespondViewProps> = ({
   }, [currentStep, mode]);
 
   const handleSelectOption = (questionId: string, score: number) => {
+    setSelectedScore(score);
     const updated = { ...answers, [questionId]: score };
     setAnswers(updated);
 
@@ -111,6 +113,7 @@ export const RespondView: React.FC<RespondViewProps> = ({
     }
 
     setTimeout(() => {
+      setSelectedScore(null);
       setCurrentStep((prev) => prev + 1);
     }, 380);
   };
@@ -293,7 +296,7 @@ export const RespondView: React.FC<RespondViewProps> = ({
           <div className="dialogue-options-wrap" ref={optionsRef}>
             {currentQ.options.map((opt, idx) => {
               const score = idx + 1;
-              const isSelected = answers[currentQ.id] === score;
+              const isSelected = selectedScore === score;
 
               return (
                 <button
@@ -305,7 +308,7 @@ export const RespondView: React.FC<RespondViewProps> = ({
                 >
                   <span className="dialogue-pill-score">{score}</span>
                   <span className="dialogue-pill-text">{opt}</span>
-                  {isSelected && <i className="fa-solid fa-check color-primary" aria-hidden="true" />}
+                  <i className="fa-solid fa-check color-primary" aria-hidden="true" />
                 </button>
               );
             })}
