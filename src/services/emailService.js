@@ -3,12 +3,14 @@ const fs = require('node:fs');
 const nodemailer = require('nodemailer');
 
 let cachedTransporter = null;
+let cachedTransporterKey = '';
 
 /**
  * Cria ou retorna o transportador de e-mail baseado nas variáveis de ambiente.
  * Se nenhuma configuração SMTP estiver presente, opera em modo log/dry-run.
  */
 function getTransporter() {
+  // Tenta carregar .env caso as vars ainda não estejam no processo
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     const envPath = path.join(__dirname, '..', '..', '.env');
     if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
@@ -23,24 +25,27 @@ function getTransporter() {
   const user = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
   const pass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : undefined;
 
-  if (user && pass) {
-    if (cachedTransporter) return cachedTransporter;
-    cachedTransporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000
-    });
-    return cachedTransporter;
+  if (!user || !pass) {
+    console.error('[SMTP-CONFIG] SMTP_USER ou SMTP_PASS não configurados. Verifique o .env e reinicie o servidor.');
+    return null;
   }
 
-  return null;
+  // Invalida cache se as credenciais mudaram
+  const key = `${host}:${port}:${user}:${pass}`;
+  if (cachedTransporter && cachedTransporterKey === key) return cachedTransporter;
+
+  console.log(`[SMTP-CONFIG] Criando transporter: ${host}:${port} user=${user} secure=${port === 465}`);
+  cachedTransporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000
+  });
+  cachedTransporterKey = key;
+  return cachedTransporter;
 }
 
 /**
