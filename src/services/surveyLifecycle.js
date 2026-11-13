@@ -81,6 +81,7 @@ function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
     invited: segmentsCount[group.id] || 0
   }));
 
+  const effectiveBaseUrl = (baseUrl && baseUrl.trim()) || process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
   const members = storage.read('members').filter((m) => m.accountId === accountId);
   const invitations = storage.read('invitations');
   const links = [];
@@ -111,7 +112,7 @@ function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
       segmentId: segId,
       groupName: segGroup?.name || 'Geral',
       token,
-      link: `${baseUrl}/responder/${token}`
+      link: `${effectiveBaseUrl}/responder/${token}`
     });
   }
 
@@ -133,23 +134,21 @@ function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
     surveys
   });
 
-  // Dispatch assíncrono via WhatsApp se o canal foi configurado
+  let dispatchPromise = null;
+  // Dispatch via WhatsApp se o canal foi configurado
   if (survey.collectionChannel === 'whatsapp') {
-    setImmediate(() => {
-      dispatchSurveyViaWhatsApp(survey, links).catch((err) => {
-        console.error('[WA-LIFECYCLE] Erro no despacho WhatsApp:', err.message);
-      });
+    dispatchPromise = dispatchSurveyViaWhatsApp(survey, links).catch((err) => {
+      console.error('[WA-LIFECYCLE] Erro no despacho WhatsApp:', err.message);
     });
   } else {
     // Opção padrão do Equilibra (Web): envia convites por e-mail para quem tem e-mail cadastrado
-    setImmediate(() => {
-      dispatchSurveyViaEmail(survey, links).then((result) => {
-        if (result.dispatched > 0 || result.skipped > 0) {
-          console.log(`[EMAIL-LIFECYCLE] Ciclo aberto: ${result.dispatched} e-mails enviados, ${result.skipped} sem e-mail cadastrado.`);
-        }
-      }).catch((err) => {
-        console.error('[EMAIL-LIFECYCLE] Erro no envio de e-mails:', err.message);
-      });
+    dispatchPromise = dispatchSurveyViaEmail(survey, links).then((result) => {
+      if (result.dispatched > 0 || result.skipped > 0 || result.errors > 0) {
+        console.log(`[EMAIL-LIFECYCLE] Ciclo aberto: ${result.dispatched} e-mails enviados, ${result.skipped} sem e-mail cadastrado, ${result.errors} falhas.`);
+      }
+      return result;
+    }).catch((err) => {
+      console.error('[EMAIL-LIFECYCLE] Erro no envio de e-mails:', err.message);
     });
   }
 
@@ -157,7 +156,8 @@ function openSurvey({ surveyId, accountId, baseUrl = '', channel = null }) {
     ok: true,
     survey,
     link: `/responder/${survey.id}`,
-    links
+    links,
+    dispatchPromise
   };
 }
 

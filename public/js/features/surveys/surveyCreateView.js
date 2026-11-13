@@ -975,13 +975,23 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
 
   const selectedChannel = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'web';
 
+  let startsAt = null;
+  if (openImmediately) {
+    startsAt = new Date().toISOString();
+  } else if (startsAtRaw) {
+    const startsAtTime = new Date(startsAtRaw).getTime();
+    if (Number.isFinite(startsAtTime) && startsAtTime > Date.now() + 60000) {
+      startsAt = new Date(startsAtTime).toISOString();
+    }
+  }
+
   const payload = {
     collectionChannel: selectedChannel,
     title,
     cycle,
     model,
     groupIds,
-    startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
+    startsAt,
     endsAt: new Date(endsAtTime).toISOString()
   };
 
@@ -1008,19 +1018,23 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
     const survey = await post('/surveys', payload);
 
     if (openImmediately) {
-      if (btnLaunch) btnLaunch.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abrindo coleta...';
+      if (btnLaunch) btnLaunch.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abrindo coleta e enviando convites...';
       const ch = document.querySelector('input[name="collectionChannel"]:checked')?.value || 'web';
-      await post(`/surveys/${survey.id}/open`, { collectionChannel: ch });
+      const openRes = await post(`/surveys/${survey.id}/open`, { collectionChannel: ch });
       if (ch === 'whatsapp') {
         showToast('Ciclo iniciado! Convites sendo enviados pelo WhatsApp.', 'success');
       } else {
-        showToast('Ciclo iniciado! Convites com link sendo enviados por e-mail para os colaboradores.', 'success');
+        const dispatchedCount = openRes?.dispatchResult?.dispatched;
+        const msg = typeof dispatchedCount === 'number'
+          ? `Ciclo iniciado! ${dispatchedCount} convites enviados por e-mail.`
+          : 'Ciclo iniciado! Convites com link enviados por e-mail para os colaboradores.';
+        showToast(msg, 'success');
       }
       await store.loadSurveys();
       router.navigate(`pesquisas/${survey.id}/distribuicao`);
     } else {
       await store.loadSurveys();
-      showToast('Pesquisa salva com sucesso. A coleta está pronta para ser aberta manualmente ou na data agendada.', 'success');
+      showToast('Pesquisa salva como rascunho com sucesso. A coleta pode ser aberta manualmente a qualquer momento.', 'success');
       router.navigate('pesquisas');
     }
   } catch (err) {

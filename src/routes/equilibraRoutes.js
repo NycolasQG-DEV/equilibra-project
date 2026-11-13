@@ -941,17 +941,29 @@ router.post('/surveys/:id/open', protectedRoute, async (req, res) => {
     }
   }
 
+  const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const result = openSurvey({
     surveyId: req.params.id,
     accountId: req.account.id,
-    baseUrl: `${req.protocol}://${req.get('host')}`,
+    baseUrl,
     channel: req.body?.collectionChannel || null
   });
   if (result.error) return fail(res, result.status, result.message);
+
+  let dispatchResult = null;
+  if (result.dispatchPromise) {
+    try {
+      dispatchResult = await result.dispatchPromise;
+    } catch (err) {
+      console.error('[OPEN-SURVEY-DISPATCH-ERR]', err.message);
+    }
+  }
+
   res.json({
     survey: surveySummary(result.survey, req.account.id),
     link: result.link,
-    links: result.links
+    links: result.links,
+    dispatchResult
   });
 });
 

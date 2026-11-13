@@ -1162,9 +1162,13 @@ export async function submitBulkDeleteSurveys() {
 
 export async function handleOpenSurveyDirect(surveyId) {
   try {
-    await post(`/surveys/${surveyId}/open`, {});
+    const res = await post(`/surveys/${surveyId}/open`, {});
     await store.loadSurveys();
-    showToast('Coleta aberta com sucesso!', 'success');
+    const dispatched = res?.dispatchResult?.dispatched;
+    const msg = typeof dispatched === 'number'
+      ? `Coleta aberta com sucesso! ${dispatched} convites enviados por e-mail.`
+      : 'Coleta aberta com sucesso!';
+    showToast(msg, 'success');
     router.navigate(`pesquisas/${surveyId}/distribuicao`);
   } catch (err) {
     showToast(err.message || 'Erro ao abrir pesquisa.', 'error');

@@ -168,30 +168,34 @@ async function dispatchSurveyViaEmail(survey, links = []) {
   let errors = 0;
   let lastError = null;
 
+  const validLinks = [];
   for (const item of links) {
     if (!item.email || !item.email.trim()) {
       skipped++;
-      continue;
+    } else {
+      validLinks.push(item);
     }
+  }
 
-    try {
-      const res = await sendInviteEmail({
+  const results = await Promise.allSettled(
+    validLinks.map((item) =>
+      sendInviteEmail({
         to: item.email.trim(),
         name: item.name,
         surveyTitle: survey.title,
         link: item.link,
         cycle: survey.cycle
-      });
+      })
+    )
+  );
 
-      if (res.ok) {
-        dispatched++;
-      } else {
-        errors++;
-        if (res.error) lastError = res.error;
-      }
-    } catch (err) {
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.ok) {
+      dispatched++;
+    } else {
       errors++;
-      lastError = err.message;
+      const err = r.status === 'fulfilled' ? r.value.error : r.reason?.message;
+      if (err) lastError = err;
     }
   }
 
