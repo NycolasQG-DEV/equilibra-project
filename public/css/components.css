@@ -4565,3 +4565,26 @@ button.tab-link.active {
   justify-content: center;
   width: 100%;
 }
+
+/* Links de pesquisas secundárias na sidebar */
+.today-sidebar-other-survey {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  padding: 4px 0;
+  border-top: 1px solid var(--color-border);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.today-sidebar-other-survey:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.today-sidebar-other-survey:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}

@@ -194,16 +194,14 @@ export function renderToday({ state }) {
     if (noResponseSurveys.length > 0) {
       const count = noResponseSurveys.length;
       const target = noResponseSurveys[0];
+      const shortTitle = target.title.length > 44 ? target.title.slice(0, 44) + '…' : target.title;
       situacaoCard = `
         <div class="today-sidebar-card today-sidebar-card-alert">
-          <p class="today-sidebar-card-title">Situação das coletas</p>
-          <p class="text-sm font-semibold mb-1">
-            ${count === 1
-              ? 'Uma pesquisa ainda sem nenhuma resposta.'
-              : `${count} pesquisas sem nenhuma resposta.`}
+          <p class="today-sidebar-card-title">
+            ${count === 1 ? 'Sem nenhuma resposta' : `${count} pesquisas sem resposta`}
           </p>
-          <p class="color-text-secondary text-xs mb-3">
-            Disparar convites aumenta a adesão e garante dados estatisticamente válidos.
+          <p class="text-sm font-semibold mb-3" title="${attr(target.title)}">
+            ${esc(shortTitle)}
           </p>
           <a href="#pesquisas/${attr(target.id)}/distribuicao"
              class="btn btn-primary btn-sm w-full text-center">
@@ -211,24 +209,33 @@ export function renderToday({ state }) {
             Disparar convites
           </a>
           ${count > 1 ? `
-            <p class="color-text-secondary text-xs mt-2 text-center">
-              + ${count - 1} outra${count - 1 > 1 ? 's' : ''} pesquisa${count - 1 > 1 ? 's' : ''} na mesma situação
-            </p>
+            <div class="mt-3">
+              ${noResponseSurveys.slice(1).map(s => `
+                <a href="#pesquisas/${attr(s.id)}/distribuicao"
+                   class="today-sidebar-other-survey"
+                   title="${attr(s.title)}">
+                  <i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i>
+                  ${esc(s.title.length > 36 ? s.title.slice(0, 36) + '…' : s.title)}
+                </a>
+              `).join('')}
+            </div>
           ` : ''}
         </div>
       `;
     } else if (closingSoonLow.length > 0) {
       const target = closingSoonLow[0];
+      const shortTitle = target.title.length > 44 ? target.title.slice(0, 44) + '…' : target.title;
+      const daysLabel = target.daysRemaining != null
+        ? (target.daysRemaining <= 0 ? 'Encerra hoje' : `Encerra em ${target.daysRemaining}d`)
+        : 'Encerra em breve';
       situacaoCard = `
         <div class="today-sidebar-card today-sidebar-card-warn">
-          <p class="today-sidebar-card-title">Situação das coletas</p>
-          <p class="text-sm font-semibold mb-1">
-            ${closingSoonLow.length === 1
-              ? 'Uma pesquisa encerra em breve com adesão baixa.'
-              : `${closingSoonLow.length} pesquisas encerram em breve com adesão baixa.`}
+          <p class="today-sidebar-card-title">Adesão baixa — prazo próximo</p>
+          <p class="text-sm font-semibold mb-1" title="${attr(target.title)}">
+            ${esc(shortTitle)}
           </p>
           <p class="color-text-secondary text-xs mb-3">
-            Envie um lembrete ou compartilhe o link direto com os colaboradores.
+            ${esc(daysLabel)} · ${fmtPercent(target.participationRate)} de adesão
           </p>
           <div class="flex flex-col gap-2">
             ${!isViewer ? `
@@ -237,12 +244,12 @@ export function renderToday({ state }) {
                       data-action="copy-survey-url"
                       data-url="${attr(`${window.location.origin}/responder/${target.id}`)}">
                 <i class="fa-regular fa-copy mr-1" aria-hidden="true"></i>
-                Copiar link da pesquisa
+                Copiar link para compartilhar
               </button>
             ` : ''}
             <a href="#pesquisas/${attr(target.id)}/distribuicao" class="btn btn-secondary btn-sm">
               <i class="fa-solid fa-paper-plane mr-1" aria-hidden="true"></i>
-              Ver distribuição
+              Disparar convites
             </a>
           </div>
         </div>
