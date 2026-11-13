@@ -954,7 +954,7 @@ document.addEventListener('change', async (e) => {
   if (e.target.name === 'model') {
     selectModel(e.target.value);
   }
-  if (e.target.dataset.action === 'toggle-wizard-group' || e.target.name === 'groupIds') {
+  if (e.target.dataset.action === 'toggle-wizard-group' || e.target.name === 'groupId' || e.target.name === 'groupIds') {
     updateWizardQuorum();
   }
   if (e.target.id === 'member-group-filter') {

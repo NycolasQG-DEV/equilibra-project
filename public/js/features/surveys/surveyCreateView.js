@@ -57,11 +57,11 @@ export function renderSurveyCreate({ state }) {
   const defaultModelName = defaultTemplate ? defaultTemplate.name : 'Organização e condições de trabalho';
   const defaultTitle = `Pesquisa de Condições de Trabalho - ${defaultMonth} ${defaultYear}`;
 
-  // Default to selecting all groups
-  const initialSelectedGroupIds = groups.map(g => g.id);
-  const selectedGroups = groups.filter(g => initialSelectedGroupIds.includes(g.id));
-  const distinctMemberIds = new Set(selectedGroups.flatMap(g => g.memberIds || []));
-  const initialMembersCount = distinctMemberIds.size || members.length;
+  // Default to selecting the general group or first group
+  const generalGroup = groups.find(g => g.name.toLowerCase() === 'geral') || groups[0];
+  const initialSelectedGroupId = generalGroup ? generalGroup.id : (groups[0]?.id || '');
+  const selectedGroup = groups.find(g => g.id === initialSelectedGroupId);
+  const initialMembersCount = selectedGroup?.memberIds?.length || members.length;
 
   const content = `
     <div class="survey-wizard-container">
@@ -233,19 +233,11 @@ export function renderSurveyCreate({ state }) {
                     <div>
                       <h2 class="wizard-section-title">
                         <span class="wizard-step-badge">3</span>
-                        Público Participante & Equipes
+                        Público Participante & Equipe
                       </h2>
                       <p class="wizard-section-subtitle">
-                        Selecione os grupos que participarão deste ciclo de pesquisa.
+                        Selecione <strong>1 grupo ou equipe</strong> participante para manter a coleta e as soluções organizadas por área.
                       </p>
-                    </div>
-                    <div class="flex gap-2">
-                      <button type="button" class="btn btn-secondary btn-sm" data-action="select-all-wizard-groups">
-                        Selecionar Todos
-                      </button>
-                      <button type="button" class="btn btn-ghost btn-sm" data-action="select-general-wizard-group">
-                        Apenas Geral
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -256,12 +248,12 @@ export function renderSurveyCreate({ state }) {
                       <p class="empty-text">Nenhum grupo cadastrado. O grupo Geral será utilizado automaticamente.</p>
                     </div>
                   ` : groups.map(g => {
-                    const isChecked = initialSelectedGroupIds.includes(g.id);
+                    const isChecked = g.id === initialSelectedGroupId;
                     const count = g.memberIds ? g.memberIds.length : 0;
 
                     return `
                       <label class="group-picker-card ${isChecked ? 'selected' : ''}" data-group-card-id="${attr(g.id)}">
-                        <input type="checkbox" name="groupIds" value="${attr(g.id)}" class="group-picker-checkbox" ${isChecked ? 'checked' : ''} data-member-count="${count}" data-action="toggle-wizard-group" />
+                        <input type="radio" name="groupId" value="${attr(g.id)}" class="group-picker-checkbox" ${isChecked ? 'checked' : ''} data-member-count="${count}" data-action="toggle-wizard-group" />
                         <div class="group-picker-info">
                           <div class="group-picker-name">${esc(g.name)}</div>
                           <div class="group-picker-count"><span class="num">${count}</span> pessoas vinculadas</div>
@@ -468,8 +460,8 @@ export function updateWizardValidation() {
     const endsAtTime = endsAt ? new Date(endsAt).getTime() : 0;
     isValid = Boolean(cycle && endsAt && !isNaN(endsAtTime) && endsAtTime > Date.now());
   } else if (currentStep === 3) {
-    const checked = document.querySelectorAll('#wizard-groups-container input[name="groupIds"]:checked');
-    isValid = checked.length > 0;
+    const checked = document.querySelector('#wizard-groups-container input[name="groupId"]:checked');
+    isValid = Boolean(checked && checked.value);
   } else if (currentStep === 4) {
     const title = document.getElementById('survey-title-input')?.value?.trim();
     isValid = Boolean(title);
@@ -866,18 +858,17 @@ export function setPeriodicity(period, days) {
 export function updateWizardQuorum() {
   const state = store.getState();
   const groups = state.groups || [];
-  const checkedBoxes = document.querySelectorAll('#wizard-groups-container input[name="groupIds"]:checked');
-  const selectedGroupIds = Array.from(checkedBoxes).map(cb => cb.value);
+  const checkedRadio = document.querySelector('#wizard-groups-container input[name="groupId"]:checked');
+  const selectedGroupId = checkedRadio?.value;
 
   // Update card selected visual states
   document.querySelectorAll('.group-picker-card').forEach(card => {
-    const cb = card.querySelector('input[type="checkbox"]');
-    card.classList.toggle('selected', Boolean(cb && cb.checked));
+    const radio = card.querySelector('input[type="radio"]');
+    card.classList.toggle('selected', Boolean(radio && radio.checked));
   });
 
-  const selectedGroups = groups.filter(g => selectedGroupIds.includes(g.id));
-  const distinctMemberIds = new Set(selectedGroups.flatMap(g => g.memberIds || []));
-  const count = distinctMemberIds.size;
+  const selectedGroup = groups.find(g => g.id === selectedGroupId);
+  const count = selectedGroup?.memberIds ? selectedGroup.memberIds.length : 0;
 
   const noteContainer = document.getElementById('wizard-privacy-note');
   if (noteContainer) {
@@ -886,7 +877,7 @@ export function updateWizardQuorum() {
         <div class="privacy-note privacy-success">
           <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
           <div>
-            <strong>Público selecionado:</strong> <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores convidados.
+            <strong>Público selecionado:</strong> <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores convidados no grupo <strong>${esc(selectedGroup?.name || '')}</strong>.
           </div>
         </div>
       `;
@@ -895,7 +886,7 @@ export function updateWizardQuorum() {
         <div class="privacy-note privacy-warning">
           <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
           <div>
-            <strong>Atenção:</strong> Apenas <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores nos grupos selecionados. Adicione mais grupos para uma amostra representativa.
+            <strong>Atenção:</strong> O grupo selecionado possui <span class="num font-semibold" id="wizard-total-members-count">${count}</span> colaboradores. Para relatórios com sigilo estatístico da NR-1, são recomendados no mínimo 5 participantes.
           </div>
         </div>
       `;
@@ -906,8 +897,7 @@ export function updateWizardQuorum() {
 }
 
 export function selectAllWizardGroups() {
-  const checkboxes = document.querySelectorAll('#wizard-groups-container input[name="groupIds"]');
-  checkboxes.forEach(cb => { cb.checked = true; });
+  // Mantido por compatibilidade
   updateWizardQuorum();
 }
 
@@ -916,9 +906,9 @@ export function selectGeneralWizardGroup() {
   const groups = state.groups || [];
   const general = groups.find(g => g.name.toLowerCase() === 'geral') || groups[0];
 
-  const checkboxes = document.querySelectorAll('#wizard-groups-container input[name="groupIds"]');
-  checkboxes.forEach(cb => {
-    cb.checked = general ? cb.value === general.id : true;
+  const radios = document.querySelectorAll('#wizard-groups-container input[name="groupId"]');
+  radios.forEach(r => {
+    r.checked = Boolean(general && r.value === general.id);
   });
   updateWizardQuorum();
 }
@@ -943,8 +933,8 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
   const startsAtRaw = form.startsAt?.value;
   const endsAtRaw = form.endsAt?.value;
 
-  const checkedBoxes = form.querySelectorAll('input[name="groupIds"]:checked');
-  const groupIds = Array.from(checkedBoxes).map(cb => cb.value);
+  const checkedRadio = form.querySelector('input[name="groupId"]:checked');
+  const groupId = checkedRadio ? checkedRadio.value : '';
 
   if (!model) {
     showToast('Selecione um modelo de pesquisa.', 'error');
@@ -958,8 +948,8 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
     showToast('Informe o título da pesquisa.', 'error');
     return;
   }
-  if (groupIds.length === 0) {
-    showToast('Selecione ao menos um grupo participante.', 'error');
+  if (!groupId) {
+    showToast('Selecione o grupo participante.', 'error');
     return;
   }
   if (!endsAtRaw) {
@@ -990,7 +980,8 @@ export async function submitSurveyCreation({ openImmediately = null } = {}) {
     title,
     cycle,
     model,
-    groupIds,
+    groupId,
+    groupIds: [groupId],
     startsAt,
     endsAt: new Date(endsAtTime).toISOString()
   };
