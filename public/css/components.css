@@ -4271,3 +4271,97 @@ button.tab-link.active {
 
 
 
+
+
+/* ── Compact Single-Row Surveys on Dashboard ── */
+.today-survey-row-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--color-border);
+  gap: 16px;
+  transition: background-color var(--transition-fast);
+}
+
+.today-survey-row-compact:last-child {
+  border-bottom: none;
+}
+
+.today-survey-row-compact:hover {
+  background-color: var(--color-surface-subtle);
+}
+
+.today-survey-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.today-survey-title-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 440px;
+}
+
+.today-survey-title-link:hover {
+  color: var(--color-primary);
+}
+
+.today-survey-meta-tag {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.today-survey-progress-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.today-survey-stat {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.today-survey-pct {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.today-mini-bar {
+  width: 64px;
+  height: 6px;
+  background-color: var(--color-surface-subtle);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.today-mini-bar-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.btn-compact {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}

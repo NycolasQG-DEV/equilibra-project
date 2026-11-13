@@ -106,7 +106,7 @@ export function renderToday({ state }) {
     `;
   }
 
-  // 3. KPIs em 3 colunas limpas
+  // 3. KPIs em 3 colunas limpas (sem barras de progresso esticadas)
   const kpisHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
       <div class="kpi-card">
@@ -117,11 +117,6 @@ export function renderToday({ state }) {
             ? `${totalOpenResponses} de ${totalOpenInvited} respostas (${fmtPercent(aggregateRate)})`
             : 'Nenhuma pesquisa aberta no momento'}
         </div>
-        ${openSurveys.length > 0 ? `
-          <div class="dist-bar dist-bar-sm mt-2" title="Adesão: ${fmtPercent(aggregateRate)}">
-            <div class="dist-bar-seg bg-primary" data-width="${Math.min(100, Math.round(aggregateRate * 100))}"></div>
-          </div>
-        ` : ''}
       </div>
 
       <div class="kpi-card">
@@ -148,49 +143,45 @@ export function renderToday({ state }) {
     </div>
   `;
 
-  // 4. Pesquisas em Andamento (apenas se houver)
+  // 4. Pesquisas em Andamento (Lista horizontal compacta, sem barras gigantes consumindo a tela)
   let openSurveysSectionHtml = '';
   if (openSurveys.length > 0) {
     openSurveysSectionHtml = `
       <div class="card mb-6">
-        <div class="card-header flex items-center justify-between py-3 px-4">
+        <div class="card-header py-2 px-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <h2 class="card-title text-sm font-semibold m-0">Pesquisa em Andamento</h2>
-            <span class="badge badge-primary text-xs">${openSurveys.length} ativa</span>
+            <h2 class="card-title text-sm font-semibold m-0">Pesquisas em Andamento</h2>
+            <span class="badge badge-neutral text-xs font-medium">${openSurveys.length}</span>
           </div>
           <a href="#pesquisas" class="table-subtext text-xs hover:color-primary font-medium">
             Ver todas <i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i>
           </a>
         </div>
         <div class="card-body p-0">
-          <div class="today-surveys-list">
+          <div>
             ${openSurveys.map((s, idx) => {
               const isHidden = idx >= 3;
               const ratePct = Math.min(100, Math.round(s.participationRate * 100));
               return `
-                <div class="today-survey-row ${isHidden ? 'survey-item-collapsible hidden' : ''}">
-                  <div class="today-survey-main">
-                    <div class="flex items-center gap-2 mb-1">
-                      <a href="#pesquisas/${attr(s.id)}/distribuicao" class="today-survey-name" title="${attr(s.title)}">
-                        ${esc(s.title)}
-                      </a>
-                    </div>
-                    <div class="today-survey-details">
-                      <span>${esc(s.cycle || 'Geral')}</span>
-                      <span class="dot-separator">•</span>
-                      <span class="color-muted">${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}</span>
-                    </div>
-                    <div class="dist-bar dist-bar-sm mt-2" title="Adesão: ${fmtPercent(s.participationRate)}">
-                      <div class="dist-bar-seg bg-primary" data-width="${ratePct}"></div>
-                    </div>
+                <div class="today-survey-row-compact ${isHidden ? 'survey-item-collapsible hidden' : ''}">
+                  <div class="today-survey-info">
+                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="today-survey-title-link" title="${attr(s.title)}">
+                      ${esc(s.title)}
+                    </a>
+                    <span class="today-survey-meta-tag">
+                      ${esc(s.cycle || 'Geral')} • ${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}
+                    </span>
                   </div>
 
-                  <div class="today-survey-side">
-                    <div class="today-survey-metric">
-                      <span class="today-survey-rate">${fmtPercent(s.participationRate)}</span>
-                      <span class="today-survey-sub">${s.responsesCount} de ${s.totalInvited} resp.</span>
+                  <div class="today-survey-progress-group">
+                    <div class="today-survey-stat">
+                      <span class="today-survey-pct">${fmtPercent(s.participationRate)}</span>
+                      <span class="color-muted">(${s.responsesCount}/${s.totalInvited})</span>
                     </div>
-                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm today-survey-btn">
+                    <div class="today-mini-bar" title="Adesão: ${fmtPercent(s.participationRate)}">
+                      <div class="today-mini-bar-fill" data-width="${ratePct}"></div>
+                    </div>
+                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm btn-compact">
                       Acompanhar
                     </a>
                   </div>
@@ -201,8 +192,8 @@ export function renderToday({ state }) {
 
           ${openSurveys.length > 3 ? `
             <div class="p-2 text-center border-t border-border bg-surface-subtle">
-              <button type="button" class="btn btn-ghost btn-sm font-medium" data-action="toggle-more-surveys" id="btn-toggle-more-surveys" data-expanded="false">
-                <i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mostrar mais (${openSurveys.length - 3} pesquisas)
+              <button type="button" class="btn btn-ghost btn-sm text-xs font-medium" data-action="toggle-more-surveys" id="btn-toggle-more-surveys" data-expanded="false">
+                <i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mais (${openSurveys.length - 3})
               </button>
             </div>
           ` : ''}
