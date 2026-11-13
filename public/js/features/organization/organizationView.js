@@ -270,8 +270,8 @@ export function openAddMemberModal() {
   const content = `
     <form id="add-member-form">
       ${field({ id: 'm-name', name: 'name', label: 'Nome completo', required: true })}
-      ${field({ id: 'm-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', placeholder: '(11) 98765-4321', required: true, hint: 'Obrigatório para receber as pesquisas via WhatsApp.' })}
       ${field({ id: 'm-email', name: 'email', label: 'E-mail corporativo', type: 'email', required: true })}
+      ${field({ id: 'm-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', placeholder: '(11) 98765-4321', required: false, hint: 'Opcional. Informe caso deseje enviar convites também por WhatsApp.' })}
       ${field({ id: 'm-reg', name: 'registration', label: 'Matrícula (opcional)' })}
       <div class="form-group">
         <label class="form-label">Grupos pertencentes</label>
@@ -311,16 +311,7 @@ export async function submitAddMember() {
     return;
   }
 
-  const member = (store.getState().members || []).find((m) => m.id === memberId);
-  const isUnchangedMasked = member && member.phone && phone === member.phone;
-
-  if (!isUnchangedMasked) {
-    if (!phone) {
-      showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
-      form.phone?.focus();
-      return;
-    }
-
+  if (phone) {
     const phoneDigits = phone.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 13) {
       showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
@@ -358,7 +349,7 @@ export function openEditMemberModal(memberId) {
     <form id="edit-member-form">
       ${field({ id: 'em-name', name: 'name', label: 'Nome completo', value: member.name || '', required: true })}
       ${field({ id: 'em-email', name: 'email', label: 'E-mail corporativo', type: 'email', value: member.email || '', required: true })}
-      ${field({ id: 'em-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', value: member.phone || '', placeholder: '(11) 98765-4321', required: true, hint: 'Obrigatório para receber as pesquisas via WhatsApp.' })}
+      ${field({ id: 'em-phone', name: 'phone', label: 'Telefone / WhatsApp (com DDD)', value: member.phone || '', placeholder: '(11) 98765-4321', required: false, hint: 'Opcional. Informe caso deseje enviar convites também por WhatsApp.' })}
       ${field({ id: 'em-reg', name: 'registration', label: 'Matrícula (opcional)', value: member.registration || '' })}
       <div class="form-group mb-2">
         <label class="form-label">Equipes / Grupos vinculados</label>
@@ -401,13 +392,7 @@ export async function submitEditMember(memberId) {
   const member = (store.getState().members || []).find((m) => m.id === memberId);
   const isUnchangedMasked = member && member.phone && phone === member.phone;
 
-  if (!isUnchangedMasked) {
-    if (!phone) {
-      showToast('Informe o telefone com DDD para envio de pesquisas pelo WhatsApp.', 'error');
-      form.phone?.focus();
-      return;
-    }
-
+  if (phone && !isUnchangedMasked) {
     const phoneDigits = phone.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 13) {
       showToast('Telefone inválido. Informe o DDD e o número completo (ex: 11987654321).', 'error');
