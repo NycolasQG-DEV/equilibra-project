@@ -2,37 +2,72 @@ const path = require('node:path');
 const fs = require('node:fs');
 const nodemailer = require('nodemailer');
 
-// ─── Gmail API (OAuth2) ──────────────────────────────────────────────────────
-// Usado quando GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN
-// estão configurados (modo recomendado em produção — usa HTTPS, sem portas SMTP).
-let gmailApiTransporter = null;
+// ─── Gmail REST API (OAuth2 via HTTPS) ───────────────────────────────────────
+// Envia diretamente pela API REST do Gmail (porta 443/HTTPS).
+// Funciona em qualquer ambiente cloud — não usa portas SMTP.
+let gmailOAuth2Client = null;
 
-function getGmailApiTransporter() {
+function getGmailOAuth2Client() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-  const user = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
 
-  if (!clientId || !clientSecret || !refreshToken || !user) return null;
-  if (gmailApiTransporter) return gmailApiTransporter;
+  if (!clientId || !clientSecret || !refreshToken) return null;
+  if (gmailOAuth2Client) return gmailOAuth2Client;
 
   const { google } = require('googleapis');
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
   oauth2Client.setCredentials({ refresh_token: refreshToken });
+  gmailOAuth2Client = oauth2Client;
+  console.log('[GMAIL-API] Cliente OAuth2 criado (REST API via HTTPS).');
+  return gmailOAuth2Client;
+}
 
-  gmailApiTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user,
-      clientId,
-      clientSecret,
-      refreshToken
-    }
+/**
+ * Envia e-mail usando a Gmail REST API diretamente (HTTPS, porta 443).
+ * Não depende de SMTP — funciona no Render e em qualquer cloud hosting.
+ */
+async function sendViaGmailApi({ from, to, subject, text, html }) {
+  const { google } = require('googleapis');
+  const auth = getGmailOAuth2Client();
+  const gmail = google.gmail({ version: 'v1', auth });
+
+  // Monta o e-mail no formato RFC 2822
+  const boundary = `boundary_${Date.now()}`;
+  const rawLines = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(text).toString('base64'),
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(html).toString('base64'),
+    '',
+    `--${boundary}--`
+  ];
+
+  const raw = Buffer.from(rawLines.join('\r\n'))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const result = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw }
   });
 
-  console.log(`[GMAIL-API] Transporter OAuth2 criado para ${user}`);
-  return gmailApiTransporter;
+  return result.data;
 }
 
 // ─── SMTP Fallback ───────────────────────────────────────────────────────────
@@ -70,15 +105,6 @@ function getSmtpTransporter() {
   });
   cachedSmtpKey = key;
   return cachedSmtpTransporter;
-}
-
-/**
- * Retorna o melhor transporter disponível:
- * 1. Gmail API (OAuth2) — usa HTTPS, funciona em qualquer cloud hosting
- * 2. SMTP — fallback, pode falhar se a porta estiver bloqueada
- */
-function getTransporter() {
-  return getGmailApiTransporter() || getSmtpTransporter();
 }
 
 /**
@@ -173,10 +199,25 @@ async function sendInviteEmail({ to, name, surveyTitle, link, cycle }) {
 
   const text = `Olá, ${name || 'colaborador(a)'}!\n\nVocê foi convidado(a) a participar da pesquisa: ${surveyTitle}.\n\nPara responder, acesse o link abaixo:\n${link}\n\nSuas respostas são analisadas de forma coletiva.`;
 
-  // Envio via SMTP (Google Workspace / Gmail com senha de app)
-  const transporter = getTransporter();
+  // Tenta Gmail REST API primeiro (HTTPS, funciona no Render)
+  if (getGmailOAuth2Client()) {
+    try {
+      const data = await Promise.race([
+        sendViaGmailApi({ from, to, subject, text, html }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout Gmail API (20s)')), 20000))
+      ]);
+      console.log(`[GMAIL-API-SUCCESS] E-mail enviado para ${to} (ID: ${data.id})`);
+      return { ok: true, messageId: data.id };
+    } catch (err) {
+      console.error(`[GMAIL-API-ERROR] Falha ao enviar para ${to}:`, err.message);
+      return { ok: false, error: err.message };
+    }
+  }
+
+  // Fallback: SMTP (pode falhar em cloud hosting)
+  const transporter = getSmtpTransporter();
   if (!transporter) {
-    const msg = 'Servidor SMTP não configurado. Verifique SMTP_USER e SMTP_PASS no .env e reinicie o servidor.';
+    const msg = 'Nenhum método de envio configurado. Verifique GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN ou SMTP_USER/PASS.';
     console.error(`[SMTP-ERROR] ${msg}`);
     return { ok: false, error: msg };
   }
