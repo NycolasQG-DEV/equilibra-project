@@ -1,4 +1,4 @@
-/* Decision Cockpit: Hoje view */
+/* Decision Cockpit: Hoje view — Foco Operacional Direto */
 
 import { renderShell } from '../../ui/shell.js';
 import { esc, attr, fmt, fmtPercent } from '../../domain/formatters.js';
@@ -7,15 +7,13 @@ import { decisionQueueLabels, priorityLabels } from '../../domain/labels.js';
 export function renderToday({ state }) {
   const isViewer = state.account?.role === 'viewer';
   const todayData = state.today;
-  const userName = state.account?.name ? state.account.name.split(' ')[0] : 'Gestor';
-  const greeting = todayData?.greeting || `Olá, ${userName}.`;
   const dateFormatted = todayData?.dateFormatted || '';
   const queue = todayData?.queue || todayData?.decisionQueue || [];
   const kpis = todayData?.kpis || {};
   const charts = todayData?.charts || {};
   const isNewCompany = !state.members?.length && !state.surveys?.length;
 
-  // Operational KPIs & Open Surveys
+  // Coletas ativas individuais (sem médias artificiais agregadas)
   const rawOpenSurveys = kpis.openSurveys || (state.surveys ? state.surveys.filter(s => s.status === 'open') : []);
   const openSurveys = rawOpenSurveys.map(s => {
     const totalInvited = s.totalInvited || s.invitedCount || s.groupSize || s.memberIds?.length || 0;
@@ -37,16 +35,7 @@ export function renderToday({ state }) {
     };
   });
 
-  const totalOpenResponses = openSurveys.reduce((sum, s) => sum + s.responsesCount, 0);
-  const totalOpenInvited = openSurveys.reduce((sum, s) => sum + s.totalInvited, 0);
-  const aggregateRate = totalOpenInvited > 0 ? totalOpenResponses / totalOpenInvited : 0;
-
-  const actions = kpis.actionsSummary || kpis.actions || { total: 0, onTrack: 0, overdue: 0, needsReview: 0 };
-  const pop = kpis.monitoredPopulation || kpis.population || { membersCount: 0, groupsCount: 0 };
-  const membersCount = pop.membersCount ?? pop.totalMembers ?? (state.members ? state.members.length : 0);
-  const groupsCount = pop.groupsCount ?? pop.totalGroups ?? (state.groups ? state.groups.filter(g => !g.isDefault).length : 0);
-
-  // 1. Fila de Decisões Prioritárias (somente se houver pendências reais)
+  // 1. Fila de Decisões e Pendências Operacionais (só aparece quando de fato há algo pendente)
   let queueHtml = '';
   if (queue.length > 0) {
     queueHtml = `
@@ -54,7 +43,7 @@ export function renderToday({ state }) {
         <div class="flex items-center justify-between mb-3">
           <h2 id="queue-heading" class="card-title text-base font-semibold">
             <i class="fa-solid fa-bell color-primary mr-1" aria-hidden="true"></i>
-            Ações Prioritárias (${queue.length})
+            Ações que Exigem Atenção (${queue.length})
           </h2>
         </div>
         <div class="flex flex-col gap-3">
@@ -64,7 +53,7 @@ export function renderToday({ state }) {
     `;
   }
 
-  // 2. Onboarding para novas organizações
+  // 2. Onboarding para novas organizações (sem membros e sem pesquisas)
   let onboardingHtml = '';
   if (isNewCompany && !isViewer) {
     onboardingHtml = `
@@ -106,207 +95,197 @@ export function renderToday({ state }) {
     `;
   }
 
-  // 3. KPIs em 3 colunas limpas (sem barras de progresso esticadas)
-  const kpisHtml = `
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      <div class="kpi-card">
-        <span class="kpi-title">Pesquisas Ativas</span>
-        <div class="kpi-val">${openSurveys.length}</div>
-        <div class="kpi-sub">
-          ${openSurveys.length > 0
-            ? `${totalOpenResponses} de ${totalOpenInvited} respostas (${fmtPercent(aggregateRate)})`
-            : 'Nenhuma pesquisa aberta no momento'}
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <span class="kpi-title">Planos de Ação</span>
-        <div class="kpi-val">${actions.total || actions.totalActive || 0}</div>
-        <div class="flex items-center gap-2 mt-1">
-          ${(actions.total || 0) === 0 ? `
-            <span class="kpi-sub">Nenhuma ação cadastrada</span>
-          ` : `
-            <span class="badge badge-success text-xs"><span class="status-dot dot-success" aria-hidden="true"></span> ${actions.onTrack || actions.onTime || 0} no prazo</span>
-            ${(actions.overdue || 0) > 0 ? `<span class="badge badge-danger text-xs"><span class="status-dot dot-danger" aria-hidden="true"></span> ${actions.overdue} atrasadas</span>` : ''}
-            ${(actions.needsReview || actions.reviewDue || 0) > 0 ? `<span class="badge badge-warning text-xs"><span class="status-dot dot-warning" aria-hidden="true"></span> ${actions.needsReview || actions.reviewDue} a revisar</span>` : ''}
-          `}
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <span class="kpi-title">Colaboradores</span>
-        <div class="kpi-val">${membersCount}</div>
-        <div class="kpi-sub">
-          ${membersCount === 1 ? '1 colaborador cadastrado' : `${membersCount} cadastrados em ${groupsCount} grupos`}
-        </div>
-      </div>
-    </div>
-  `;
-
-  // 4. Pesquisas em Andamento (Lista horizontal compacta, sem barras gigantes consumindo a tela)
+  // 3. Painel Principal: Coletas em Andamento (o que está vivo e operando agora)
   let openSurveysSectionHtml = '';
   if (openSurveys.length > 0) {
     openSurveysSectionHtml = `
       <div class="card mb-6">
-        <div class="card-header py-2 px-4 flex items-center justify-between">
+        <div class="card-header py-3 px-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <h2 class="card-title text-sm font-semibold m-0">Pesquisas em Andamento</h2>
-            <span class="badge badge-neutral text-xs font-medium">${openSurveys.length}</span>
+            <h2 class="card-title text-sm font-semibold m-0">Coletas em Andamento</h2>
+            <span class="badge badge-primary text-xs font-semibold">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</span>
           </div>
-          <a href="#pesquisas" class="table-subtext text-xs hover:color-primary font-medium">
-            Ver todas <i class="fa-solid fa-arrow-right text-[10px]" aria-hidden="true"></i>
-          </a>
+          <span class="table-subtext text-xs">
+            Acompanhe o retorno e os convites de cada grupo
+          </span>
         </div>
         <div class="card-body p-0">
-          <div>
-            ${openSurveys.map((s, idx) => {
-              const isHidden = idx >= 3;
-              const ratePct = Math.min(100, Math.round(s.participationRate * 100));
-              return `
-                <div class="today-survey-row-compact ${isHidden ? 'survey-item-collapsible hidden' : ''}">
-                  <div class="today-survey-info">
-                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="today-survey-title-link" title="${attr(s.title)}">
-                      ${esc(s.title)}
-                    </a>
-                    <span class="today-survey-meta-tag">
-                      ${esc(s.cycle || 'Geral')} • ${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}
-                    </span>
-                  </div>
+          <div class="table-wrap table-borderless">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Pesquisa</th>
+                  <th>Público / Setor</th>
+                  <th>Prazo</th>
+                  <th>Respostas</th>
+                  <th class="text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${openSurveys.map((s, idx) => {
+                  const isHidden = idx >= 5;
+                  const isClosingSoon = s.daysRemaining != null && s.daysRemaining <= 3;
+                  const groupLabel = s.groupName || s.cycle || 'Geral';
 
-                  <div class="today-survey-progress-group">
-                    <div class="today-survey-stat">
-                      <span class="today-survey-pct">${fmtPercent(s.participationRate)}</span>
-                      <span class="color-muted">(${s.responsesCount}/${s.totalInvited})</span>
-                    </div>
-                    <div class="today-mini-bar" title="Adesão: ${fmtPercent(s.participationRate)}">
-                      <div class="today-mini-bar-fill" data-width="${ratePct}"></div>
-                    </div>
-                    <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm btn-compact">
-                      Acompanhar
-                    </a>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+                  return `
+                    <tr class="${isHidden ? 'survey-item-collapsible hidden' : ''}">
+                      <td>
+                        <a href="#pesquisas/${attr(s.id)}/distribuicao" class="font-medium hover:color-primary" title="${attr(s.title)}">
+                          ${esc(s.title)}
+                        </a>
+                      </td>
+                      <td>
+                        <span class="badge badge-neutral text-xs">${esc(groupLabel)}</span>
+                      </td>
+                      <td>
+                        <span class="${isClosingSoon ? 'color-danger font-semibold' : 'color-text-secondary'} text-xs">
+                          <i class="fa-regular fa-clock text-[10px] mr-1" aria-hidden="true"></i>
+                          ${s.daysRemaining != null ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`) : 'Prazo aberto'}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <span class="font-semibold text-xs">${fmtPercent(s.participationRate)}</span>
+                          <span class="color-muted text-xs">(${s.responsesCount} de ${s.totalInvited})</span>
+                        </div>
+                      </td>
+                      <td class="text-right">
+                        <a href="#pesquisas/${attr(s.id)}/distribuicao" class="btn btn-secondary btn-sm btn-compact">
+                          Acompanhar
+                        </a>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
           </div>
 
-          ${openSurveys.length > 3 ? `
+          ${openSurveys.length > 5 ? `
             <div class="p-2 text-center border-t border-border bg-surface-subtle">
               <button type="button" class="btn btn-ghost btn-sm text-xs font-medium" data-action="toggle-more-surveys" id="btn-toggle-more-surveys" data-expanded="false">
-                <i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mais (${openSurveys.length - 3})
+                <i class="fa-solid fa-chevron-down mr-1" aria-hidden="true"></i> Mostrar mais (${openSurveys.length - 5} pesquisas)
               </button>
             </div>
           ` : ''}
         </div>
       </div>
     `;
+  } else if (!isNewCompany) {
+    openSurveysSectionHtml = `
+      <div class="card p-6 text-center mb-6">
+        <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i></div>
+        <p class="font-semibold text-sm m-0">Nenhuma pesquisa em andamento</p>
+        <p class="table-subtext text-xs mt-1 mb-3">Abra uma nova coleta para iniciar a escuta com seus colaboradores.</p>
+        <div>
+          <a href="#pesquisas/nova" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Criar Pesquisa
+          </a>
+        </div>
+      </div>
+    `;
   }
 
-  // 5. Gráficos de Apoio
+  // 4. Seção de Gráficos e Resultados Consolidados (só renderiza se houver histórico real)
   const partTrendList = Array.isArray(charts.participationTrend) ? charts.participationTrend : (charts.participationTrendData?.labels ? charts.participationTrendData.labels.map((lbl, i) => ({ cycle: lbl, rate: charts.participationTrendData.rates[i] })) : []);
   const factorRankingList = Array.isArray(charts.factorRanking) ? charts.factorRanking : (charts.factorAverages?.labels ? charts.factorAverages.labels.map((lbl, i) => ({ label: lbl, average: charts.factorAverages.values[i] })) : []);
+  const hasReports = (state.reports && state.reports.length > 0) || factorRankingList.length > 0;
 
-  const chartsHtml = `
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Adesão aos Ciclos</h3>
-          ${partTrendList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-participation">Ver tabela</button>` : ''}
-        </div>
-        <div class="card-body chart-container-fixed">
-          ${partTrendList.length > 0 ? `
-            <canvas id="chart-participation-canvas" role="img" aria-label="Gráfico de tendência de participação nos ciclos"></canvas>
-            <div id="table-participation" class="table-wrap chart-fallback-table chart-fallback-hidden">
-              <table class="table">
-                <thead><tr><th>Ciclo</th><th>Adesão</th></tr></thead>
-                <tbody>
-                  ${partTrendList.map(p => `
-                    <tr><td>${esc(p.fullCycle || p.cycle)}</td><td>${p.rate}%</td></tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : `
-            <div class="flex items-center justify-center text-center p-6 h-full">
-              <div>
-                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
-                <p class="font-medium text-sm m-0">Nenhum ciclo registrado</p>
-                <p class="table-subtext text-xs mt-1">O histórico será gerado com a evolução dos ciclos.</p>
+  let chartsHtml = '';
+  if (hasReports) {
+    chartsHtml = `
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Adesão aos Ciclos</h3>
+            ${partTrendList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-participation">Ver tabela</button>` : ''}
+          </div>
+          <div class="card-body chart-container-fixed">
+            ${partTrendList.length > 0 ? `
+              <canvas id="chart-participation-canvas" role="img" aria-label="Gráfico de tendência de participação nos ciclos"></canvas>
+              <div id="table-participation" class="table-wrap chart-fallback-table chart-fallback-hidden">
+                <table class="table">
+                  <thead><tr><th>Ciclo</th><th>Adesão</th></tr></thead>
+                  <tbody>
+                    ${partTrendList.map(p => `
+                      <tr><td>${esc(p.fullCycle || p.cycle)}</td><td>${p.rate}%</td></tr>
+                    `).join('')}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          `}
+            ` : `
+              <div class="flex items-center justify-center text-center p-6 h-full">
+                <p class="table-subtext text-xs m-0">Histórico em consolidação.</p>
+              </div>
+            `}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Fatores Avaliados</h3>
+            ${factorRankingList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-factors">Ver tabela</button>` : ''}
+          </div>
+          <div class="card-body chart-container-fixed">
+            ${factorRankingList.length > 0 ? `
+              <canvas id="chart-factors-canvas" role="img" aria-label="Gráfico de média dos fatores"></canvas>
+              <div id="table-factors" class="table-wrap chart-fallback-table chart-fallback-hidden">
+                <table class="table">
+                  <thead><tr><th>Fator</th><th>Média</th></tr></thead>
+                  <tbody>
+                    ${factorRankingList.map(f => `
+                      <tr><td>${esc(f.label)}</td><td>${fmt(f.average)}</td></tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="flex items-center justify-center text-center p-6 h-full">
+                <p class="table-subtext text-xs m-0">Resultados consolidados disponíveis após o término da coleta.</p>
+              </div>
+            `}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Eficácia das Ações</h3>
+            ${(charts.efficacy?.total || 0) > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-actions">Ver tabela</button>` : ''}
+          </div>
+          <div class="card-body chart-container-fixed">
+            ${(charts.efficacy?.total || 0) > 0 ? `
+              <canvas id="chart-actions-canvas" role="img" aria-label="Gráfico de eficácia das ações"></canvas>
+              <div id="table-actions" class="table-wrap chart-fallback-table chart-fallback-hidden">
+                <table class="table">
+                  <thead><tr><th>Status</th><th>Qtd</th></tr></thead>
+                  <tbody>
+                    ${(charts.actionEfficacy?.labels || ['Eficazes', 'Em andamento', 'A revisar']).map((lbl, i) => `
+                      <tr><td>${esc(lbl)}</td><td>${(charts.actionEfficacy?.counts ? charts.actionEfficacy.counts[i] : 0)}</td></tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="flex items-center justify-center text-center p-6 h-full">
+                <div>
+                  <p class="font-medium text-sm m-0">Nenhuma ação cadastrada</p>
+                  <p class="table-subtext text-xs mt-1 mb-2">Transforme os achados em planos de ação preventivos.</p>
+                  <a href="#acoes" class="btn btn-secondary btn-sm btn-compact">Ver Ações</a>
+                </div>
+              </div>
+            `}
+          </div>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Fatores Avaliados</h3>
-          ${factorRankingList.length > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-factors">Ver tabela</button>` : ''}
-        </div>
-        <div class="card-body chart-container-fixed">
-          ${factorRankingList.length > 0 ? `
-            <canvas id="chart-factors-canvas" role="img" aria-label="Gráfico de média dos fatores"></canvas>
-            <div id="table-factors" class="table-wrap chart-fallback-table chart-fallback-hidden">
-              <table class="table">
-                <thead><tr><th>Fator</th><th>Média</th></tr></thead>
-                <tbody>
-                  ${factorRankingList.map(f => `
-                    <tr><td>${esc(f.label)}</td><td>${fmt(f.average)}</td></tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : `
-            <div class="flex items-center justify-center text-center p-6 h-full">
-              <div>
-                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></div>
-                <p class="font-medium text-sm m-0">Aguardando encerramento</p>
-                <p class="table-subtext text-xs mt-1">As médias dos fatores serão calculadas ao encerrar a pesquisa.</p>
-              </div>
-            </div>
-          `}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Eficácia das Ações</h3>
-          ${(charts.efficacy?.total || 0) > 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-chart-table" data-target="table-actions">Ver tabela</button>` : ''}
-        </div>
-        <div class="card-body chart-container-fixed">
-          ${(charts.efficacy?.total || 0) > 0 ? `
-            <canvas id="chart-actions-canvas" role="img" aria-label="Gráfico de eficácia das ações"></canvas>
-            <div id="table-actions" class="table-wrap chart-fallback-table chart-fallback-hidden">
-              <table class="table">
-                <thead><tr><th>Status</th><th>Qtd</th></tr></thead>
-                <tbody>
-                  ${(charts.actionEfficacy?.labels || ['Eficazes', 'Em andamento', 'A revisar']).map((lbl, i) => `
-                    <tr><td>${esc(lbl)}</td><td>${(charts.actionEfficacy?.counts ? charts.actionEfficacy.counts[i] : 0)}</td></tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : `
-            <div class="flex items-center justify-center text-center p-6 h-full">
-              <div>
-                <div class="mb-2 color-primary text-xl"><i class="fa-solid fa-list-check" aria-hidden="true"></i></div>
-                <p class="font-medium text-sm m-0">Nenhum plano cadastrado</p>
-                <p class="table-subtext text-xs mt-1 mb-3">Defina medidas preventivas associadas aos resultados.</p>
-                <a href="#acoes" class="btn btn-secondary btn-sm">Ver Ações</a>
-              </div>
-            </div>
-          `}
-        </div>
-      </div>
-    </div>
-  `;
+    `;
+  }
 
   const content = `
     <div class="today-page">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="view-title">Hoje</h1>
-          <p class="view-subtitle">${esc(dateFormatted)} · Resumo geral das atividades</p>
+          <p class="view-subtitle">${esc(dateFormatted)} · Painel de atividades</p>
         </div>
         <div>
           ${!isViewer ? `
@@ -318,7 +297,6 @@ export function renderToday({ state }) {
       </div>
 
       ${queueHtml}
-      ${kpisHtml}
       ${openSurveysSectionHtml}
       ${onboardingHtml}
       ${chartsHtml}
