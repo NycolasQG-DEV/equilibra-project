@@ -238,6 +238,9 @@ export function renderSurveyDistribution({ params, state }) {
               </button>
             ` : ''}
             ${survey.status === 'open' ? `
+              <button type="button" class="btn btn-primary" data-action="dispatch-survey-email" data-id="${attr(survey.id)}">
+                <i class="fa-regular fa-paper-plane" aria-hidden="true"></i> Disparar Convites por E-mail
+              </button>
               <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
                 <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
               </button>
@@ -1160,18 +1163,32 @@ export async function submitBulkDeleteSurveys() {
   }
 }
 
-export async function handleOpenSurveyDirect(surveyId) {
+export async function handleOpenSurveyDirect(surveyId, btnElement = null) {
+  const btn = btnElement || document.querySelector(`[data-action="open-survey-direct"][data-id="${surveyId}"]`);
+  let originalHtml = '';
+  if (btn) {
+    originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Abrindo e enviando...';
+  }
   try {
     const res = await post(`/surveys/${surveyId}/open`, {});
     await store.loadSurveys();
     const dispatched = res?.dispatchResult?.dispatched;
-    const msg = typeof dispatched === 'number'
+    const msg = typeof dispatched === 'number' && dispatched > 0
       ? `Coleta aberta com sucesso! ${dispatched} convites enviados por e-mail.`
-      : 'Coleta aberta com sucesso!';
-    showToast(msg, 'success');
+      : (res?.dispatchResult?.errors > 0
+        ? `Coleta aberta. Aviso no envio de e-mails: ${res.dispatchResult.error || 'Verifique o servidor'}`
+        : 'Coleta aberta com sucesso!');
+    showToast(msg, res?.dispatchResult?.errors > 0 ? 'warning' : 'success');
     router.navigate(`pesquisas/${surveyId}/distribuicao`);
   } catch (err) {
     showToast(err.message || 'Erro ao abrir pesquisa.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
   }
 }
 

@@ -479,7 +479,7 @@ document.addEventListener('click', async (e) => {
       trigger.textContent = isTableVisible ? 'Ver tabela' : 'Ver gráfico';
     }
   } else if (action === 'open-survey-direct') {
-    await handleOpenSurveyDirect(trigger.dataset.id);
+    await handleOpenSurveyDirect(trigger.dataset.id, trigger);
   } else if (action === 'open-new-cycle') {
     openNewCycle(trigger.dataset.surveyId);
   } else if (action === 'open-survey-details') {

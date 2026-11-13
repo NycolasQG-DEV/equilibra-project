@@ -2,6 +2,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const nodemailer = require('nodemailer');
 
+let cachedTransporter = null;
+
 /**
  * Cria ou retorna o transportador de e-mail baseado nas variáveis de ambiente.
  * Se nenhuma configuração SMTP estiver presente, opera em modo log/dry-run.
@@ -22,15 +24,20 @@ function getTransporter() {
   const pass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : undefined;
 
   if (user && pass) {
-    return nodemailer.createTransport({
+    if (cachedTransporter) return cachedTransporter;
+    cachedTransporter = nodemailer.createTransport({
       host,
       port,
       secure: port === 465,
       auth: {
         user,
         pass
-      }
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000
     });
+    return cachedTransporter;
   }
 
   return null;
@@ -41,10 +48,7 @@ function getTransporter() {
  * Evita disparos reais para domínios inexistentes que geram bounces (NXDOMAIN).
  */
 function isTestEmailOrEnv(email) {
-  if (
-    process.execArgv.includes('--test') ||
-    process.argv.some((arg) => typeof arg === 'string' && (arg.endsWith('.test.js') || arg.includes('test')))
-  ) {
+  if (process.execArgv.includes('--test') || process.env.NODE_ENV === 'test') {
     return true;
   }
 
@@ -140,13 +144,18 @@ async function sendInviteEmail({ to, name, surveyTitle, link, cycle }) {
   }
 
   try {
-    const info = await transporter.sendMail({
-      from,
-      to,
-      subject,
-      text,
-      html
-    });
+    const info = await Promise.race([
+      transporter.sendMail({
+        from,
+        to,
+        subject,
+        text,
+        html
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout de envio excedido (15s)')), 15000)
+      )
+    ]);
     console.log(`[SMTP-SUCCESS] E-mail enviado para ${to} (ID: ${info.messageId})`);
     return { ok: true, messageId: info.messageId };
   } catch (err) {
