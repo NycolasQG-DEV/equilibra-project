@@ -455,6 +455,36 @@ export const SOLUTIONS_MAP = {
     days: 15,
     criteria: 'Canal ativo com prazo máximo de resposta de 5 dias úteis.',
     description: 'Retroalimentação contínua do inventário de riscos psicossociais da NR-1.'
+  },
+  recuperacao_jornada: {
+    title: 'Política de Desconexão e Gestão do Descanso Pós-Jornada',
+    category: 'Jornada & Recuperação (NR-1 / NR-17)',
+    diagnosis: 'Colaboradores com dificuldade em se desconectar das demandas e restaurar a energia vital fora do expediente.',
+    measure: 'Implantar diretrizes claras de desconexão pós-expediente, limitar envio de comunicações fora do horário e reforçar pausas.',
+    owner: 'RH & Lideranças',
+    days: 30,
+    criteria: 'Média do fator acima de 3,6 no ciclo seguinte e cessação de cobranças fora do horário.',
+    description: 'Ação preventiva para evitar fadiga crônica e garantir recuperação biológica e psicológica.'
+  },
+  integridade_coletiva: {
+    title: 'Fortalecimento da Confiança Mútua e Alinhamento de Equipe',
+    category: 'Segurança Psicológica & Cultura',
+    diagnosis: 'Insegurança em relação às atitudes dos colegas de time e receio de comprometimento do próprio trabalho.',
+    measure: 'Realizar workshops de alinhamento de papéis, pactuação de metas compartilhadas e dinâmicas de confiança mútua.',
+    owner: 'Liderança de Equipe & RH',
+    days: 30,
+    criteria: 'Ambiente seguro e colaborativo com melhora significativa na percepção de cooperação.',
+    description: 'Mitigação de ruídos interpessoais e fomento à segurança psicológica coletiva.'
+  },
+  distanciamento_cinico: {
+    title: 'Prevenção ao Cinismo e Desengajamento Ocupacional',
+    category: 'Saúde Mental & Prevenção ao Burnout',
+    diagnosis: 'Percepção de indiferença, distanciamento emocional ou cinismo em relação às entregas e colegas de trabalho.',
+    measure: 'Conduzir sessões de escuta protegida, reconectar o propósito das tarefas aos objetivos da empresa e avaliar sobrecarga associada.',
+    owner: 'Gestão de Pessoas & Lideranças',
+    days: 45,
+    criteria: 'Resgate do sentimento de pertencimento e redução de indicadores de esgotamento.',
+    description: 'Intervenção preventiva voltada à segunda dimensão do modelo de Burnout (Maslach).'
   }
 };
 
