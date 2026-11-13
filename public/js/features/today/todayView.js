@@ -1,17 +1,29 @@
-/* Hoje — Painel Operacional */
+/* Hoje — Painel Inicial & Governança de Saúde Psicossocial */
 
 import { renderShell } from '../../ui/shell.js';
-import { esc, attr, fmtPercent } from '../../domain/formatters.js';
+import { esc, attr, fmt, fmtPercent } from '../../domain/formatters.js';
 import { decisionQueueLabels, priorityLabels } from '../../domain/labels.js';
 
 export function renderToday({ state }) {
   const isViewer = state.account?.role === 'viewer';
   const todayData = state.today;
-  const dateFormatted = todayData?.dateFormatted || '';
   const queue = todayData?.queue || todayData?.decisionQueue || [];
   const kpis = todayData?.kpis || {};
   const charts = todayData?.charts || {};
   const isNewCompany = !state.members?.length && !state.surveys?.length;
+
+  // Saudação personalizada e contextual
+  const accountName = state.account?.name || '';
+  const firstName = accountName.trim().split(' ')[0] || 'Gestor';
+  const hour = new Date().getHours();
+  const timeGreeting = hour >= 5 && hour < 12 ? 'Bom dia' : hour >= 12 && hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const greeting = todayData?.greeting || `${timeGreeting}, ${firstName}.`;
+  const dateFormatted = todayData?.dateFormatted || new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   // Coletas abertas normalizadas + ordenadas por urgência
   const rawOpenSurveys = kpis.openSurveys || (state.surveys ? state.surveys.filter(s => s.status === 'open') : []);
@@ -28,17 +40,20 @@ export function renderToday({ state }) {
         : (closeDate ? Math.max(0, Math.ceil((closeDate - Date.now()) / (1000 * 60 * 60 * 24))) : null);
       return { ...s, totalInvited, responsesCount, participationRate: rate, daysRemaining };
     })
-    // Mais urgente primeiro: sem respostas > encerra logo com baixa adesão > resto
-    .sort((a, b) => {
-      const scoreA = urgencyScore(a);
-      const scoreB = urgencyScore(b);
-      return scoreB - scoreA;
-    });
+    .sort((a, b) => urgencyScore(b) - urgencyScore(a));
 
   const hasOpenSurveys = openSurveys.length > 0;
   const actionsSummary = kpis.actionsSummary || {};
+  const totalResponses = openSurveys.reduce((acc, s) => acc + s.responsesCount, 0);
+  const totalInvited = openSurveys.reduce((acc, s) => acc + s.totalInvited, 0);
+  const aggregateRate = totalInvited > 0 ? totalResponses / totalInvited : 0;
+  const membersCount = state.members?.length || kpis.population?.membersCount || totalInvited || 0;
+  const groupsCount = state.groups?.length || kpis.population?.groupsCount || 1;
+  const actionsTotal = actionsSummary.total || 0;
+  const earliestDeadline = openSurveys.reduce((min, s) =>
+    s.daysRemaining != null && (min === null || s.daysRemaining < min) ? s.daysRemaining : min, null);
 
-  // Histórico real (para gráficos)
+  // Histórico real para gráficos (apenas se houver relatórios ou fatores calculados)
   const partTrendList = Array.isArray(charts.participationTrend)
     ? charts.participationTrend
     : (charts.participationTrendData?.labels
@@ -52,7 +67,126 @@ export function renderToday({ state }) {
   const hasReports = (state.reports && state.reports.length > 0) || factorRankingList.length > 0;
 
   // ══════════════════════════════════════════════════════
-  // 1. Fila de pendências (full-width, só se houver itens)
+  // 1. Header de Boas-Vindas
+  // ══════════════════════════════════════════════════════
+  const welcomeHeaderHtml = `
+    <div class="today-welcome-header">
+      <div class="today-welcome-text">
+        <h1 class="today-welcome-greeting">${esc(greeting)}</h1>
+        <p class="today-welcome-sub">
+          ${esc(dateFormatted)} · Painel de acompanhamento e governança de saúde psicossocial
+        </p>
+      </div>
+      <div>
+        ${!isViewer ? `
+          <a href="#pesquisas/nova" class="btn btn-primary">
+            <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Pesquisa
+          </a>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  // ══════════════════════════════════════════════════════
+  // 2. Faixa Situacional de Status da Operação
+  // ══════════════════════════════════════════════════════
+  let statusStripHtml = '';
+  if (queue.length > 0) {
+    statusStripHtml = `
+      <div class="today-status-strip card-warning-edge mb-5">
+        <i class="fa-solid fa-circle-exclamation color-warning status-strip-icon" aria-hidden="true"></i>
+        <div class="status-strip-text">
+          <strong>Atenção necessária</strong>
+          <span>— ${queue.length} ${queue.length === 1 ? 'item requer sua intervenção' : 'itens requerem sua intervenção'} nas coletas ou planos de ação.</span>
+        </div>
+      </div>
+    `;
+  } else if (hasOpenSurveys) {
+    const noRespCount = openSurveys.filter(s => s.responsesCount === 0).length;
+    if (noRespCount > 0) {
+      statusStripHtml = `
+        <div class="today-status-strip mb-5">
+          <i class="fa-solid fa-paper-plane color-primary status-strip-icon" aria-hidden="true"></i>
+          <div class="status-strip-text">
+            <strong>Coletas em campo</strong>
+            <span>— ${openSurveys.length} pesquisas ativas. Dispare os convites para iniciar o retorno dos colaboradores.</span>
+          </div>
+        </div>
+      `;
+    } else {
+      statusStripHtml = `
+        <div class="today-status-strip mb-5">
+          <i class="fa-solid fa-circle-check color-success status-strip-icon" aria-hidden="true"></i>
+          <div class="status-strip-text">
+            <strong>Operação em andamento</strong>
+            <span>— Coletas ativas recebendo respostas normalmente nos setores da organização.</span>
+          </div>
+        </div>
+      `;
+    }
+  } else if (!isNewCompany) {
+    statusStripHtml = `
+      <div class="today-status-strip mb-5">
+        <i class="fa-solid fa-circle-check color-success status-strip-icon" aria-hidden="true"></i>
+        <div class="status-strip-text">
+          <strong>Tudo em dia</strong>
+          <span>— Nenhuma coleta em aberto no momento. Abra uma nova pesquisa quando desejar iniciar um ciclo.</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ══════════════════════════════════════════════════════
+  // 3. Três Cards de Visão Geral / Pulso da Organização
+  // ══════════════════════════════════════════════════════
+  const overviewCardsHtml = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="kpi-card">
+        <p class="kpi-title">Coletas em Campo</p>
+        <p class="kpi-val">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</p>
+        <p class="kpi-sub">
+          ${totalResponses} de ${totalInvited} respostas recebidas (${fmtPercent(aggregateRate)})
+        </p>
+        <div class="mt-2 pt-2 border-t border-border">
+          <span class="table-subtext text-xs">
+            <i class="fa-regular fa-clock mr-1" aria-hidden="true"></i>
+            ${earliestDeadline != null ? (earliestDeadline <= 0 ? 'Encerra hoje' : `${earliestDeadline}d restantes no ciclo`) : 'Prazo aberto'}
+          </span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <p class="kpi-title">Colaboradores no Ciclo</p>
+        <p class="kpi-val">${membersCount}</p>
+        <p class="kpi-sub">
+          Distribuídos em ${groupsCount} ${groupsCount === 1 ? 'setor ativo' : 'setores ativos'}
+        </p>
+        <div class="mt-2 pt-2 border-t border-border">
+          <a href="#organizacao/pessoas" class="table-subtext text-xs hover:color-primary">
+            Gerenciar colaboradores →
+          </a>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <p class="kpi-title">Planos de Ação (NR-1)</p>
+        <p class="kpi-val">${actionsTotal}</p>
+        <p class="kpi-sub">
+          ${actionsTotal > 0
+            ? `${actionsSummary.onTrack || 0} no prazo, ${actionsSummary.overdue || 0} em atraso`
+            : 'Aguardando consolidação do ciclo para definição de medidas'}
+        </p>
+        <div class="mt-2 pt-2 border-t border-border">
+          <a href="#acoes" class="table-subtext text-xs hover:color-primary">
+            Ver painel de ações →
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ══════════════════════════════════════════════════════
+  // 4. Fila de Decisões e Pendências Operacionais
   // ══════════════════════════════════════════════════════
   let queueHtml = '';
   if (queue.length > 0) {
@@ -60,7 +194,7 @@ export function renderToday({ state }) {
       <section class="mb-5" aria-labelledby="queue-heading">
         <div class="flex items-center gap-2 mb-3">
           <i class="fa-solid fa-bell color-primary" aria-hidden="true"></i>
-          <h2 id="queue-heading" class="font-semibold text-sm m-0">Atenção necessária (${queue.length})</h2>
+          <h2 id="queue-heading" class="font-semibold text-sm m-0">Ações que Exigem Atenção (${queue.length})</h2>
         </div>
         <div class="flex flex-col gap-3">
           ${queue.map(item => renderQueueItem(item, isViewer)).join('')}
@@ -70,16 +204,21 @@ export function renderToday({ state }) {
   }
 
   // ══════════════════════════════════════════════════════
-  // 2. Coluna principal — tabela de coletas
+  // 5. Coluna Principal: Coletas, Timeline e Diretrizes
   // ══════════════════════════════════════════════════════
   let mainHtml = '';
 
   if (hasOpenSurveys) {
     mainHtml = `
-      <div class="card">
-        <div class="card-header py-3 px-4 flex items-center gap-2">
-          <h2 class="card-title text-sm font-semibold m-0">Coletas em andamento</h2>
-          <span class="badge badge-primary">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</span>
+      <div class="card mb-6">
+        <div class="card-header py-3 px-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="card-title text-sm font-semibold m-0">Coletas em andamento</h2>
+            <span class="badge badge-primary">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</span>
+          </div>
+          <span class="table-subtext text-xs">
+            Acompanhe a adesão individual e os convites por grupo
+          </span>
         </div>
         <div class="card-body p-0">
           <div class="table-wrap table-borderless">
@@ -87,7 +226,7 @@ export function renderToday({ state }) {
               <thead>
                 <tr>
                   <th>Pesquisa</th>
-                  <th>Grupo</th>
+                  <th>Setor / Grupo</th>
                   <th>Prazo</th>
                   <th>Adesão</th>
                   <th class="text-right">Ação</th>
@@ -119,6 +258,7 @@ export function renderToday({ state }) {
                       </td>
                       <td>
                         <span class="${s.daysRemaining != null && s.daysRemaining <= 3 ? 'color-danger font-semibold' : 'color-text-secondary'} text-xs">
+                          <i class="fa-regular fa-clock mr-1" aria-hidden="true"></i>
                           ${s.daysRemaining != null
                             ? (s.daysRemaining <= 0 ? 'Encerra hoje' : `${s.daysRemaining}d restantes`)
                             : 'Prazo aberto'}
@@ -128,7 +268,7 @@ export function renderToday({ state }) {
                         <span class="font-semibold text-xs ${s.participationRate < 0.3 && s.totalInvited > 0 ? 'color-danger' : ''}">
                           ${fmtPercent(s.participationRate)}
                         </span>
-                        <span class="color-muted text-xs ml-1">${s.responsesCount}/${s.totalInvited}</span>
+                        <span class="color-muted text-xs ml-1">(${s.responsesCount} de ${s.totalInvited})</span>
                       </td>
                       <td class="text-right">
                         <a href="#pesquisas/${attr(s.id)}/distribuicao"
@@ -156,32 +296,137 @@ export function renderToday({ state }) {
           ` : ''}
         </div>
       </div>
+
+      <!-- Timeline do Ciclo de Governança -->
+      <div class="today-timeline-card mb-6">
+        <p class="today-timeline-title">
+          <i class="fa-solid fa-route color-primary" aria-hidden="true"></i>
+          Ciclo de Governança e Escuta Ativa
+        </p>
+        <div class="today-timeline-steps">
+          <div class="today-timeline-step today-timeline-step-done">
+            <div class="today-timeline-step-header">
+              <span class="today-timeline-step-name">1. Mapeamento</span>
+              <span class="today-timeline-badge today-timeline-badge-done">
+                <i class="fa-solid fa-check mr-1" aria-hidden="true"></i> Concluído
+              </span>
+            </div>
+            <p class="today-timeline-step-desc">
+              Colaboradores e setores da empresa organizados na base.
+            </p>
+          </div>
+
+          <div class="today-timeline-step today-timeline-step-active">
+            <div class="today-timeline-step-header">
+              <span class="today-timeline-step-name">2. Escuta Ativa</span>
+              <span class="today-timeline-badge today-timeline-badge-active">Fase Atual</span>
+            </div>
+            <p class="today-timeline-step-desc">
+              ${openSurveys.length} ${openSurveys.length === 1 ? 'pesquisa recebendo' : 'pesquisas recebendo'} respostas no ciclo vigente.
+            </p>
+          </div>
+
+          <div class="today-timeline-step">
+            <div class="today-timeline-step-header">
+              <span class="today-timeline-step-name">3. Diagnóstico</span>
+              <span class="today-timeline-badge today-timeline-badge-pending">Próxima Fase</span>
+            </div>
+            <p class="today-timeline-step-desc">
+              Consolidação estatística dos fatores de risco psicossocial.
+            </p>
+          </div>
+
+          <div class="today-timeline-step">
+            <div class="today-timeline-step-header">
+              <span class="today-timeline-step-name">4. Planos de Ação</span>
+              <span class="today-timeline-badge today-timeline-badge-pending">Contínuo</span>
+            </div>
+            <p class="today-timeline-step-desc">
+              Medidas preventivas registradas e acompanhadas no PGR.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diretrizes Operacionais & Recursos Úteis para o RH -->
+      <div class="today-resources-grid">
+        <div class="today-resource-card">
+          <div class="today-resource-icon">
+            <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+          </div>
+          <div class="today-resource-content">
+            <h3 class="today-resource-title">Garantia de Sigilo & Quórum Seguro</h3>
+            <p class="today-resource-desc">
+              As respostas individuais dos colaboradores são estritamente confidenciais. Médias por setor só são consolidadas quando o quórum amostral mínimo é atingido.
+            </p>
+          </div>
+        </div>
+
+        <div class="today-resource-card">
+          <div class="today-resource-icon">
+            <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
+          </div>
+          <div class="today-resource-content">
+            <h3 class="today-resource-title">Metodologia Científica & NR-1</h3>
+            <p class="today-resource-desc">
+              Instrumentos validados como a Escala Edmondson e protocolos de prevenção ao assédio (Lei 14.457/22) estruturados para integração contínua com o PGR.
+            </p>
+          </div>
+        </div>
+      </div>
     `;
   } else if (isNewCompany) {
     mainHtml = renderOnboarding();
   } else {
     mainHtml = `
-      <div class="card">
+      <div class="card mb-6">
         <div class="today-empty-cta">
           <div class="today-empty-cta-icon">
             <i class="fa-regular fa-clipboard" aria-hidden="true"></i>
           </div>
           <div>
             <p class="font-semibold text-sm m-0">Nenhuma coleta em andamento</p>
-            <p class="color-text-secondary text-xs mt-1 mb-0">Abra uma nova pesquisa para iniciar a escuta com seus colaboradores.</p>
+            <p class="color-text-secondary text-xs mt-1 mb-0">Abra uma nova pesquisa para iniciar a escuta periódica com seus colaboradores.</p>
           </div>
           ${!isViewer ? `
             <a href="#pesquisas/nova" class="btn btn-primary btn-sm">
-              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Pesquisa
+              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Criar Pesquisa
             </a>
           ` : ''}
+        </div>
+      </div>
+
+      <!-- Diretrizes Operacionais -->
+      <div class="today-resources-grid">
+        <div class="today-resource-card">
+          <div class="today-resource-icon">
+            <i class="fa-solid fa-users-gear" aria-hidden="true"></i>
+          </div>
+          <div class="today-resource-content">
+            <h3 class="today-resource-title">Cadastro da Organização</h3>
+            <p class="today-resource-desc">
+              Mantenha seus setores e colaboradores atualizados para que os convites cheguem com segurança aos canais corretos.
+            </p>
+          </div>
+        </div>
+
+        <div class="today-resource-card">
+          <div class="today-resource-icon">
+            <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+          </div>
+          <div class="today-resource-content">
+            <h3 class="today-resource-title">Conformidade e Governança</h3>
+            <p class="today-resource-desc">
+              Cada ciclo de escuta concluído gera evidências auditáveis para comprovação de gestão ativa de riscos psicossociais.
+            </p>
+          </div>
         </div>
       </div>
     `;
   }
 
   // ══════════════════════════════════════════════════════
-  // 3. Sidebar — Situação atual (sinal computado, não contador)
+  // 6. Coluna Lateral (Sidebar): Diagnóstico + Ações Rápidas
   // ══════════════════════════════════════════════════════
   let situacaoCard = '';
   if (hasOpenSurveys) {
@@ -189,7 +434,7 @@ export function renderToday({ state }) {
     const closingSoonLow = openSurveys.filter(s =>
       s.daysRemaining != null && s.daysRemaining <= 7 && s.participationRate < 0.5 && s.responsesCount > 0
     );
-    const mostUrgent = openSurveys[0]; // já ordenado por urgência
+    const mostUrgent = openSurveys[0];
 
     if (noResponseSurveys.length > 0) {
       const count = noResponseSurveys.length;
@@ -255,7 +500,6 @@ export function renderToday({ state }) {
         </div>
       `;
     } else {
-      // Coletas ok — só link de acesso rápido, sem bloco de dados inúteis
       situacaoCard = `
         <div class="today-sidebar-card">
           <p class="today-sidebar-card-title">Situação das coletas</p>
@@ -277,62 +521,76 @@ export function renderToday({ state }) {
     }
   }
 
-  // ══════════════════════════════════════════════════════
-  // 4. Sidebar — Planos de ação (só se houver ações reais e relevantes)
-  // ══════════════════════════════════════════════════════
-  let actionsCard = '';
-  const overdueCount = actionsSummary.overdue || 0;
-  const reviewCount  = actionsSummary.needsReview || 0;
-  const onTrackCount = actionsSummary.onTrack || 0;
+  // Card de Ações Rápidas (Atalhos Operacionais Úteis)
+  const quickActionsCard = `
+    <div class="today-sidebar-card">
+      <p class="today-sidebar-card-title">Ações Rápidas</p>
+      ${hasOpenSurveys ? `
+        <button type="button"
+                class="today-quick-action-btn"
+                data-action="copy-survey-url"
+                data-url="${attr(`${window.location.origin}/responder/${openSurveys[0].id}`)}">
+          <i class="fa-regular fa-copy tqa-icon" aria-hidden="true"></i>
+          Copiar link de resposta
+        </button>
+        <a href="#pesquisas/${attr(openSurveys[0].id)}/distribuicao" class="today-quick-action-btn">
+          <i class="fa-solid fa-paper-plane tqa-icon" aria-hidden="true"></i>
+          Disparar convites por e-mail
+        </a>
+      ` : ''}
+      <a href="#organizacao/pessoas" class="today-quick-action-btn">
+        <i class="fa-solid fa-users tqa-icon" aria-hidden="true"></i>
+        Colaboradores e Setores
+      </a>
+      <a href="#pesquisas/nova" class="today-quick-action-btn">
+        <i class="fa-solid fa-plus-circle tqa-icon" aria-hidden="true"></i>
+        Nova Pesquisa de Clima
+      </a>
+    </div>
+  `;
 
-  if (overdueCount > 0 || reviewCount > 0) {
-    // Há algo que requer atenção — vale mostrar
-    actionsCard = `
-      <div class="today-sidebar-card ${overdueCount > 0 ? 'today-sidebar-card-alert' : 'today-sidebar-card-warn'}">
-        <p class="today-sidebar-card-title">Planos de ação</p>
-        ${overdueCount > 0 ? `
-          <p class="text-sm font-semibold mb-1">
-            ${overdueCount} plano${overdueCount > 1 ? 's' : ''} em atraso.
-          </p>
-          <p class="color-text-secondary text-xs mb-3">Revise o status e atualize o prazo ou a responsabilidade.</p>
-        ` : `
-          <p class="text-sm font-semibold mb-1">
-            ${reviewCount} plano${reviewCount > 1 ? 's' : ''} aguardando revisão.
-          </p>
-          <p class="color-text-secondary text-xs mb-3">Avalie a eficácia das ações implementadas.</p>
-        `}
-        <a href="#acoes" class="btn btn-secondary btn-sm">Ver planos de ação →</a>
+  // Card de Resumo do Ciclo & Próximos Passos
+  const cycleSummaryCard = `
+    <div class="today-sidebar-card">
+      <p class="today-sidebar-card-title">Ciclo Vigente</p>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Período</span>
+        <span class="today-sidebar-row-value">Novembro / 2026</span>
       </div>
-    `;
-  } else if (onTrackCount > 0) {
-    // Tudo ok mas há ações — mostrar de forma discreta
-    actionsCard = `
-      <div class="today-sidebar-card">
-        <p class="today-sidebar-card-title">Planos de ação</p>
-        <div class="flex items-center gap-2 mb-2">
-          <i class="fa-solid fa-circle-check color-success" aria-hidden="true"></i>
-          <span class="text-sm">${onTrackCount} plano${onTrackCount > 1 ? 's' : ''} no prazo.</span>
-        </div>
-        <a href="#acoes" class="btn btn-ghost btn-sm text-xs">Ver planos →</a>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Coletas abertas</span>
+        <span class="today-sidebar-row-value">${openSurveys.length}</span>
       </div>
-    `;
-  }
-  // Se não há nenhum plano de ação: não mostrar nada. Silêncio é informação.
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Prazo restante</span>
+        <span class="today-sidebar-row-value ${earliestDeadline != null && earliestDeadline <= 3 ? 'color-danger' : ''}">
+          ${earliestDeadline != null ? (earliestDeadline <= 0 ? 'Encerra hoje' : `${earliestDeadline} dias`) : 'Aberto'}
+        </span>
+      </div>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Próxima entrega</span>
+        <span class="today-sidebar-row-value color-primary">Diagnóstico</span>
+      </div>
+    </div>
+  `;
+
+  const sidebarHtml = `
+    <aside class="today-sidebar">
+      ${situacaoCard}
+      ${quickActionsCard}
+      ${cycleSummaryCard}
+    </aside>
+  `;
+
+  const layoutHtml = `
+    <div class="today-layout">
+      <div class="today-main">${mainHtml}</div>
+      ${sidebarHtml}
+    </div>
+  `;
 
   // ══════════════════════════════════════════════════════
-  // 5. Monta sidebar e layout
-  // ══════════════════════════════════════════════════════
-  const hasSidebar = !!(situacaoCard || actionsCard);
-  const sidebarHtml = hasSidebar
-    ? `<aside class="today-sidebar">${situacaoCard}${actionsCard}</aside>`
-    : '';
-
-  const layoutHtml = hasSidebar
-    ? `<div class="today-layout"><div class="today-main">${mainHtml}</div>${sidebarHtml}</div>`
-    : mainHtml;
-
-  // ══════════════════════════════════════════════════════
-  // 6. Gráficos (full-width, só com histórico real)
+  // 7. Gráficos Históricos (apenas se houver dados reais)
   // ══════════════════════════════════════════════════════
   let chartsHtml = '';
   if (hasReports) {
@@ -406,18 +664,9 @@ export function renderToday({ state }) {
 
   const content = `
     <div class="today-page">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="view-title">Hoje</h1>
-          <p class="view-subtitle">${esc(dateFormatted)}</p>
-        </div>
-        ${!isViewer ? `
-          <a href="#pesquisas/nova" class="btn btn-primary">
-            <i class="fa-solid fa-plus" aria-hidden="true"></i> Nova Pesquisa
-          </a>
-        ` : ''}
-      </div>
-
+      ${welcomeHeaderHtml}
+      ${statusStripHtml}
+      ${overviewCardsHtml}
       ${queueHtml}
       ${layoutHtml}
       ${chartsHtml}
@@ -432,17 +681,10 @@ export function renderToday({ state }) {
   });
 }
 
-/**
- * Calcula pontuação de urgência para ordenar a tabela.
- * Mais urgente = pontuação maior.
- */
 function urgencyScore(s) {
   let score = 0;
-  // Sem nenhuma resposta = mais urgente
   if (s.responsesCount === 0) score += 100;
-  // Encerra em breve com baixa adesão
   if (s.daysRemaining != null && s.daysRemaining <= 7) score += (7 - s.daysRemaining) * 5;
-  // Participação muito baixa
   if (s.participationRate < 0.3) score += 30;
   else if (s.participationRate < 0.5) score += 15;
   return score;
@@ -453,12 +695,12 @@ function renderOnboarding() {
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fa-solid fa-compass color-primary" aria-hidden="true"></i> Primeiros passos
+          <i class="fa-solid fa-compass color-primary" aria-hidden="true"></i> Primeiros passos no Equilibra
         </h2>
       </div>
       <div class="card-body">
         <p class="color-text-secondary text-sm mb-4">
-          Complete as etapas abaixo para conduzir a primeira pesquisa com seus colaboradores:
+          Complete as etapas abaixo para conduzir a primeira pesquisa de saúde psicossocial com seus colaboradores:
         </p>
         <div class="grid grid-cols-4 gap-4">
           <div class="card p-4">
@@ -468,17 +710,17 @@ function renderOnboarding() {
           </div>
           <div class="card p-4">
             <strong class="text-sm">2. Grupos</strong>
-            <p class="color-text-secondary text-xs my-2">Setores ou áreas da empresa.</p>
+            <p class="color-text-secondary text-xs my-2">Defina os setores ou áreas da empresa.</p>
             <a href="#organizacao/grupos" class="btn btn-secondary btn-sm">Criar grupos</a>
           </div>
           <div class="card p-4">
             <strong class="text-sm">3. Pesquisa</strong>
-            <p class="color-text-secondary text-xs my-2">Escolha o modelo de questionário.</p>
+            <p class="color-text-secondary text-xs my-2">Escolha o modelo de questionário validado.</p>
             <a href="#pesquisas/nova" class="btn btn-secondary btn-sm">Nova pesquisa</a>
           </div>
           <div class="card p-4">
             <strong class="text-sm">4. Resultados</strong>
-            <p class="color-text-secondary text-xs my-2">Relatórios e planos de ação.</p>
+            <p class="color-text-secondary text-xs my-2">Relatórios consolidados e planos de ação.</p>
             <span class="badge badge-neutral">Aguardando</span>
           </div>
         </div>
