@@ -4509,3 +4509,59 @@ button.tab-link.active {
   color: var(--color-border);
   line-height: 1;
 }
+
+/* ====================================================
+   TODAY — Sinais de urgência e variantes de sidebar card
+   ==================================================== */
+
+/* Linha urgente na tabela */
+.today-row-urgent td:first-child {
+  border-left: 3px solid var(--color-danger);
+  padding-left: calc(var(--space-3, 12px) - 3px);
+}
+
+/* Rótulo inline de sinal (sem resposta, adesão baixa) */
+.today-row-signal {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-danger);
+  background: var(--color-danger-bg, hsl(0 85% 97%));
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.01em;
+}
+
+.today-row-signal-warn {
+  color: var(--color-warning, #b45309);
+  background: var(--color-warning-bg, hsl(40 90% 96%));
+}
+
+/* Sidebar card com sinal de alerta (vermelho sutil) */
+.today-sidebar-card-alert {
+  border-color: var(--color-danger-border, hsl(0 70% 88%));
+  background: var(--color-danger-bg, hsl(0 85% 97%));
+}
+
+.today-sidebar-card-alert .today-sidebar-card-title {
+  color: var(--color-danger);
+}
+
+/* Sidebar card com aviso (amarelo sutil) */
+.today-sidebar-card-warn {
+  border-color: var(--color-warning-border, hsl(40 70% 85%));
+  background: var(--color-warning-bg, hsl(40 90% 96%));
+}
+
+.today-sidebar-card-warn .today-sidebar-card-title {
+  color: var(--color-warning, #b45309);
+}
+
+/* Botão full-width para CTAs primários dentro da sidebar */
+.today-sidebar-card .btn.w-full {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
