@@ -4365,3 +4365,147 @@ button.tab-link.active {
   padding: 4px 10px;
   font-size: 0.75rem;
 }
+
+/* ====================================================
+   TODAY — Layout duas colunas principal + sidebar
+   ==================================================== */
+
+.today-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+.today-main {
+  min-width: 0;
+}
+
+.today-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .today-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sidebar cards compactos */
+.today-sidebar-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.today-sidebar-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.today-sidebar-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.today-sidebar-stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.today-sidebar-stat-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.today-sidebar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+}
+
+.today-sidebar-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.today-sidebar-row-label {
+  color: var(--color-text-secondary);
+}
+
+.today-sidebar-row-value {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.today-quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+  margin-bottom: 6px;
+}
+
+.today-quick-action-btn:last-child {
+  margin-bottom: 0;
+}
+
+.today-quick-action-btn:hover {
+  background: var(--color-surface-hover, var(--color-bg-subtle));
+  text-decoration: none;
+}
+
+.today-quick-action-btn .tqa-icon {
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.today-actions-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Estado vazio elegante para toda a view */
+.today-empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 12px;
+}
+
+.today-empty-cta-icon {
+  font-size: 2rem;
+  color: var(--color-border);
+  line-height: 1;
+}
