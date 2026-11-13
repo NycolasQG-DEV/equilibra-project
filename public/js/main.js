@@ -93,9 +93,11 @@ import {
 import {
   renderActionsList,
   openAddActionModal,
-  submitAddAction
+  submitAddAction,
+  openEditActionModal,
+  submitEditAction
 } from './features/actions/actionsView.js';
-import { renderSettings, openInviteUserModal, openInviteSuccessModal } from './features/settings/settingsView.js';
+import { renderSettings, openInviteUserModal, openInviteSuccessModal, submitChangePassword } from './features/settings/settingsView.js';
 import { renderRespondent } from './features/respond/respondView.js';
 
 // Setup Auth Failure handler
@@ -334,6 +336,8 @@ document.addEventListener('click', async (e) => {
     selectAllTeamMembers();
   } else if (action === 'clear-all-team-members') {
     clearAllTeamMembers();
+  } else if (action === 'toggle-team-member') {
+    // Checkbox toggled; counter is handled in team modal events
   } else if (action === 'open-add-member-modal') {
     openAddMemberModal();
   } else if (action === 'submit-add-member') {
@@ -400,6 +404,10 @@ document.addEventListener('click', async (e) => {
     openAddActionModal();
   } else if (action === 'submit-add-action') {
     await submitAddAction();
+  } else if (action === 'edit-action') {
+    openEditActionModal(trigger.dataset.id);
+  } else if (action === 'submit-edit-action') {
+    await submitEditAction(trigger.dataset.id);
   } else if (action === 'quick-add-solution') {
     e.preventDefault();
     if (trigger.disabled) return;
@@ -663,6 +671,8 @@ document.addEventListener('click', async (e) => {
     } catch (err) {
       showToast(err.message || 'Erro ao atualizar dados.', 'error');
     }
+  } else if (action === 'submit-change-password') {
+    await submitChangePassword();
   } else if (action === 'open-delete-account-modal') {
     if (deleteAccountCountdownTimer) {
       clearInterval(deleteAccountCountdownTimer);

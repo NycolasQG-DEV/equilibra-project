@@ -5,6 +5,9 @@ import { esc, attr } from '../../domain/formatters.js';
 import { roleLabels } from '../../domain/labels.js';
 import { store } from '../../core/store.js';
 import { field } from '../../ui/fields.js';
+import { post } from '../../core/api.js';
+import { showToast } from '../../ui/toast.js';
+import { router } from '../../core/router.js';
 
 const ROLE_BADGE = {
   owner: 'badge-primary',
@@ -415,4 +418,40 @@ export function openInviteSuccessModal({ email, role, token }) {
   import('../../ui/dialog.js').then(({ openDialog }) => {
     openDialog({ title: 'Link de Convite Criado', content, footer });
   });
+}
+
+export async function submitChangePassword() {
+  const form = document.getElementById('change-password-form');
+  if (!form) return;
+
+  const currentPassword = form.currentPassword?.value || '';
+  const newPassword = form.newPassword?.value || '';
+
+  if (!currentPassword) {
+    showToast('Informe a senha atual.', 'error');
+    form.currentPassword?.focus();
+    return;
+  }
+  if (!newPassword || newPassword.length < 10) {
+    showToast('A nova senha deve ter no mínimo 10 caracteres.', 'error');
+    form.newPassword?.focus();
+    return;
+  }
+
+  try {
+    await post('/management/account/password', {
+      currentPassword,
+      password: newPassword
+    });
+    form.reset();
+    showToast('Senha atualizada com sucesso! Faça login novamente com a nova senha.', 'success');
+    setTimeout(() => {
+      post('/auth/logout', {}).finally(() => {
+        store.logout();
+        router.navigate('login');
+      });
+    }, 1500);
+  } catch (err) {
+    showToast(err.message || 'Erro ao atualizar senha.', 'error');
+  }
 }
