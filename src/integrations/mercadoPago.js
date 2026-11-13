@@ -33,12 +33,10 @@ function plans() {
     value.some(
       (plan) =>
         !Number.isInteger(plan.groups) ||
-        plan.groups < 1 ||
-        !Number.isInteger(plan.aiMonthly) ||
-        plan.aiMonthly < 0,
+        plan.groups < 1,
     )
   )
-    throw new DomainError("Limites de grupos e IA inválidos.", 503);
+    throw new DomainError("Limites de grupos inválidos.", 503);
   return value.map(
     ({
       id,
@@ -48,7 +46,6 @@ function plans() {
       groups,
       users,
       organizations,
-      aiMonthly,
     }) => ({
       id,
       name,
@@ -57,7 +54,6 @@ function plans() {
       groups,
       users,
       organizations,
-      aiMonthly,
     }),
   );
 }

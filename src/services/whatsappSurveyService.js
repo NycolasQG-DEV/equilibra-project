@@ -16,7 +16,6 @@
  */
 
 const gateway = require('./whatsappGateway');
-const engine = require('./whatsappConversationEngine');
 const { decryptPhone } = require('../config/identityCrypto');
 const { surveyInstrument } = require('../domain/instruments');
 
@@ -86,52 +85,11 @@ async function dispatchSurveyViaWhatsApp(survey, links, customTemplate = null) {
 
 /**
  * Processa mensagens recebidas pelo WhatsApp.
- * Se houver sessão iniciada no engine (ex: testes de regressão), conduz o fluxo.
- * Caso contrário (padrão de produção), responde orientando a utilizar o link web seguro.
+ * Responde educadamente orientando a responder via link web seguro enviado.
  *
- * @param {string} waId  - remoteJid do WhatsApp
- * @param {string} text  - texto da mensagem recebida
- * @param {Function} [submitAnswers] - função para submeter respostas
- * @param {string} [resolvedPn] - número de telefone real caso waId seja um @lid
  * @returns {Promise<{ reply: string, bubbles: string[], submitted: boolean }>}
  */
-async function handleIncomingMessage(waId, text, submitAnswers = null, resolvedPn = null) {
-  if (engine.hasSession(waId) || (resolvedPn && engine.hasSession(resolvedPn))) {
-    let result = await engine.processMessage(waId, text);
-    if (result.state === 'NO_SESSION' && typeof resolvedPn === 'string' && resolvedPn.length > 0) {
-      const pnResult = await engine.processMessage(resolvedPn, text);
-      if (pnResult.state !== 'NO_SESSION') {
-        result = pnResult;
-        engine.addSessionAlias(resolvedPn, waId);
-      }
-    }
-
-    let submitted = false;
-    if (result.done && result.token && result.answers && typeof submitAnswers === 'function') {
-      try {
-        await submitAnswers({
-          token: result.token,
-          answers: result.answers,
-          segmentId: result.segmentId
-        });
-        submitted = true;
-      } catch (err) {
-        console.error('[WA-SUBMIT] Erro ao submeter respostas:', err.message);
-        return {
-          reply: '✅ Pesquisa finalizada. Obrigado! pela participação!',
-          bubbles: ['✅ Pesquisa finalizada. Obrigado! pela participação!'],
-          submitted: false
-        };
-      }
-    }
-
-    return {
-      reply: result.reply,
-      bubbles: result.bubbles || (Array.isArray(result.reply) ? result.reply : (result.reply ? [result.reply] : [])),
-      submitted
-    };
-  }
-
+async function handleIncomingMessage() {
   const infoReply = 
     'Olá! Este canal é utilizado exclusivamente para o envio de convites de pesquisas.\n\n' +
     'Para responder à pesquisa de forma segura e com anonimato garantido, por favor acesse o link enviado na mensagem anterior. Muito obrigado pela sua participação!';

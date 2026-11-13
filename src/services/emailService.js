@@ -1,3 +1,5 @@
+const path = require('node:path');
+const fs = require('node:fs');
 const nodemailer = require('nodemailer');
 
 /**
@@ -5,12 +7,21 @@ const nodemailer = require('nodemailer');
  * Se nenhuma configuração SMTP estiver presente, opera em modo log/dry-run.
  */
 function getTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    const envPath = path.join(__dirname, '..', '..', '.env');
+    if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      try {
+        process.loadEnvFile(envPath);
+      } catch {}
+    }
+  }
 
-  if (host && user) {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
+  const pass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : undefined;
+
+  if (user && pass) {
     return nodemailer.createTransport({
       host,
       port,
@@ -31,7 +42,6 @@ function getTransporter() {
  */
 function isTestEmailOrEnv(email) {
   if (
-    process.env.NODE_ENV === 'test' ||
     process.execArgv.includes('--test') ||
     process.argv.some((arg) => typeof arg === 'string' && (arg.endsWith('.test.js') || arg.includes('test')))
   ) {
@@ -49,11 +59,7 @@ function isTestEmailOrEnv(email) {
   const reservedDomains = [
     'example.com',
     'example.org',
-    'example.net',
-    'exemplo.com',
-    'exemplo.com.br',
-    'empresa.com',
-    'empresahoje.com'
+    'example.net'
   ];
   if (reservedDomains.includes(domain)) return true;
 
@@ -61,8 +67,7 @@ function isTestEmailOrEnv(email) {
 }
 
 /**
- * Dispara e-mail com link individual de pesquisa para um colaborador.
- * Suporta Resend (API Key gratuita) ou SMTP (Gmail gratuito ou corporativo).
+ * Dispara e-mail com link individual de pesquisa para um colaborador via Google SMTP.
  * 
  * @param {Object} params
  * @param {string} params.to E-mail de destino
@@ -77,7 +82,7 @@ async function sendInviteEmail({ to, name, surveyTitle, link, cycle }) {
     return { ok: false, error: 'E-mail inválido ou ausente' };
   }
 
-  const from = process.env.SMTP_FROM || process.env.RESEND_FROM || 'Equilibra <onboarding@resend.dev>';
+  const from = process.env.SMTP_FROM || (process.env.SMTP_USER ? `Equilibra <${process.env.SMTP_USER}>` : 'Equilibra <nao-responder@equilibra.app>');
   const subject = `Convite para Pesquisa: ${surveyTitle || 'Condições de Trabalho'}`;
 
   // Se o e-mail for de teste/fictício ou se estivermos executando suíte de testes, não envia ao SMTP real
@@ -126,58 +131,28 @@ async function sendInviteEmail({ to, name, surveyTitle, link, cycle }) {
 
   const text = `Olá, ${name || 'colaborador(a)'}!\n\nVocê foi convidado(a) a participar da pesquisa: ${surveyTitle}.\n\nPara responder, acesse o link abaixo:\n${link}\n\nSuas respostas são analisadas de forma coletiva.`;
 
-  // 1. Prioridade: Resend API (HTTP Fetch nativo, gratuito, rápido e sem bloqueio de porta)
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey) {
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from,
-          to: [to],
-          subject,
-          html,
-          text
-        })
-      });
-
-      const resData = await response.json();
-      if (!response.ok) {
-        console.error(`[RESEND-ERROR] Falha ao enviar para ${to}:`, resData);
-        return { ok: false, error: resData.message || 'Falha no envio via Resend' };
-      }
-      return { ok: true, messageId: resData.id };
-    } catch (err) {
-      console.error(`[RESEND-EXCEPTION] Falha na requisição para ${to}:`, err.message);
-      return { ok: false, error: err.message };
-    }
-  }
-
-  // 2. Segunda opção: SMTP via Nodemailer (ex: Gmail gratuito com senha de app)
+  // Envio via SMTP (Google Workspace / Gmail com senha de app)
   const transporter = getTransporter();
-  if (transporter) {
-    try {
-      const info = await transporter.sendMail({
-        from: process.env.SMTP_FROM || from,
-        to,
-        subject,
-        text,
-        html
-      });
-      return { ok: true, messageId: info.messageId };
-    } catch (err) {
-      console.error(`[SMTP-ERROR] Falha ao enviar para ${to}:`, err.message);
-      return { ok: false, error: err.message };
-    }
+  if (!transporter) {
+    const msg = 'Servidor SMTP não configurado. Verifique SMTP_USER e SMTP_PASS no .env e reinicie o servidor.';
+    console.error(`[SMTP-ERROR] ${msg}`);
+    return { ok: false, error: msg };
   }
 
-  // 3. Fallback: Modo Simulação (Dry-Run)
-  console.log(`[EMAIL-DRYRUN] Para: ${to} | Assunto: ${subject} | Link: ${link}`);
-  return { ok: true, dryRun: true };
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html
+    });
+    console.log(`[SMTP-SUCCESS] E-mail enviado para ${to} (ID: ${info.messageId})`);
+    return { ok: true, messageId: info.messageId };
+  } catch (err) {
+    console.error(`[SMTP-ERROR] Falha ao enviar para ${to}:`, err.message);
+    return { ok: false, error: err.message };
+  }
 }
 
 /**
@@ -191,6 +166,7 @@ async function dispatchSurveyViaEmail(survey, links = []) {
   let dispatched = 0;
   let skipped = 0;
   let errors = 0;
+  let lastError = null;
 
   for (const item of links) {
     if (!item.email || !item.email.trim()) {
@@ -211,13 +187,15 @@ async function dispatchSurveyViaEmail(survey, links = []) {
         dispatched++;
       } else {
         errors++;
+        if (res.error) lastError = res.error;
       }
-    } catch {
+    } catch (err) {
       errors++;
+      lastError = err.message;
     }
   }
 
-  return { dispatched, skipped, errors };
+  return { dispatched, skipped, errors, error: lastError };
 }
 
 module.exports = {

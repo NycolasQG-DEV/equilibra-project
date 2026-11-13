@@ -909,9 +909,14 @@ router.post('/surveys/:id/dispatch-email', protectedRoute, async (req, res) => {
   write('invitations', allInvitations);
 
   const result = await dispatchSurveyViaEmail(survey, links);
-  const userMessage = result.dispatched === 0 && result.skipped > 0
-    ? `Nenhum e-mail enviado: ${result.skipped} colaboradores selecionados não possuem e-mail cadastrado. Atualize o cadastro em Pessoas.`
-    : `Envio concluído: ${result.dispatched} convites enviados por e-mail, ${result.skipped} ignorados (sem e-mail cadastrado), ${result.errors} falhas.`;
+  let userMessage;
+  if (result.dispatched === 0 && result.skipped > 0 && result.errors === 0) {
+    userMessage = `Nenhum e-mail enviado: ${result.skipped} colaboradores selecionados não possuem e-mail cadastrado. Atualize o cadastro em Pessoas.`;
+  } else if (result.dispatched === 0 && result.errors > 0) {
+    userMessage = `Falha no envio de e-mails: ${result.error || 'Erro desconhecido'}.`;
+  } else {
+    userMessage = `Envio concluído: ${result.dispatched} convites enviados por e-mail, ${result.skipped} ignorados (sem e-mail cadastrado), ${result.errors} falhas.`;
+  }
 
   res.json({
     ok: result.dispatched > 0,

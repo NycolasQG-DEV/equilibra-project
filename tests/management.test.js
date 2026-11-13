@@ -16,7 +16,6 @@ process.env.BILLING_ENFORCE = "false";
 process.env.BILLING_PLANS_JSON = "";
 const app = require("../src/server");
 const storage = require("../src/config/equilibraStorage");
-const ai = require("../src/integrations/ai");
 const { nextMonth, tick } = require("../src/services/scheduler");
 const { compareReports } = require("../src/domain/analysis");
 
@@ -418,52 +417,6 @@ test("jornada de avaliação, ação, evidência, eficácia, equipe e isolamento
         .status,
       401,
     );
-    let sent;
-    ai.registerProvider("test", () => ({
-      generate: async (messages) => {
-        sent = JSON.stringify(messages);
-        return "Hipótese a investigar. Revisão humana necessária.";
-      },
-    }));
-    process.env.AI_PROVIDER = "test";
-    assert.equal(
-      (
-        await call(
-          "/management/assistant",
-          "POST",
-          { reportId: baseline.id, question: "Como agir?" },
-          cookie,
-        )
-      ).status,
-      400,
-    );
-    const answer = await call(
-      "/management/assistant",
-      "POST",
-      { reportId: baseline.id, question: "Como agir?", allowExternal: true },
-      cookie,
-    );
-    assert.equal(answer.status, 200);
-    assert.equal(answer.body.humanReviewRequired, true);
-    assert.equal(sent.includes("Pessoa 0"), false);
-    assert.equal(sent.includes(group.id), false);
-    assert.equal(sent.includes("qa@local.test"), false);
-    assert.equal(
-      (
-        await call(
-          "/management/assistant",
-          "POST",
-          {
-            reportId: baseline.id,
-            question: "Novamente?",
-            allowExternal: true,
-          },
-          cookie,
-        )
-      ).status,
-      429,
-    );
-    delete process.env.AI_PROVIDER;
     const schedule = await call(
       "/management/schedules",
       "POST",
@@ -504,8 +457,6 @@ test("jornada de avaliação, ação, evidência, eficácia, equipe e isolamento
       await call("/management/billing", "GET", undefined, cookie)
     ).body;
     assert.equal(billing.mode, "test");
-    assert.equal(billing.plans[0].aiMonthly, 0);
-    assert.ok(billing.plans[1].aiMonthly > 0);
     assert.equal(
       (
         await call(
@@ -560,52 +511,7 @@ test("assinatura de webhook: HMAC, divergência e replay expirado", () => {
   delete process.env.MERCADOPAGO_WEBHOOK_SECRET;
 });
 
-test("proposta de IA estruturada, sem aprovação ou efeitos automáticos", async () => {
-  const { explain } = require("../src/services/assistantService");
-  const previous = process.env.AI_PROVIDER;
-  process.env.AI_PROVIDER = "structured-test";
-  const report = {
-    id: "report",
-    published: true,
-    responseCount: 10,
-    result: [{ key: "demandas", label: "Demandas", average: 2 }],
-  };
-  ai.registerProvider("structured-test", () => ({
-    generate: async () =>
-      JSON.stringify({
-        title: "Revisar prioridades",
-        description: "Revisar capacidade e distribuição de tarefas.",
-        successCriteria: "Acompanhar volume e pausas.",
-        rationale: "Investigar condições antes de aprovar.",
-      }),
-  }));
-  try {
-    const result = await explain("structured-account", report, {
-      question: "Proponha uma medida",
-      mode: "action",
-      allowExternal: true,
-    });
-    assert.equal(result.suggestion.title, "Revisar prioridades");
-    assert.equal(result.humanReviewRequired, true);
-    assert.equal(result.suggestion.owner, undefined);
-    ai.registerProvider("invalid-test", () => ({
-      generate: async () => "texto inválido",
-    }));
-    process.env.AI_PROVIDER = "invalid-test";
-    await assert.rejects(
-      explain("invalid-account", report, {
-        question: "Proponha uma medida",
-        mode: "action",
-        allowExternal: true,
-      }),
-      /formato inválido/,
-    );
-  } finally {
-    process.env.AI_PROVIDER = previous || "groq";
-  }
-});
-
-test("limites de pessoas, grupos, usuários e IA são aplicados no servidor", () => {
+test("limites de pessoas, grupos e usuários são aplicados no servidor", () => {
   const limits = require("../src/services/entitlementService");
   process.env.LOCAL_PLAN = "essencial";
   storage.writeMany({
@@ -629,15 +535,6 @@ test("limites de pessoas, grupos, usuários e IA são aplicados no servidor", ()
     assert.throws(() => limits.limit("limited", "members"), /50 pessoas/);
     assert.throws(() => limits.limit("limited", "groups"), /3 grupos/);
     assert.throws(() => limits.checkUserLimit("limited"), /2 usuários/);
-    assert.throws(
-      () =>
-        limits.check({
-          method: "POST",
-          path: "/assistant",
-          account: { id: "limited" },
-        }),
-      /Popular/,
-    );
     process.env.BILLING_ENFORCE = "true";
     assert.throws(
       () =>

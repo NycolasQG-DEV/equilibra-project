@@ -9,7 +9,6 @@ function empty(accountId) {
     audit: [],
     invitations: [],
     schedules: [],
-    aiHistory: [],
     subscriptions: [],
     recovery: [],
   };

@@ -8,7 +8,6 @@ module.exports = [
     groups: 3,
     users: 2,
     organizations: 1,
-    aiMonthly: 0,
   },
   {
     id: "popular",
@@ -18,7 +17,6 @@ module.exports = [
     groups: 12,
     users: 5,
     organizations: 1,
-    aiMonthly: 50,
   },
   {
     id: "avancado",
@@ -28,6 +26,5 @@ module.exports = [
     groups: 40,
     users: 12,
     organizations: 1,
-    aiMonthly: 200,
   },
 ];

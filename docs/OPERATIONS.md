@@ -129,22 +129,5 @@ O serviço `src/services/reportExportService.js` disponibiliza o relatório téc
 - Configurável entre 1 e 60 meses pelo painel de Configurações (`/management/retention`).
 - A purga remove dados brutos de respostas e convites de pesquisas encerradas cujo período de retenção tenha expirado, **preservando integralmente** os relatórios consolidados, avaliações de risco e planos de ação.
 
----
-
-## 6. Provedor de Inteligência Artificial (Groq)
-
-O módulo `src/integrations/ai` utiliza a API do **Groq** para geração de hipóteses e medidas organizacionais revisáveis:
-
-```env
-AI_PROVIDER=groq
-AI_MODEL=llama-3.3-70b-versatile
-GROQ_API_KEY=gsk_...
-```
-
-### 6.1 Modelos Recomendados
-- `llama-3.3-70b-versatile` (Padrão: excelente raciocínio e conformidade estrita com JSON)
-- `llama3-70b-8192` (Alta velocidade de inferência)
-
-A IA atua exclusivamente sob dados agregados de relatórios consolidados e com exigência mandatória de revisão humana (`humanReviewRequired: true`).
 
 

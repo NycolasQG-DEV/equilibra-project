@@ -70,22 +70,6 @@ function check(req) {
     limit(req.account.id, "members");
   if (req.method === "POST" && req.path === "/groups")
     limit(req.account.id, "groups");
-  if (req.method === "POST" && req.path === "/assistant") {
-    const { plan } = entitlement(req.account.id);
-    if (!plan.aiMonthly)
-      throw new DomainError(
-        "Assistente de IA disponível a partir do plano Popular.",
-        402,
-      );
-    const month = new Date().toISOString().slice(0, 7);
-    if (
-      repo
-        .get(req.account.id)
-        .aiHistory.filter((row) => row.createdAt.startsWith(month)).length >=
-      plan.aiMonthly
-    )
-      throw new DomainError("Cota mensal de IA atingida.", 402);
-  }
 }
 module.exports = {
   entitlement,

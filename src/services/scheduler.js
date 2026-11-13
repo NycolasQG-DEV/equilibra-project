@@ -2,7 +2,6 @@ const crypto = require("node:crypto");
 const storage = require("../config/equilibraStorage");
 const repo = require("../repositories/managementRepository");
 const { closeExpiredSurveys, openScheduledSurveys } = require("./surveyLifecycle");
-const { expireSessions: expireWaSessions } = require("./whatsappConversationEngine");
 function nextMonth(date, months) {
   return require("../domain/dates")
     .addMonths(`${date}T12:00:00Z`, months)

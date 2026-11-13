@@ -3,8 +3,6 @@ const repo = require("../repositories/managementRepository");
 const storage = require("../config/equilibraStorage");
 const { DomainError, required, text, dateOnly } = require("../domain/workflow");
 const { compareReports } = require("../domain/analysis");
-const assistant = require("../services/assistantService");
-const ai = require("../integrations/ai");
 const { reportFor, ownerOnly } = require("./management/context");
 function createRouter(protectedRoute) {
   const router = express.Router();
@@ -64,8 +62,6 @@ function createRouter(protectedRoute) {
       actions: data.actions,
       schedules: data.schedules,
       audit: data.audit.slice(-100).reverse(),
-      aiHistory: data.aiHistory.slice(-20).reverse(),
-      ai: ai.configuration(),
       workflow: {
         actionTransitions: require("../domain/workflow").TRANSITIONS,
       },
@@ -99,27 +95,6 @@ function createRouter(protectedRoute) {
       ),
     ),
   );
-  router.post("/assistant", async (req, res) => {
-    const result = await assistant.explain(
-      req.account.id,
-      reportFor(req.account, req.body.reportId),
-      req.body,
-      reportFor(req.account, req.body.previousReportId),
-    );
-    const saved = repo.transaction(
-      req.account,
-      "assistant.generated",
-      (data) => {
-        const row = repo.create({
-          ...result,
-          question: text(req.body.question, 1200),
-        });
-        data.aiHistory.push(row);
-        return row;
-      },
-    );
-    res.json(saved);
-  });
   router.post("/schedules", (req, res) =>
     res.status(201).json(
       repo.transaction(req.account, "schedule.created", (data) => {
