@@ -26,8 +26,8 @@ const definitions = [
   ],
   [
     'demandas',
-    'COPSOQ II (Versão Curta) — Exigências Psicológicas & Carga de Trabalho',
-    'Investigação aprofundada de volume quantitativo, ritmo acelerado, exigências cognitivas e demandas emocionais.',
+    'Exigências Psicológicas & Carga de Trabalho',
+    'Investigação aprofundada de volume quantitativo, ritmo acelerado, exigências cognitivas, demandas emocionais e recuperação pós-jornada. Dimensões inspiradas no modelo COPSOQ (Copenhagen Psychosocial Questionnaire).',
     'copsoq',
     'Carga de Trabalho & Ritmo',
     [
@@ -36,13 +36,14 @@ const definitions = [
       ['ritmo_continuo', 'Ritmo sustentável', 'Trabalho em um ritmo estável, sem necessidade constante de aceleração extenuante.'],
       ['interrupcoes', 'Foco e interrupções', 'Consigo trabalhar com foco sem interrupções contínuas que prejudiquem a qualidade.'],
       ['demandas_cognitivas', 'Exigências cognitivas', 'O nível de concentração exigido é compatível com os momentos de pausa.'],
-      ['demandas_emocionais', 'Demandas emocionais', 'Recebo apoio institucional quando lido com situações de tensão ou conflito com terceiros.']
+      ['demandas_emocionais', 'Demandas emocionais', 'Recebo apoio institucional quando lido com situações de tensão ou conflito com terceiros.'],
+      ['recuperacao_jornada', 'Recuperação pós-jornada', 'Ao término da jornada, consigo me desconectar do trabalho e recuperar energia para o dia seguinte.']
     ]
   ],
   [
     'autonomia',
-    'Segurança Psicológica & Autonomia no Trabalho (Escala Edmondson)',
-    'Medição da segurança para expressar divergências, assumir riscos calculados e clareza de autonomia decisória.',
+    'Segurança Psicológica & Autonomia no Trabalho (Edmondson, 1999)',
+    'Medição da segurança para expressar divergências, assumir riscos calculados, clareza de autonomia decisória e proteção contra sabotagem. Baseado na escala de Edmondson (1999) com adaptação para o contexto brasileiro.',
     'psych-safety',
     'Clima & Cultura Organizacional',
     [
@@ -51,7 +52,8 @@ const definitions = [
       ['valorizacao_diferencas', 'Respeito às diferenças', 'Ninguém nesta equipe é rejeitado por pensar ou trabalhar de forma diferente.'],
       ['tomada_risco', 'Assunção de riscos calculados', 'Sinto-me seguro para propor inovações e novas abordagens no trabalho.'],
       ['clareza_decisao', 'Margem de decisão', 'Tenho liberdade para definir como resolver problemas operacionais da minha função.'],
-      ['ajuda_mutua', 'Facilidade de pedir ajuda', 'É fácil pedir ajuda a qualquer membro da equipe ou à liderança quando não sei algo.']
+      ['ajuda_mutua', 'Facilidade de pedir ajuda', 'É fácil pedir ajuda a qualquer membro da equipe ou à liderança quando não sei algo.'],
+      ['integridade_coletiva', 'Integridade coletiva', 'Ninguém em minha equipe agiria deliberadamente de forma a comprometer meu trabalho ou esforço.']
     ]
   ],
   [
@@ -86,14 +88,15 @@ const definitions = [
   ],
   [
     'jornada',
-    'Inventário Maslach (MBI Triad) — Exaustão, Cinismo & Eficácia',
-    'Triagem das 3 dimensões de Burnout e riscos previdenciários (NTEP/FAP) associados à sobrecarga e jornada.',
+    'Triagem de Exaustão & Burnout Ocupacional (modelo MBI)',
+    'Triagem das 3 dimensões clássicas de Burnout — exaustão, cinismo/distanciamento e autoeficácia — com base no modelo teórico de Maslach & Leiter (MBI). Inclui avaliação de risco previdenciário (NTEP/FAP) associado à sobrecarga e jornada.',
     'burnout',
     'Saúde Ocupacional & Burnout',
     [
       ['energia_vital', 'Disposição e energia', 'Termino a jornada de trabalho com energia suficiente para minha vida pessoal e familiar.'],
       ['desconexao_mental', 'Desconexão pós-jornada', 'Consigo me desligar mentalmente das obrigações profissionais fora do horário de trabalho.'],
       ['sobrecarga_emocional', 'Resiliência à pressão', 'Sinto equilíbrio emocional suficiente para enfrentar os desafios habituais do cargo.'],
+      ['distanciamento_cinico', 'Distanciamento e cinismo', 'Sinto-me distante ou indiferente em relação ao trabalho e às pessoas ao meu redor.'],
       ['proposito_trabalho', 'Engajamento e propósito', 'Mantenho entusiasmo e sentimento de propósito com as entregas que realizo.'],
       ['realizacao_competencia', 'Autoeficácia percebida', 'Sinto que meu trabalho gera impacto relevante e realizo minhas metas com competência.'],
       ['recuperacao_sono', 'Sono reparador', 'A rotina de trabalho não prejudica minha qualidade de sono nem minha recuperação física.']
