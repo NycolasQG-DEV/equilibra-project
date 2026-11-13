@@ -2411,57 +2411,6 @@ input[type="radio"]:checked + .likert-option {
 }
 
 /* ==========================================================================
-   Motion Design — Wizard de Criar Pesquisa
-   Anime.js controla as animações de movimento — CSS apenas estilos base e fallback
-   ========================================================================== */
-
-/* ── Fallback CSS fade-up (usado quando Anime.js não está disponível) ── */
-@keyframes wiz-fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(28px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.wiz-animate {
-  animation: wiz-fadeSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.wiz-delay-0  { animation-delay: 0ms; }
-.wiz-delay-1  { animation-delay: 60ms; }
-.wiz-delay-2  { animation-delay: 120ms; }
-.wiz-delay-3  { animation-delay: 180ms; }
-.wiz-delay-4  { animation-delay: 240ms; }
-.wiz-delay-5  { animation-delay: 300ms; }
-.wiz-delay-6  { animation-delay: 360ms; }
-.wiz-delay-7  { animation-delay: 420ms; }
-.wiz-delay-8  { animation-delay: 480ms; }
-.wiz-delay-9  { animation-delay: 540ms; }
-
-/* ── Typewriter cursor — Anime.js controla o piscar via opacity ── */
-.wiz-typewriter-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background-color: var(--color-primary);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  border-radius: 1px;
-  /* Fallback blink se Anime.js ainda não carregou */
-  animation: wiz-cursor-blink 1s steps(1) infinite;
-}
-
-@keyframes wiz-cursor-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-
-/* ── Botões: Anime.js faz o punch scale — sem wiz-btn-ripple CSS ── */
-
-/* ==========================================================================
    Wizard de Criar Pesquisa — Slides Horizontais & Footer Fixo de Progresso
    ========================================================================== */
 
@@ -2492,18 +2441,14 @@ input[type="radio"]:checked + .likert-option {
   gap: var(--space-2);
   background: transparent;
   border: none;
-  cursor: pointer;
+  cursor: default;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-weight: 500;
-  transition: all var(--transition-fast);
-}
-
-.wizard-stepper-item:hover {
-  background-color: var(--color-surface-hover);
-  color: var(--color-primary);
+  user-select: none;
+  pointer-events: none;
 }
 
 .wizard-stepper-item.active {
@@ -2559,8 +2504,7 @@ input[type="radio"]:checked + .likert-option {
 .wizard-slider-track {
   display: flex;
   width: 100%;
-  transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
+  transition: transform 0.2s ease-out;
   align-items: flex-start;
 }
 
@@ -2570,13 +2514,10 @@ input[type="radio"]:checked + .likert-option {
   min-width: 100%;
   box-sizing: border-box;
   opacity: 0;
-  transform: scale(0.98) translateY(10px);
-  transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1), transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .wizard-slide.active {
   opacity: 1;
-  transform: scale(1) translateY(0);
 }
 
 /* Posições por etapa via data-current-step */
@@ -2717,31 +2658,13 @@ input[type="radio"]:checked + .likert-option {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-@keyframes wizard-shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
 .wizard-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 80%, #818cf8 20%) 100%);
   border-radius: var(--radius-full);
-  transition: width 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width 0.2s ease;
   position: relative;
   overflow: hidden;
-}
-
-.wizard-progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; right: 0; bottom: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-  animation: wizard-shimmer 1.8s ease infinite;
-}
-
-@keyframes wizard-shimmer {
-  0%   { left: -100%; }
-  100% { left: 200%; }
 }
 
 /* Larguras por etapa no footer fixo */

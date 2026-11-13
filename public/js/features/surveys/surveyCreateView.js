@@ -79,28 +79,28 @@ export function renderSurveyCreate({ state }) {
         </div>
       </div>
 
-      <!-- Stepper Nav Superior -->
-      <nav class="wizard-stepper" aria-label="Etapas de criação da pesquisa">
-        <button type="button" class="wizard-stepper-item active" data-action="wizard-goto-step" data-step="1">
+      <!-- Stepper Nav Superior (indicador de progresso sequencial) -->
+      <div class="wizard-stepper" aria-label="Etapas de criação da pesquisa" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+        <div class="wizard-stepper-item active" data-step="1">
           <span class="wizard-stepper-num">1</span>
           <span class="wizard-stepper-label">Instrumento & Modelo</span>
-        </button>
+        </div>
         <div class="wizard-stepper-divider"></div>
-        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="2">
+        <div class="wizard-stepper-item" data-step="2">
           <span class="wizard-stepper-num">2</span>
           <span class="wizard-stepper-label">Periodicidade & Ciclo</span>
-        </button>
+        </div>
         <div class="wizard-stepper-divider"></div>
-        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="3">
+        <div class="wizard-stepper-item" data-step="3">
           <span class="wizard-stepper-num">3</span>
           <span class="wizard-stepper-label">Público</span>
-        </button>
+        </div>
         <div class="wizard-stepper-divider"></div>
-        <button type="button" class="wizard-stepper-item" data-action="wizard-goto-step" data-step="4">
+        <div class="wizard-stepper-item" data-step="4">
           <span class="wizard-stepper-num">4</span>
           <span class="wizard-stepper-label">Título & Lançamento</span>
-        </button>
-      </nav>
+        </div>
+      </div>
 
       <form id="create-survey-form" data-action="submit-create-survey">
         <input type="hidden" id="selected-model-input" name="model" value="${attr(defaultModelName)}" />
@@ -490,6 +490,26 @@ export function updateWizardValidation() {
 export function goToWizardStep(step) {
   const s = Math.max(1, Math.min(4, parseInt(step, 10) || 1));
   const track = document.getElementById('survey-wizard-track');
+  const currentStep = parseInt(track?.dataset?.currentStep || '1', 10);
+
+  // Impede avançar para etapas posteriores sem concluir a etapa atual
+  if (s > currentStep) {
+    if (!updateWizardValidation()) {
+      if (currentStep === 1) {
+        showToast('Selecione um modelo psicossocial para prosseguir.', 'warning');
+      } else if (currentStep === 2) {
+        showToast('Preencha o identificador do ciclo e uma data válida futura para prosseguir.', 'warning');
+      } else if (currentStep === 3) {
+        showToast('Selecione ao menos um grupo participante.', 'warning');
+      }
+      return;
+    }
+    // Impede pular etapas (avanço deve ser estritamente sequencial)
+    if (s > currentStep + 1) {
+      return;
+    }
+  }
+
   const footer = document.getElementById('survey-wizard-footer');
   const stepTitle = document.getElementById('wizard-step-title');
   const stepPct = document.getElementById('wizard-step-pct');
@@ -502,16 +522,12 @@ export function goToWizardStep(step) {
   if (stepTitle) stepTitle.textContent = STEP_TITLES[s] || `Etapa ${s} de 4`;
   if (stepPct) stepPct.textContent = STEP_PCTS[s] || `${s * 25}%`;
 
-  // ── Anime.js: Progress bar do wizard ──
+  const stepper = document.querySelector('.wizard-stepper');
+  if (stepper) stepper.setAttribute('aria-valuenow', String(s));
+
+  // Progress bar do wizard (sem animação de delay)
   const progressFill = document.getElementById('wizard-progress-fill');
-  if (progressFill && window.anime) {
-    window.anime({
-      targets: progressFill,
-      width: `${s * 25}%`,
-      duration: 650,
-      easing: 'cubicBezier(0.16, 1, 0.3, 1)'
-    });
-  } else if (progressFill) {
+  if (progressFill) {
     progressFill.style.width = `${s * 25}%`;
   }
 
@@ -521,15 +537,7 @@ export function goToWizardStep(step) {
     slide.classList.toggle('active', slideStep === s);
   });
 
-  // ── Anime.js: Animate active slide entrance ──
-  setTimeout(() => {
-    const activeSlide = document.querySelector('.wizard-slide.active');
-    if (typeof window.__wizAnimateSlide === 'function') {
-      window.__wizAnimateSlide(activeSlide);
-    }
-  }, 60);
-
-  // Update stepper buttons
+  // Update stepper items
   document.querySelectorAll('.wizard-stepper-item').forEach(item => {
     const itemStep = parseInt(item.dataset.step, 10);
     item.classList.toggle('active', itemStep === s);
@@ -596,169 +604,7 @@ export function prevWizardStep() {
 
 export function mountedSurveyCreate() {
   goToWizardStep(1);
-
-  const anm = window.anime || null;
-
-  // ── Anime.js: Typewriter suave no view-title ──────────────────────────────
-  (function startTypewriter() {
-    const titleEl = document.querySelector('.survey-wizard-container .view-title');
-    if (!titleEl) return;
-
-    const fullText = titleEl.textContent.trim();
-    titleEl.textContent = '';
-
-    const cursor = document.createElement('span');
-    cursor.className = 'wiz-typewriter-cursor';
-    titleEl.appendChild(cursor);
-
-    // Cursor piscante com Anime.js
-    if (anm) {
-      anm({
-        targets: cursor,
-        opacity: [1, 0],
-        duration: 850,
-        easing: 'steps(1)',
-        loop: true
-      });
-    }
-
-    let charIndex = 0;
-    const BASE_DELAY = 70;
-    const JITTER = 30;
-
-    function typeNext() {
-      if (charIndex >= fullText.length) {
-        setTimeout(() => {
-          if (anm) {
-            anm({ targets: cursor, opacity: 0, duration: 500, easing: 'easeOutQuad',
-              complete: () => cursor.remove() });
-          } else {
-            cursor.remove();
-          }
-        }, 2200);
-        return;
-      }
-      const textNode = document.createTextNode(fullText[charIndex]);
-      titleEl.insertBefore(textNode, cursor);
-      charIndex++;
-
-      let delay = BASE_DELAY + (Math.random() * JITTER) - (JITTER / 2);
-      const ch = fullText[charIndex - 1];
-      if (ch === ',' || ch === ';') delay += 100;
-      else if (ch === '.' || ch === '!' || ch === '?') delay += 200;
-      else if (ch === ' ') delay += 10;
-
-      setTimeout(typeNext, Math.max(30, delay));
-    }
-
-    setTimeout(typeNext, 350);
-  })();
-
-  // ── Anime.js: Stagger de entrada dos elementos do slide ──────────────────
-  function animateSlideElements(slideEl) {
-    if (!slideEl || !anm) {
-      // Fallback sem Anime.js: usa classes CSS simples
-      if (slideEl) {
-        const els = slideEl.querySelectorAll(
-          '.wizard-section-header, .models-grid > .model-card, ' +
-          '.periodicity-pills, .grid.grid-cols-3, .grid.grid-cols-2, ' +
-          '.group-picker-grid > label, .form-group, .privacy-note, ' +
-          '.channel-card, .survey-launch-option'
-        );
-        els.forEach((el, i) => {
-          const d = Math.min(i, 9);
-          el.classList.remove(...[...el.classList].filter(c => c.startsWith('wiz-')));
-          el.classList.add('wiz-animate', `wiz-delay-${d}`);
-          setTimeout(() => el.classList.remove('wiz-animate', `wiz-delay-${d}`), 55 + d * 60 + 550);
-        });
-      }
-      return;
-    }
-
-    const targets = Array.from(slideEl.querySelectorAll(
-      '.wizard-section-header, .models-grid > .model-card, ' +
-      '.periodicity-pills, .grid.grid-cols-3, .grid.grid-cols-2, ' +
-      '.group-picker-grid > label, .form-group, .privacy-note, ' +
-      '.channel-card, .survey-launch-option'
-    ));
-    if (targets.length === 0) return;
-
-    // Reset estado inicial (evita artefacto de flash)
-    targets.forEach(el => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(28px)';
-    });
-
-    anm({
-      targets,
-      opacity: [0, 1],
-      translateY: [28, 0],
-      duration: 580,
-      delay: anm.stagger(55, { start: 60 }),
-      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
-      complete: () => {
-        // Limpa inline styles após animação
-        targets.forEach(el => {
-          el.style.opacity = '';
-          el.style.transform = '';
-        });
-      }
-    });
-  }
-
-  // ── Anime.js: Ripple satisfatório no clique dos botões primários ──────────
-  function setupButtonRipple() {
-    if (!anm) return;
-
-    const container = document.querySelector('.survey-wizard-container');
-    if (!container) return;
-
-    container.addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-primary, .btn-secondary, .periodicity-btn, .model-card');
-      if (!btn) return;
-
-      // Scale punch
-      anm({
-        targets: btn,
-        scale: [1, 0.96, 1.02, 1],
-        duration: 380,
-        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
-      });
-    }, { passive: true });
-  }
-
-  // ── Anime.js: Feedback visual ao selecionar model card ───────────────────
-  function setupModelCardFeedback() {
-    if (!anm) return;
-
-    const grid = document.getElementById('survey-models-grid');
-    if (!grid) return;
-
-    grid.addEventListener('click', (e) => {
-      const card = e.target.closest('.model-card');
-      if (!card) return;
-
-      anm({
-        targets: card,
-        scale: [1, 0.97, 1.02, 1],
-        duration: 420,
-        easing: 'cubicBezier(0.16, 1, 0.3, 1)'
-      });
-    }, { passive: true });
-  }
-
-  // Anima o slide 1 imediatamente
-  setTimeout(() => {
-    const firstSlide = document.querySelector('.wizard-slide.active');
-    animateSlideElements(firstSlide);
-  }, 120);
-
-  // Expõe para goToWizardStep usar
-  window.__wizAnimateSlide = animateSlideElements;
-
-  // Setup de ripple e feedback
-  setupButtonRipple();
-  setupModelCardFeedback();
+  window.__wizAnimateSlide = () => {};
 
   // Setup input listeners for dynamic validation
   const cycleInput = document.getElementById('survey-cycle-input');

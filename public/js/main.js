@@ -536,8 +536,6 @@ document.addEventListener('click', async (e) => {
   } else if (action === 'submit-create-survey-btn') {
     e.preventDefault();
     await submitSurveyCreation();
-  } else if (action === 'wizard-goto-step') {
-    goToWizardStep(trigger.dataset.step);
   } else if (action === 'wizard-next-step') {
     nextWizardStep();
   } else if (action === 'wizard-prev-step') {
