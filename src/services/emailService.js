@@ -2,21 +2,50 @@ const path = require('node:path');
 const fs = require('node:fs');
 const nodemailer = require('nodemailer');
 
-let cachedTransporter = null;
-let cachedTransporterKey = '';
+// ─── Gmail API (OAuth2) ──────────────────────────────────────────────────────
+// Usado quando GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN
+// estão configurados (modo recomendado em produção — usa HTTPS, sem portas SMTP).
+let gmailApiTransporter = null;
 
-/**
- * Cria ou retorna o transportador de e-mail baseado nas variáveis de ambiente.
- * Se nenhuma configuração SMTP estiver presente, opera em modo log/dry-run.
- */
-function getTransporter() {
-  // Tenta carregar .env caso as vars ainda não estejam no processo
+function getGmailApiTransporter() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const user = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
+
+  if (!clientId || !clientSecret || !refreshToken || !user) return null;
+  if (gmailApiTransporter) return gmailApiTransporter;
+
+  const { google } = require('googleapis');
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  gmailApiTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user,
+      clientId,
+      clientSecret,
+      refreshToken
+    }
+  });
+
+  console.log(`[GMAIL-API] Transporter OAuth2 criado para ${user}`);
+  return gmailApiTransporter;
+}
+
+// ─── SMTP Fallback ───────────────────────────────────────────────────────────
+// Usado somente quando as credenciais OAuth2 não estão disponíveis.
+// Pode falhar em ambientes cloud que bloqueiam portas SMTP.
+let cachedSmtpTransporter = null;
+let cachedSmtpKey = '';
+
+function getSmtpTransporter() {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     const envPath = path.join(__dirname, '..', '..', '.env');
     if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
-      try {
-        process.loadEnvFile(envPath);
-      } catch {}
+      try { process.loadEnvFile(envPath); } catch {}
     }
   }
 
@@ -25,27 +54,31 @@ function getTransporter() {
   const user = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : undefined;
   const pass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : undefined;
 
-  if (!user || !pass) {
-    console.error('[SMTP-CONFIG] SMTP_USER ou SMTP_PASS não configurados. Verifique o .env e reinicie o servidor.');
-    return null;
-  }
+  if (!user || !pass) return null;
 
-  // Invalida cache se as credenciais mudaram
   const key = `${host}:${port}:${user}:${pass}`;
-  if (cachedTransporter && cachedTransporterKey === key) return cachedTransporter;
+  if (cachedSmtpTransporter && cachedSmtpKey === key) return cachedSmtpTransporter;
 
-  console.log(`[SMTP-CONFIG] Criando transporter: ${host}:${port} user=${user} secure=${port === 465}`);
-  cachedTransporter = nodemailer.createTransport({
-    host,
-    port,
+  console.log(`[SMTP-CONFIG] Criando transporter SMTP: ${host}:${port} user=${user}`);
+  cachedSmtpTransporter = nodemailer.createTransport({
+    host, port,
     secure: port === 465,
     auth: { user, pass },
     connectionTimeout: 10000,
     greetingTimeout: 8000,
     socketTimeout: 15000
   });
-  cachedTransporterKey = key;
-  return cachedTransporter;
+  cachedSmtpKey = key;
+  return cachedSmtpTransporter;
+}
+
+/**
+ * Retorna o melhor transporter disponível:
+ * 1. Gmail API (OAuth2) — usa HTTPS, funciona em qualquer cloud hosting
+ * 2. SMTP — fallback, pode falhar se a porta estiver bloqueada
+ */
+function getTransporter() {
+  return getGmailApiTransporter() || getSmtpTransporter();
 }
 
 /**
