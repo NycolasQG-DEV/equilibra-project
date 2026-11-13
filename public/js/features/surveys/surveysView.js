@@ -238,9 +238,6 @@ export function renderSurveyDistribution({ params, state }) {
               </button>
             ` : ''}
             ${survey.status === 'open' ? `
-              <button type="button" class="btn btn-primary" data-action="dispatch-survey-email" data-id="${attr(survey.id)}">
-                <i class="fa-regular fa-paper-plane" aria-hidden="true"></i> Disparar Convites por E-mail
-              </button>
               <button type="button" class="btn btn-secondary" data-action="open-extend-modal" data-id="${attr(survey.id)}">
                 <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Prorrogar Prazo
               </button>
