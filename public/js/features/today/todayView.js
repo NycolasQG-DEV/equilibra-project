@@ -101,7 +101,7 @@ export function renderToday({ state }) {
   let statusStripHtml = '';
   if (overdueActions.length > 0) {
     statusStripHtml = `
-      <div class="today-status-strip card-warning-edge mb-5">
+      <div class="today-status-strip card-warning-edge mb-6">
         <i class="fa-solid fa-clock color-danger status-strip-icon" aria-hidden="true"></i>
         <div class="status-strip-text">
           <strong>Atenção ao cronograma</strong>
@@ -113,7 +113,7 @@ export function renderToday({ state }) {
     const noRespCount = openSurveys.filter(s => s.responsesCount === 0).length;
     if (noRespCount > 0) {
       statusStripHtml = `
-        <div class="today-status-strip mb-5">
+        <div class="today-status-strip mb-6">
           <i class="fa-solid fa-paper-plane color-primary status-strip-icon" aria-hidden="true"></i>
           <div class="status-strip-text">
             <strong>Coletas ativas em campo</strong>
@@ -123,7 +123,7 @@ export function renderToday({ state }) {
       `;
     } else {
       statusStripHtml = `
-        <div class="today-status-strip mb-5">
+        <div class="today-status-strip mb-6">
           <i class="fa-solid fa-circle-check color-success status-strip-icon" aria-hidden="true"></i>
           <div class="status-strip-text">
             <strong>Operação em andamento</strong>
@@ -140,7 +140,10 @@ export function renderToday({ state }) {
   const overviewCardsHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
       <div class="kpi-card">
-        <p class="kpi-title">Coletas em Campo</p>
+        <div class="today-kpi-top">
+          <span class="kpi-title">Coletas em Campo</span>
+          <i class="fa-solid fa-clipboard-list today-kpi-icon" aria-hidden="true"></i>
+        </div>
         <p class="kpi-val">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</p>
         <p class="kpi-sub">
           ${totalResponses} de ${totalInvited} respostas (${fmtPercent(aggregateRate)} de adesão)
@@ -154,7 +157,10 @@ export function renderToday({ state }) {
       </div>
 
       <div class="kpi-card">
-        <p class="kpi-title">Colaboradores Mapeados</p>
+        <div class="today-kpi-top">
+          <span class="kpi-title">Colaboradores Mapeados</span>
+          <i class="fa-solid fa-users today-kpi-icon" aria-hidden="true"></i>
+        </div>
         <p class="kpi-val">${membersCount}</p>
         <p class="kpi-sub">
           Distribuídos em ${groupsCount} ${groupsCount === 1 ? 'setor ativo' : 'setores ativos'}
@@ -167,7 +173,10 @@ export function renderToday({ state }) {
       </div>
 
       <div class="kpi-card">
-        <p class="kpi-title">Planos de Ação (NR-1)</p>
+        <div class="today-kpi-top">
+          <span class="kpi-title">Planos de Ação (NR-1)</span>
+          <i class="fa-solid fa-list-check today-kpi-icon" aria-hidden="true"></i>
+        </div>
         <p class="kpi-val">${actions.length}</p>
         <p class="kpi-sub">
           ${actions.length > 0
@@ -375,66 +384,93 @@ export function renderToday({ state }) {
           <div class="card-header py-3 px-4 flex items-center justify-between">
             <h2 class="card-title text-sm font-semibold m-0">
               <i class="fa-solid fa-list-check color-primary mr-1" aria-hidden="true"></i>
-              Planos de Ação & Soluções Preventivas
+              Planos de Ação & Tarefas
             </h2>
             <a href="#acoes" class="btn btn-secondary btn-sm btn-compact">
-              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Criar Plano Manual
+              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Ação
             </a>
           </div>
           <div class="card-body p-4">
-            <p class="text-sm font-semibold color-text-primary m-0 mb-1">
-              Geração de Soluções com Base nas Escutas
-            </p>
-            <p class="color-text-secondary text-xs m-0 mb-3">
-              O algoritmo do Equilibra analisa as respostas dos colaboradores por dimensão de risco (exigências psicológicas, relações, autonomia e segurança psicológica). Ao encerrar as coletas, o sistema cruza os fatores críticos e sugere automaticamente medidas preventivas estruturadas para o PGR.
-            </p>
-            <div class="flex items-center gap-2">
-              <a href="#acoes" class="btn btn-secondary btn-sm">
-                <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Cadastrar Ação Preventiva
-              </a>
-              <a href="#resultados/ciclos" class="btn btn-ghost btn-sm text-xs">
-                Consultar Relatórios Anteriores →
-              </a>
+            <div class="today-actions-summary-bar">
+              <span class="today-action-stat-pill">
+                <i class="fa-solid fa-circle-play color-primary text-xs" aria-hidden="true"></i>
+                <strong>0</strong> em execução
+              </span>
+              <span class="today-action-stat-pill">
+                <i class="fa-solid fa-clock color-success text-xs" aria-hidden="true"></i>
+                <strong>0</strong> atrasadas
+              </span>
+              <span class="today-action-stat-pill">
+                <i class="fa-solid fa-circle-check color-muted text-xs" aria-hidden="true"></i>
+                <strong>0</strong> concluídas
+              </span>
             </div>
+            <p class="table-subtext text-xs mt-3 mb-0">
+              Recomendações automáticas de intervenção serão geradas ao consolidar as coletas ativas.
+            </p>
           </div>
         </div>
       `;
     }
 
-    // 5.3 Espaço em Evidência: Inteligência Diagnóstica e Ciclo de Eficácia
+    // 5.3 Espaço em Evidência: Monitoramento Visual de Dimensões e Régua de Eficácia
+    const uniqueModels = [...new Set(openSurveys.map(s => s.model || s.title))].slice(0, 3);
     const intelligenceSectionHtml = `
       <div class="today-intelligence-card mb-6">
         <div class="today-intelligence-header">
           <h2 class="today-intelligence-title">
             <i class="fa-solid fa-brain color-primary" aria-hidden="true"></i>
-            Inteligência Analítica & Ciclo de Eficácia Contínua
+            Monitoramento de Fatores & Eficácia Contínua
           </h2>
-          <span class="badge badge-primary text-xs">Monitoramento Contínuo</span>
+          <span class="badge badge-primary text-xs">Ciclo Contínuo</span>
         </div>
-        <p class="color-text-secondary text-xs m-0">
-          Como a plataforma transforma escuta em intervenção e comprova se as soluções funcionaram ao longo dos ciclos:
-        </p>
-        <div class="today-intelligence-flow">
-          <div class="today-flow-step">
-            <span class="today-flow-step-num">Passo 1</span>
-            <p class="today-flow-step-title">Diagnóstico por Dimensão</p>
-            <p class="today-flow-step-desc">
-              O algoritmo quantifica fatores de risco psicossocial por setor e destaca desvios em relação às referências técnicas.
-            </p>
+
+        <!-- Dimensões Monitoradas no Ciclo Atual -->
+        <div class="today-dimensions-grid">
+          ${openSurveys.slice(0, 3).map(s => {
+            const pct = Math.round(s.participationRate * 100);
+            return `
+              <div class="today-dimension-card">
+                <div class="today-dimension-header">
+                  <span class="today-dimension-name" title="${attr(s.title)}">${esc(s.title)}</span>
+                  <span class="badge badge-neutral text-xs">${pct}%</span>
+                </div>
+                <div class="today-dimension-bar-track">
+                  <div class="today-dimension-bar-fill" data-width="${pct}"></div>
+                </div>
+                <div class="today-dimension-stat">
+                  <span>${s.responsesCount}/${s.totalInvited} respostas</span>
+                  <span>${s.daysRemaining != null ? `${s.daysRemaining}d` : 'Aberto'}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Régua Visual de Eficácia (3 passos sem textão) -->
+        <div class="today-efficacy-track">
+          <div class="today-efficacy-step">
+            <span class="today-efficacy-num">1</span>
+            <div class="today-efficacy-step-text">
+              <strong>Escuta Ativa</strong>
+              <span>Fase atual em campo</span>
+            </div>
           </div>
-          <div class="today-flow-step">
-            <span class="today-flow-step-num">Passo 2</span>
-            <p class="today-flow-step-title">Devolutiva & Plano de Ação</p>
-            <p class="today-flow-step-desc">
-              Sugestões assertivas de medidas de controle vinculadas a responsáveis e prazos para alimentar diretamente o PGR.
-            </p>
+          <span class="today-efficacy-arrow"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+          <div class="today-efficacy-step">
+            <span class="today-efficacy-num">2</span>
+            <div class="today-efficacy-step-text">
+              <strong>Matriz de Riscos</strong>
+              <span>Fatores consolidados</span>
+            </div>
           </div>
-          <div class="today-flow-step">
-            <span class="today-flow-step-num">Passo 3</span>
-            <p class="today-flow-step-title">Medição de Eficácia (Antes vs. Depois)</p>
-            <p class="today-flow-step-desc">
-              Nos ciclos subsequentes, o sistema detecta se a intervenção melhorou o fator. Ações eficazes são validadas; as demais são sinalizadas para ajuste.
-            </p>
+          <span class="today-efficacy-arrow"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+          <div class="today-efficacy-step">
+            <span class="today-efficacy-num">3</span>
+            <div class="today-efficacy-step-text">
+              <strong>Aferição de Eficácia</strong>
+              <span>Impacto antes vs. depois</span>
+            </div>
           </div>
         </div>
       </div>
