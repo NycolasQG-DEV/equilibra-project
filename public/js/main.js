@@ -402,7 +402,10 @@ document.addEventListener('click', async (e) => {
   } else if (action === 'submit-accept-report') {
     await submitAcceptReport(trigger.dataset.id);
   } else if (action === 'open-add-action-modal') {
-    openAddActionModal();
+    const title = trigger.dataset.title;
+    const factor = trigger.dataset.factor;
+    const description = trigger.dataset.description;
+    openAddActionModal({ title, factor, description });
   } else if (action === 'submit-add-action') {
     await submitAddAction();
   } else if (action === 'edit-action') {

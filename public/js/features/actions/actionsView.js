@@ -328,7 +328,7 @@ function _wireKanbanFilters() {
 }
 
 /* ── Add Action Modal ── */
-export function openAddActionModal() {
+export function openAddActionModal(initial = {}) {
   const reports = store.state.reports || [];
   const factorOptions = [
     { value: 'Geral', label: 'Geral / Múltiplos Fatores' },
@@ -361,14 +361,14 @@ export function openAddActionModal() {
           <div>Recomenda-se gerar ao menos um ciclo de pesquisa para vincular ações ao PGR/NR-1.</div>
         </div>
       `}
-      ${field({ id: 'act-title', name: 'title', label: 'Título da ação preventiva', required: true, placeholder: 'ex: Treinamento de liderança preventiva em SST' })}
-      ${select({ id: 'act-factor', name: 'factor', label: 'Fator psicossocial associado', options: factorOptions, selected: 'Geral', required: true })}
-      ${field({ id: 'act-resp', name: 'responsible', label: 'Responsável pela execução', required: true, placeholder: 'ex: Equipe de RH / Gestor Operacional' })}
+      ${field({ id: 'act-title', name: 'title', label: 'Título da ação preventiva', required: true, value: initial.title || '', placeholder: 'ex: Treinamento de liderança preventiva em SST' })}
+      ${select({ id: 'act-factor', name: 'factor', label: 'Fator psicossocial associado', options: factorOptions, selected: initial.factor || 'Geral', required: true })}
+      ${field({ id: 'act-resp', name: 'responsible', label: 'Responsável pela execução', required: true, value: initial.responsible || '', placeholder: 'ex: Equipe de RH / Gestor Operacional' })}
       <div class="grid grid-cols-2 gap-3">
-        ${field({ id: 'act-due', name: 'dueDate', label: 'Prazo de conclusão', type: 'date', required: true })}
-        ${field({ id: 'act-rev', name: 'reviewDate', label: 'Data de revisão de eficácia', type: 'date', required: true })}
+        ${field({ id: 'act-due', name: 'dueDate', label: 'Prazo de conclusão', type: 'date', value: initial.dueDate || '', required: true })}
+        ${field({ id: 'act-rev', name: 'reviewDate', label: 'Data de revisão de eficácia', type: 'date', value: initial.reviewDate || '', required: true })}
       </div>
-      ${textarea({ id: 'act-desc', name: 'description', label: 'Descrição detalhada e evidências esperadas', rows: 3 })}
+      ${textarea({ id: 'act-desc', name: 'description', label: 'Descrição detalhada e evidências esperadas', value: initial.description || '', rows: 3 })}
     </form>
   `;
 

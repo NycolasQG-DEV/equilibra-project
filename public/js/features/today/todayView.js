@@ -321,9 +321,14 @@ export function renderToday({ state }) {
               </h2>
               <span class="badge badge-primary">${activeTasks.length} ${activeTasks.length === 1 ? 'tarefa' : 'tarefas'}</span>
             </div>
-            <a href="#acoes" class="btn btn-ghost btn-sm text-xs font-medium">
-              Ver Kanban Completo →
-            </a>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn btn-secondary btn-sm btn-compact" data-action="open-add-action-modal">
+                <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Ação
+              </button>
+              <a href="#acoes" class="btn btn-ghost btn-sm text-xs font-medium">
+                Ver Kanban →
+              </a>
+            </div>
           </div>
           <div class="card-body p-0">
             <div class="today-tasks-list">
@@ -382,105 +387,97 @@ export function renderToday({ state }) {
       actionsSectionHtml = `
         <div class="card mb-6">
           <div class="card-header py-3 px-4 flex items-center justify-between">
-            <h2 class="card-title text-sm font-semibold m-0">
-              <i class="fa-solid fa-list-check color-primary mr-1" aria-hidden="true"></i>
-              Planos de Ação & Tarefas
-            </h2>
-            <a href="#acoes" class="btn btn-secondary btn-sm btn-compact">
-              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Ação
-            </a>
+            <div class="flex items-center gap-2">
+              <h2 class="card-title text-sm font-semibold m-0">
+                <i class="fa-solid fa-list-check color-primary mr-1" aria-hidden="true"></i>
+                Planos de Ação & Medidas Preventivas
+              </h2>
+              <span class="badge badge-neutral text-xs">NR-1 / PGR</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm btn-compact" data-action="open-add-action-modal">
+              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Ação Manual
+            </button>
           </div>
           <div class="card-body p-4">
-            <div class="today-actions-summary-bar">
-              <span class="today-action-stat-pill">
-                <i class="fa-solid fa-circle-play color-primary text-xs" aria-hidden="true"></i>
-                <strong>0</strong> em execução
-              </span>
-              <span class="today-action-stat-pill">
-                <i class="fa-solid fa-clock color-success text-xs" aria-hidden="true"></i>
-                <strong>0</strong> atrasadas
-              </span>
-              <span class="today-action-stat-pill">
-                <i class="fa-solid fa-circle-check color-muted text-xs" aria-hidden="true"></i>
-                <strong>0</strong> concluídas
-              </span>
-            </div>
-            <p class="table-subtext text-xs mt-3 mb-0">
-              Recomendações automáticas de intervenção serão geradas ao consolidar as coletas ativas.
+            <p class="table-subtext text-xs m-0 mb-3">
+              Nenhum plano ativo no ciclo. Cadastre uma ação personalizada ou adote uma medida preventiva recomendada para a NR-1:
             </p>
+            <div class="today-recommended-grid">
+              <div class="today-recommended-card">
+                <div>
+                  <div class="today-recommended-header mb-2">
+                    <span class="today-recommended-icon">
+                      <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                    </span>
+                    <span class="badge badge-primary text-xs">Relações</span>
+                  </div>
+                  <h3 class="today-recommended-title mb-1">Canal de Escuta & Proteção</h3>
+                  <p class="today-recommended-desc">
+                    Acolhimento seguro e confidencial para relatos e prevenção ao assédio (Lei 14.457/22).
+                  </p>
+                </div>
+                <button type="button"
+                        class="btn btn-secondary btn-sm w-full"
+                        data-action="open-add-action-modal"
+                        data-title="Canal de Escuta e Acolhimento Protegido (Lei 14.457/22)"
+                        data-factor="Relações"
+                        data-description="Implementar canal seguro de acolhimento e escuta confidencial para relatos e prevenção de assédio no ambiente corporativo, em conformidade com a Lei 14.457/22 e NR-1.">
+                  <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Adotar Medida
+                </button>
+              </div>
+
+              <div class="today-recommended-card">
+                <div>
+                  <div class="today-recommended-header mb-2">
+                    <span class="today-recommended-icon">
+                      <i class="fa-solid fa-chalkboard-user" aria-hidden="true"></i>
+                    </span>
+                    <span class="badge badge-primary text-xs">Apoio da gestão</span>
+                  </div>
+                  <h3 class="today-recommended-title mb-1">Capacitação de Lideranças</h3>
+                  <p class="today-recommended-desc">
+                    Treinamento em segurança psicológica, escuta ativa e distribuição equilibrada de tarefas.
+                  </p>
+                </div>
+                <button type="button"
+                        class="btn btn-secondary btn-sm w-full"
+                        data-action="open-add-action-modal"
+                        data-title="Capacitação de Lideranças em Riscos Psicossociais e Gestão Humanizada"
+                        data-factor="Apoio da gestão"
+                        data-description="Treinamento executivo sobre identificação precoce de sobrecarga, comunicação não violenta e suporte contínuo aos colaboradores.">
+                  <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Adotar Medida
+                </button>
+              </div>
+
+              <div class="today-recommended-card">
+                <div>
+                  <div class="today-recommended-header mb-2">
+                    <span class="today-recommended-icon">
+                      <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                    </span>
+                    <span class="badge badge-primary text-xs">Demandas</span>
+                  </div>
+                  <h3 class="today-recommended-title mb-1">Gestão de Demandas & Pausas</h3>
+                  <p class="today-recommended-desc">
+                    Mapeamento de sobrecarga e alinhamento de intervalos regulares de descanso mental.
+                  </p>
+                </div>
+                <button type="button"
+                        class="btn btn-secondary btn-sm w-full"
+                        data-action="open-add-action-modal"
+                        data-title="Adequação de Carga de Trabalho e Pausas Ergonômicas"
+                        data-factor="Demandas"
+                        data-description="Revisão dos fluxos de trabalho, horas extras e garantia de intervalos regulares de descanso para prevenção de estresse crônico.">
+                  <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Adotar Medida
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `;
     }
 
-    // 5.3 Espaço em Evidência: Monitoramento Visual de Dimensões e Régua de Eficácia
-    const uniqueModels = [...new Set(openSurveys.map(s => s.model || s.title))].slice(0, 3);
-    const intelligenceSectionHtml = `
-      <div class="today-intelligence-card mb-6">
-        <div class="today-intelligence-header">
-          <h2 class="today-intelligence-title">
-            <i class="fa-solid fa-brain color-primary" aria-hidden="true"></i>
-            Monitoramento de Fatores & Eficácia Contínua
-          </h2>
-          <span class="badge badge-primary text-xs">Ciclo Contínuo</span>
-        </div>
-
-        <!-- Dimensões Monitoradas no Ciclo Atual -->
-        <div class="today-dimensions-grid">
-          ${openSurveys.slice(0, 3).map(s => {
-            const pct = Math.round(s.participationRate * 100);
-            const shortName = (s.title || 'Pesquisa')
-              .split(' - Ciclo')[0]
-              .split(' (Escala')[0]
-              .trim();
-            return `
-              <div class="today-dimension-card">
-                <div class="today-dimension-header">
-                  <span class="today-dimension-name" title="${attr(s.title)}">${esc(shortName)}</span>
-                  <span class="badge badge-neutral text-xs">${pct}%</span>
-                </div>
-                <div class="today-dimension-bar-track">
-                  <div class="today-dimension-bar-fill" data-width="${pct}"></div>
-                </div>
-                <div class="today-dimension-stat">
-                  <span>${s.responsesCount}/${s.totalInvited} resp.</span>
-                  <span>${s.daysRemaining != null ? `${s.daysRemaining}d rest.` : 'Aberto'}</span>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-
-        <!-- Régua Visual de Eficácia (3 passos sem textão) -->
-        <div class="today-efficacy-track">
-          <div class="today-efficacy-step">
-            <span class="today-efficacy-num">1</span>
-            <div class="today-efficacy-step-text">
-              <strong>Escuta Ativa</strong>
-              <span>Fase atual em campo</span>
-            </div>
-          </div>
-          <span class="today-efficacy-arrow"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
-          <div class="today-efficacy-step">
-            <span class="today-efficacy-num">2</span>
-            <div class="today-efficacy-step-text">
-              <strong>Matriz de Riscos</strong>
-              <span>Fatores consolidados</span>
-            </div>
-          </div>
-          <span class="today-efficacy-arrow"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
-          <div class="today-efficacy-step">
-            <span class="today-efficacy-num">3</span>
-            <div class="today-efficacy-step-text">
-              <strong>Aferição de Eficácia</strong>
-              <span>Impacto antes vs. depois</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    mainHtml = surveysTableCardHtml + actionsSectionHtml + intelligenceSectionHtml;
+    mainHtml = actionsSectionHtml + surveysTableCardHtml;
   } else if (isNewCompany) {
     mainHtml = renderOnboarding();
   } else {
