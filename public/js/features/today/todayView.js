@@ -429,18 +429,22 @@ export function renderToday({ state }) {
         <div class="today-dimensions-grid">
           ${openSurveys.slice(0, 3).map(s => {
             const pct = Math.round(s.participationRate * 100);
+            const shortName = (s.title || 'Pesquisa')
+              .split(' - Ciclo')[0]
+              .split(' (Escala')[0]
+              .trim();
             return `
               <div class="today-dimension-card">
                 <div class="today-dimension-header">
-                  <span class="today-dimension-name" title="${attr(s.title)}">${esc(s.title)}</span>
+                  <span class="today-dimension-name" title="${attr(s.title)}">${esc(shortName)}</span>
                   <span class="badge badge-neutral text-xs">${pct}%</span>
                 </div>
                 <div class="today-dimension-bar-track">
                   <div class="today-dimension-bar-fill" data-width="${pct}"></div>
                 </div>
                 <div class="today-dimension-stat">
-                  <span>${s.responsesCount}/${s.totalInvited} respostas</span>
-                  <span>${s.daysRemaining != null ? `${s.daysRemaining}d` : 'Aberto'}</span>
+                  <span>${s.responsesCount}/${s.totalInvited} resp.</span>
+                  <span>${s.daysRemaining != null ? `${s.daysRemaining}d rest.` : 'Aberto'}</span>
                 </div>
               </div>
             `;

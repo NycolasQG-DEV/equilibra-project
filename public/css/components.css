@@ -4373,7 +4373,7 @@ button.tab-link.active {
 
 .today-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 20px;
   align-items: start;
 }
@@ -4752,12 +4752,14 @@ button.tab-link.active {
   font-weight: 700;
 }
 
-/* Dimensões Monitoradas no Ciclo (Visuais, com mini-barras) */
+/* Dimensões Monitoradas no Ciclo (Visuais, com mini-barras e proteção contra overflow) */
 .today-dimensions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .today-dimension-card {
@@ -4768,13 +4770,20 @@ button.tab-link.active {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .today-dimension-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .today-dimension-name {
@@ -4785,6 +4794,8 @@ button.tab-link.active {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 .today-dimension-bar-track {
@@ -4793,6 +4804,7 @@ button.tab-link.active {
   border-radius: 999px;
   overflow: hidden;
   margin-top: 2px;
+  width: 100%;
 }
 
 .today-dimension-bar-fill {
@@ -4807,12 +4819,13 @@ button.tab-link.active {
   color: var(--color-text-muted);
   display: flex;
   justify-content: space-between;
+  white-space: nowrap;
 }
 
 /* Régua Visual de Eficácia (3 passos sem textão) */
 .today-efficacy-track {
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
@@ -4820,12 +4833,41 @@ button.tab-link.active {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   margin-top: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .today-efficacy-step {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.today-efficacy-step-text {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.today-efficacy-step-text strong {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-efficacy-step-text span {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .today-efficacy-num {
@@ -4842,21 +4884,10 @@ button.tab-link.active {
   flex-shrink: 0;
 }
 
-.today-efficacy-step-text strong {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--color-text-primary);
-  line-height: 1.2;
-}
-
-.today-efficacy-step-text span {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-}
-
 .today-efficacy-arrow {
   color: var(--color-text-muted);
   font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
