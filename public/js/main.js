@@ -121,7 +121,8 @@ router.register({
       store.loadToday(),
       store.loadSurveys(),
       store.loadOrganization(),
-      store.loadReports()
+      store.loadReports(),
+      store.loadManagement()
     ]);
   },
   render: renderToday,

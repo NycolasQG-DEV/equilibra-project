@@ -1,7 +1,7 @@
-/* Hoje — Painel Inicial & Governança de Saúde Psicossocial */
+/* Hoje — Painel Inicial, Planos de Ação & Inteligência Diagnóstica */
 
 import { renderShell } from '../../ui/shell.js';
-import { esc, attr, fmt, fmtPercent } from '../../domain/formatters.js';
+import { esc, attr, fmt, fmtPercent, date } from '../../domain/formatters.js';
 import { decisionQueueLabels, priorityLabels } from '../../domain/labels.js';
 
 export function renderToday({ state }) {
@@ -10,6 +10,8 @@ export function renderToday({ state }) {
   const queue = todayData?.queue || todayData?.decisionQueue || [];
   const kpis = todayData?.kpis || {};
   const charts = todayData?.charts || {};
+  const management = state.management || {};
+  const actions = management.actions || [];
   const isNewCompany = !state.members?.length && !state.surveys?.length;
 
   // Saudação personalizada e contextual
@@ -43,17 +45,23 @@ export function renderToday({ state }) {
     .sort((a, b) => urgencyScore(b) - urgencyScore(a));
 
   const hasOpenSurveys = openSurveys.length > 0;
-  const actionsSummary = kpis.actionsSummary || {};
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+  // Cálculos de Ações e Tarefas Reais
+  const overdueActions = actions.filter(a => ['planned', 'in_progress'].includes(a.status) && a.dueDate && a.dueDate < todayStr);
+  const reviewDueActions = actions.filter(a => a.status === 'implemented' && a.reviewDate && a.reviewDate <= todayStr);
+  const activeActions = actions.filter(a => ['planned', 'in_progress', 'implemented'].includes(a.status));
+  const onTrackCount = Math.max(0, activeActions.length - overdueActions.length - reviewDueActions.length);
+
   const totalResponses = openSurveys.reduce((acc, s) => acc + s.responsesCount, 0);
   const totalInvited = openSurveys.reduce((acc, s) => acc + s.totalInvited, 0);
   const aggregateRate = totalInvited > 0 ? totalResponses / totalInvited : 0;
   const membersCount = state.members?.length || kpis.population?.membersCount || totalInvited || 0;
   const groupsCount = state.groups?.length || kpis.population?.groupsCount || 1;
-  const actionsTotal = actionsSummary.total || 0;
   const earliestDeadline = openSurveys.reduce((min, s) =>
     s.daysRemaining != null && (min === null || s.daysRemaining < min) ? s.daysRemaining : min, null);
 
-  // Histórico real para gráficos (apenas se houver relatórios ou fatores calculados)
+  // Histórico real para gráficos (apenas com relatórios consolidados)
   const partTrendList = Array.isArray(charts.participationTrend)
     ? charts.participationTrend
     : (charts.participationTrendData?.labels
@@ -74,7 +82,7 @@ export function renderToday({ state }) {
       <div class="today-welcome-text">
         <h1 class="today-welcome-greeting">${esc(greeting)}</h1>
         <p class="today-welcome-sub">
-          ${esc(dateFormatted)} · Painel de acompanhamento e governança de saúde psicossocial
+          ${esc(dateFormatted)} · Painel de inteligência diagnóstica e planos de ação
         </p>
       </div>
       <div>
@@ -88,16 +96,16 @@ export function renderToday({ state }) {
   `;
 
   // ══════════════════════════════════════════════════════
-  // 2. Faixa Situacional de Status da Operação
+  // 2. Faixa de Status Situacional da Operação
   // ══════════════════════════════════════════════════════
   let statusStripHtml = '';
-  if (queue.length > 0) {
+  if (overdueActions.length > 0) {
     statusStripHtml = `
       <div class="today-status-strip card-warning-edge mb-5">
-        <i class="fa-solid fa-circle-exclamation color-warning status-strip-icon" aria-hidden="true"></i>
+        <i class="fa-solid fa-clock color-danger status-strip-icon" aria-hidden="true"></i>
         <div class="status-strip-text">
-          <strong>Atenção necessária</strong>
-          <span>— ${queue.length} ${queue.length === 1 ? 'item requer sua intervenção' : 'itens requerem sua intervenção'} nas coletas ou planos de ação.</span>
+          <strong>Atenção ao cronograma</strong>
+          <span>— ${overdueActions.length} ${overdueActions.length === 1 ? 'medida preventiva está atrasada' : 'medidas preventivas estão atrasadas'} no plano de ação.</span>
         </div>
       </div>
     `;
@@ -108,8 +116,8 @@ export function renderToday({ state }) {
         <div class="today-status-strip mb-5">
           <i class="fa-solid fa-paper-plane color-primary status-strip-icon" aria-hidden="true"></i>
           <div class="status-strip-text">
-            <strong>Coletas em campo</strong>
-            <span>— ${openSurveys.length} pesquisas ativas. Dispare os convites para iniciar o retorno dos colaboradores.</span>
+            <strong>Coletas ativas em campo</strong>
+            <span>— ${noRespCount} ${noRespCount === 1 ? 'pesquisa ainda não recebeu respostas' : 'pesquisas ainda não receberam respostas'}. Dispare os convites para compor a base amostral.</span>
           </div>
         </div>
       `;
@@ -119,25 +127,15 @@ export function renderToday({ state }) {
           <i class="fa-solid fa-circle-check color-success status-strip-icon" aria-hidden="true"></i>
           <div class="status-strip-text">
             <strong>Operação em andamento</strong>
-            <span>— Coletas ativas recebendo respostas normalmente nos setores da organização.</span>
+            <span>— Coletas recebendo respostas e planos de ação monitorados no cronograma.</span>
           </div>
         </div>
       `;
     }
-  } else if (!isNewCompany) {
-    statusStripHtml = `
-      <div class="today-status-strip mb-5">
-        <i class="fa-solid fa-circle-check color-success status-strip-icon" aria-hidden="true"></i>
-        <div class="status-strip-text">
-          <strong>Tudo em dia</strong>
-          <span>— Nenhuma coleta em aberto no momento. Abra uma nova pesquisa quando desejar iniciar um ciclo.</span>
-        </div>
-      </div>
-    `;
   }
 
   // ══════════════════════════════════════════════════════
-  // 3. Três Cards de Visão Geral / Pulso da Organização
+  // 3. Três Cards de Pulso Operacional
   // ══════════════════════════════════════════════════════
   const overviewCardsHtml = `
     <div class="grid grid-cols-3 gap-4 mb-6">
@@ -145,7 +143,7 @@ export function renderToday({ state }) {
         <p class="kpi-title">Coletas em Campo</p>
         <p class="kpi-val">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</p>
         <p class="kpi-sub">
-          ${totalResponses} de ${totalInvited} respostas recebidas (${fmtPercent(aggregateRate)})
+          ${totalResponses} de ${totalInvited} respostas (${fmtPercent(aggregateRate)} de adesão)
         </p>
         <div class="mt-2 pt-2 border-t border-border">
           <span class="table-subtext text-xs">
@@ -156,7 +154,7 @@ export function renderToday({ state }) {
       </div>
 
       <div class="kpi-card">
-        <p class="kpi-title">Colaboradores no Ciclo</p>
+        <p class="kpi-title">Colaboradores Mapeados</p>
         <p class="kpi-val">${membersCount}</p>
         <p class="kpi-sub">
           Distribuídos em ${groupsCount} ${groupsCount === 1 ? 'setor ativo' : 'setores ativos'}
@@ -170,11 +168,11 @@ export function renderToday({ state }) {
 
       <div class="kpi-card">
         <p class="kpi-title">Planos de Ação (NR-1)</p>
-        <p class="kpi-val">${actionsTotal}</p>
+        <p class="kpi-val">${actions.length}</p>
         <p class="kpi-sub">
-          ${actionsTotal > 0
-            ? `${actionsSummary.onTrack || 0} no prazo, ${actionsSummary.overdue || 0} em atraso`
-            : 'Aguardando consolidação do ciclo para definição de medidas'}
+          ${actions.length > 0
+            ? `${onTrackCount} no prazo · ${overdueActions.length} em atraso`
+            : 'Aguardando encerramento do ciclo para novas recomendações'}
         </p>
         <div class="mt-2 pt-2 border-t border-border">
           <a href="#acoes" class="table-subtext text-xs hover:color-primary">
@@ -186,7 +184,7 @@ export function renderToday({ state }) {
   `;
 
   // ══════════════════════════════════════════════════════
-  // 4. Fila de Decisões e Pendências Operacionais
+  // 4. Fila de Decisões e Pendências
   // ══════════════════════════════════════════════════════
   let queueHtml = '';
   if (queue.length > 0) {
@@ -204,12 +202,13 @@ export function renderToday({ state }) {
   }
 
   // ══════════════════════════════════════════════════════
-  // 5. Coluna Principal: Coletas, Timeline e Diretrizes
+  // 5. Coluna Principal: Coletas, Tarefas e Inteligência
   // ══════════════════════════════════════════════════════
   let mainHtml = '';
 
   if (hasOpenSurveys) {
-    mainHtml = `
+    // 5.1 Tabela de Coletas em Andamento
+    const surveysTableCardHtml = `
       <div class="card mb-6">
         <div class="card-header py-3 px-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -217,7 +216,7 @@ export function renderToday({ state }) {
             <span class="badge badge-primary">${openSurveys.length} ${openSurveys.length === 1 ? 'ativa' : 'ativas'}</span>
           </div>
           <span class="table-subtext text-xs">
-            Acompanhe a adesão individual e os convites por grupo
+            Acompanhe o retorno e a adesão de cada setor
           </span>
         </div>
         <div class="card-body p-0">
@@ -296,85 +295,152 @@ export function renderToday({ state }) {
           ` : ''}
         </div>
       </div>
+    `;
 
-      <!-- Timeline do Ciclo de Governança -->
-      <div class="today-timeline-card mb-6">
-        <p class="today-timeline-title">
-          <i class="fa-solid fa-route color-primary" aria-hidden="true"></i>
-          Ciclo de Governança e Escuta Ativa
+    // 5.2 Espaço em Evidência: Planos de Ação e Tarefas
+    const activeTasks = actions.filter(a => ['planned', 'in_progress', 'implemented'].includes(a.status));
+    let actionsSectionHtml = '';
+
+    if (activeTasks.length > 0) {
+      actionsSectionHtml = `
+        <div class="card mb-6">
+          <div class="card-header py-3 px-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h2 class="card-title text-sm font-semibold m-0">
+                <i class="fa-solid fa-list-check color-primary mr-1" aria-hidden="true"></i>
+                Planos de Ação & Tarefas em Execução
+              </h2>
+              <span class="badge badge-primary">${activeTasks.length} ${activeTasks.length === 1 ? 'tarefa' : 'tarefas'}</span>
+            </div>
+            <a href="#acoes" class="btn btn-ghost btn-sm text-xs font-medium">
+              Ver Kanban Completo →
+            </a>
+          </div>
+          <div class="card-body p-0">
+            <div class="today-tasks-list">
+              ${activeTasks.slice(0, 5).map(a => {
+                const isOverdue = a.dueDate && a.dueDate < todayStr && ['planned', 'in_progress'].includes(a.status);
+                const isReviewDue = a.status === 'implemented' && a.reviewDate && a.reviewDate <= todayStr;
+                const statusBadgeClass = isOverdue ? 'badge-danger'
+                  : isReviewDue ? 'badge-warning'
+                  : a.status === 'in_progress' ? 'badge-primary'
+                  : 'badge-neutral';
+                const statusLabel = isOverdue ? 'Atrasada'
+                  : isReviewDue ? 'Revisar eficácia'
+                  : a.status === 'in_progress' ? 'Em execução'
+                  : 'Planejada';
+
+                return `
+                  <div class="today-task-row">
+                    <div class="today-task-main">
+                      <div class="today-task-title-wrap">
+                        <span class="badge ${statusBadgeClass} text-xs">${esc(statusLabel)}</span>
+                        <a href="#acoes" class="today-task-title hover:color-primary">
+                          ${esc(a.title)}
+                        </a>
+                      </div>
+                      <div class="today-task-meta">
+                        <span><i class="fa-solid fa-tag text-[10px] mr-1" aria-hidden="true"></i> ${esc(a.factor || 'Geral')}</span>
+                        <span><i class="fa-solid fa-user-tie text-[10px] mr-1" aria-hidden="true"></i> ${esc(a.owner || a.responsible || 'Responsável não atribuído')}</span>
+                        ${a.dueDate ? `
+                          <span class="${isOverdue ? 'color-danger font-medium' : ''}">
+                            <i class="fa-regular fa-calendar text-[10px] mr-1" aria-hidden="true"></i>
+                            Prazo: ${date(a.dueDate)}
+                          </span>
+                        ` : ''}
+                      </div>
+                    </div>
+                    <div class="today-task-side">
+                      <a href="#acoes" class="btn btn-secondary btn-sm btn-compact">
+                        Gerenciar
+                      </a>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            ${activeTasks.length > 5 ? `
+              <div class="p-2 text-center border-t border-border">
+                <a href="#acoes" class="btn btn-ghost btn-sm text-xs">
+                  Ver todas as ${activeTasks.length} tarefas no Kanban →
+                </a>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      actionsSectionHtml = `
+        <div class="card mb-6">
+          <div class="card-header py-3 px-4 flex items-center justify-between">
+            <h2 class="card-title text-sm font-semibold m-0">
+              <i class="fa-solid fa-list-check color-primary mr-1" aria-hidden="true"></i>
+              Planos de Ação & Soluções Preventivas
+            </h2>
+            <a href="#acoes" class="btn btn-secondary btn-sm btn-compact">
+              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Criar Plano Manual
+            </a>
+          </div>
+          <div class="card-body p-4">
+            <p class="text-sm font-semibold color-text-primary m-0 mb-1">
+              Geração de Soluções com Base nas Escutas
+            </p>
+            <p class="color-text-secondary text-xs m-0 mb-3">
+              O algoritmo do Equilibra analisa as respostas dos colaboradores por dimensão de risco (exigências psicológicas, relações, autonomia e segurança psicológica). Ao encerrar as coletas, o sistema cruza os fatores críticos e sugere automaticamente medidas preventivas estruturadas para o PGR.
+            </p>
+            <div class="flex items-center gap-2">
+              <a href="#acoes" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Cadastrar Ação Preventiva
+              </a>
+              <a href="#resultados/ciclos" class="btn btn-ghost btn-sm text-xs">
+                Consultar Relatórios Anteriores →
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5.3 Espaço em Evidência: Inteligência Diagnóstica e Ciclo de Eficácia
+    const intelligenceSectionHtml = `
+      <div class="today-intelligence-card mb-6">
+        <div class="today-intelligence-header">
+          <h2 class="today-intelligence-title">
+            <i class="fa-solid fa-brain color-primary" aria-hidden="true"></i>
+            Inteligência Analítica & Ciclo de Eficácia Contínua
+          </h2>
+          <span class="badge badge-primary text-xs">Monitoramento Contínuo</span>
+        </div>
+        <p class="color-text-secondary text-xs m-0">
+          Como a plataforma transforma escuta em intervenção e comprova se as soluções funcionaram ao longo dos ciclos:
         </p>
-        <div class="today-timeline-steps">
-          <div class="today-timeline-step today-timeline-step-done">
-            <div class="today-timeline-step-header">
-              <span class="today-timeline-step-name">1. Mapeamento</span>
-              <span class="today-timeline-badge today-timeline-badge-done">
-                <i class="fa-solid fa-check mr-1" aria-hidden="true"></i> Concluído
-              </span>
-            </div>
-            <p class="today-timeline-step-desc">
-              Colaboradores e setores da empresa organizados na base.
+        <div class="today-intelligence-flow">
+          <div class="today-flow-step">
+            <span class="today-flow-step-num">Passo 1</span>
+            <p class="today-flow-step-title">Diagnóstico por Dimensão</p>
+            <p class="today-flow-step-desc">
+              O algoritmo quantifica fatores de risco psicossocial por setor e destaca desvios em relação às referências técnicas.
             </p>
           </div>
-
-          <div class="today-timeline-step today-timeline-step-active">
-            <div class="today-timeline-step-header">
-              <span class="today-timeline-step-name">2. Escuta Ativa</span>
-              <span class="today-timeline-badge today-timeline-badge-active">Fase Atual</span>
-            </div>
-            <p class="today-timeline-step-desc">
-              ${openSurveys.length} ${openSurveys.length === 1 ? 'pesquisa recebendo' : 'pesquisas recebendo'} respostas no ciclo vigente.
+          <div class="today-flow-step">
+            <span class="today-flow-step-num">Passo 2</span>
+            <p class="today-flow-step-title">Devolutiva & Plano de Ação</p>
+            <p class="today-flow-step-desc">
+              Sugestões assertivas de medidas de controle vinculadas a responsáveis e prazos para alimentar diretamente o PGR.
             </p>
           </div>
-
-          <div class="today-timeline-step">
-            <div class="today-timeline-step-header">
-              <span class="today-timeline-step-name">3. Diagnóstico</span>
-              <span class="today-timeline-badge today-timeline-badge-pending">Próxima Fase</span>
-            </div>
-            <p class="today-timeline-step-desc">
-              Consolidação estatística dos fatores de risco psicossocial.
-            </p>
-          </div>
-
-          <div class="today-timeline-step">
-            <div class="today-timeline-step-header">
-              <span class="today-timeline-step-name">4. Planos de Ação</span>
-              <span class="today-timeline-badge today-timeline-badge-pending">Contínuo</span>
-            </div>
-            <p class="today-timeline-step-desc">
-              Medidas preventivas registradas e acompanhadas no PGR.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Diretrizes Operacionais & Recursos Úteis para o RH -->
-      <div class="today-resources-grid">
-        <div class="today-resource-card">
-          <div class="today-resource-icon">
-            <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
-          </div>
-          <div class="today-resource-content">
-            <h3 class="today-resource-title">Garantia de Sigilo & Quórum Seguro</h3>
-            <p class="today-resource-desc">
-              As respostas individuais dos colaboradores são estritamente confidenciais. Médias por setor só são consolidadas quando o quórum amostral mínimo é atingido.
-            </p>
-          </div>
-        </div>
-
-        <div class="today-resource-card">
-          <div class="today-resource-icon">
-            <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
-          </div>
-          <div class="today-resource-content">
-            <h3 class="today-resource-title">Metodologia Científica & NR-1</h3>
-            <p class="today-resource-desc">
-              Instrumentos validados como a Escala Edmondson e protocolos de prevenção ao assédio (Lei 14.457/22) estruturados para integração contínua com o PGR.
+          <div class="today-flow-step">
+            <span class="today-flow-step-num">Passo 3</span>
+            <p class="today-flow-step-title">Medição de Eficácia (Antes vs. Depois)</p>
+            <p class="today-flow-step-desc">
+              Nos ciclos subsequentes, o sistema detecta se a intervenção melhorou o fator. Ações eficazes são validadas; as demais são sinalizadas para ajuste.
             </p>
           </div>
         </div>
       </div>
     `;
+
+    mainHtml = surveysTableCardHtml + actionsSectionHtml + intelligenceSectionHtml;
   } else if (isNewCompany) {
     mainHtml = renderOnboarding();
   } else {
@@ -390,43 +456,16 @@ export function renderToday({ state }) {
           </div>
           ${!isViewer ? `
             <a href="#pesquisas/nova" class="btn btn-primary btn-sm">
-              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Criar Pesquisa
+              <i class="fa-solid fa-plus mr-1" aria-hidden="true"></i> Nova Pesquisa
             </a>
           ` : ''}
-        </div>
-      </div>
-
-      <!-- Diretrizes Operacionais -->
-      <div class="today-resources-grid">
-        <div class="today-resource-card">
-          <div class="today-resource-icon">
-            <i class="fa-solid fa-users-gear" aria-hidden="true"></i>
-          </div>
-          <div class="today-resource-content">
-            <h3 class="today-resource-title">Cadastro da Organização</h3>
-            <p class="today-resource-desc">
-              Mantenha seus setores e colaboradores atualizados para que os convites cheguem com segurança aos canais corretos.
-            </p>
-          </div>
-        </div>
-
-        <div class="today-resource-card">
-          <div class="today-resource-icon">
-            <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-          </div>
-          <div class="today-resource-content">
-            <h3 class="today-resource-title">Conformidade e Governança</h3>
-            <p class="today-resource-desc">
-              Cada ciclo de escuta concluído gera evidências auditáveis para comprovação de gestão ativa de riscos psicossociais.
-            </p>
-          </div>
         </div>
       </div>
     `;
   }
 
   // ══════════════════════════════════════════════════════
-  // 6. Coluna Lateral (Sidebar): Diagnóstico + Ações Rápidas
+  // 6. Coluna Lateral (Sidebar): Diagnóstico Imediato + Resumo
   // ══════════════════════════════════════════════════════
   let situacaoCard = '';
   if (hasOpenSurveys) {
@@ -521,55 +560,30 @@ export function renderToday({ state }) {
     }
   }
 
-  // Card de Ações Rápidas (Atalhos Operacionais Úteis)
-  const quickActionsCard = `
+  // Card de Resumo de Governança NR-1 (Ações & Eficácia Real)
+  const actionsSummaryCard = `
     <div class="today-sidebar-card">
-      <p class="today-sidebar-card-title">Ações Rápidas</p>
-      ${hasOpenSurveys ? `
-        <button type="button"
-                class="today-quick-action-btn"
-                data-action="copy-survey-url"
-                data-url="${attr(`${window.location.origin}/responder/${openSurveys[0].id}`)}">
-          <i class="fa-regular fa-copy tqa-icon" aria-hidden="true"></i>
-          Copiar link de resposta
-        </button>
-        <a href="#pesquisas/${attr(openSurveys[0].id)}/distribuicao" class="today-quick-action-btn">
-          <i class="fa-solid fa-paper-plane tqa-icon" aria-hidden="true"></i>
-          Disparar convites por e-mail
+      <p class="today-sidebar-card-title">Governança & Planos (NR-1)</p>
+      <div class="today-sidebar-stat mb-3">
+        <span class="today-sidebar-stat-number">${actions.length}</span>
+        <span class="today-sidebar-stat-label">${actions.length === 1 ? 'medida registrada' : 'medidas registradas'}</span>
+      </div>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Em execução no prazo</span>
+        <span class="today-sidebar-row-value color-success">${onTrackCount}</span>
+      </div>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Medidas em atraso</span>
+        <span class="today-sidebar-row-value ${overdueActions.length > 0 ? 'color-danger' : ''}">${overdueActions.length}</span>
+      </div>
+      <div class="today-sidebar-row">
+        <span class="today-sidebar-row-label">Aguardando aferição de eficácia</span>
+        <span class="today-sidebar-row-value ${reviewDueActions.length > 0 ? 'color-warning' : ''}">${reviewDueActions.length}</span>
+      </div>
+      <div class="mt-3 pt-2 border-t border-border">
+        <a href="#acoes" class="btn btn-secondary btn-sm w-full text-center">
+          <i class="fa-solid fa-table-columns mr-1" aria-hidden="true"></i> Abrir Kanban de Ações
         </a>
-      ` : ''}
-      <a href="#organizacao/pessoas" class="today-quick-action-btn">
-        <i class="fa-solid fa-users tqa-icon" aria-hidden="true"></i>
-        Colaboradores e Setores
-      </a>
-      <a href="#pesquisas/nova" class="today-quick-action-btn">
-        <i class="fa-solid fa-plus-circle tqa-icon" aria-hidden="true"></i>
-        Nova Pesquisa de Clima
-      </a>
-    </div>
-  `;
-
-  // Card de Resumo do Ciclo & Próximos Passos
-  const cycleSummaryCard = `
-    <div class="today-sidebar-card">
-      <p class="today-sidebar-card-title">Ciclo Vigente</p>
-      <div class="today-sidebar-row">
-        <span class="today-sidebar-row-label">Período</span>
-        <span class="today-sidebar-row-value">Novembro / 2026</span>
-      </div>
-      <div class="today-sidebar-row">
-        <span class="today-sidebar-row-label">Coletas abertas</span>
-        <span class="today-sidebar-row-value">${openSurveys.length}</span>
-      </div>
-      <div class="today-sidebar-row">
-        <span class="today-sidebar-row-label">Prazo restante</span>
-        <span class="today-sidebar-row-value ${earliestDeadline != null && earliestDeadline <= 3 ? 'color-danger' : ''}">
-          ${earliestDeadline != null ? (earliestDeadline <= 0 ? 'Encerra hoje' : `${earliestDeadline} dias`) : 'Aberto'}
-        </span>
-      </div>
-      <div class="today-sidebar-row">
-        <span class="today-sidebar-row-label">Próxima entrega</span>
-        <span class="today-sidebar-row-value color-primary">Diagnóstico</span>
       </div>
     </div>
   `;
@@ -577,8 +591,7 @@ export function renderToday({ state }) {
   const sidebarHtml = `
     <aside class="today-sidebar">
       ${situacaoCard}
-      ${quickActionsCard}
-      ${cycleSummaryCard}
+      ${actionsSummaryCard}
     </aside>
   `;
 
