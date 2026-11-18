@@ -570,7 +570,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-extrabold text-primary">Configuração Inicial do Equilibra</h1>
-          <p className="text-sm color-text-secondary">
+          <p className="text-sm color-text-secondary text-center max-w-md mx-auto">
             Registre o contexto organizacional para uma avaliação de riscos psicossociais precisa (NR-1 / NR-17)
           </p>
         </div>
