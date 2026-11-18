@@ -161,6 +161,30 @@ function createRouter(protectedRoute) {
       audit: state.audit,
     });
   });
+  router.get("/measures", (_req, res) => {
+    const { getAllMeasures } = require("../domain/measuresCatalog");
+    res.json(getAllMeasures());
+  });
+  router.post("/ai-analysis", async (req, res, next) => {
+    try {
+      const { generateFactorAnalysis } = require("../services/aiOrchestratorService");
+      const { factorKey, factorLabel, score, previousScore, groupName, contextDescription } = req.body;
+      if (!factorKey) {
+        return res.status(400).json({ error: "Informe a chave do fator (factorKey)." });
+      }
+      const analysis = await generateFactorAnalysis({
+        factorKey,
+        factorLabel,
+        score,
+        previousScore,
+        groupName,
+        contextDescription,
+      });
+      res.json(analysis);
+    } catch (err) {
+      next(err);
+    }
+  });
   router.use((error, _req, res, _next) => {
     if (error instanceof DomainError)
       return res.status(error.status).json({ error: error.message });
