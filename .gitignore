@@ -1,47 +1,43 @@
+# ============================================================
+# FERRAMENTAS DE DESENVOLVIMENTO — ficam localmente, não vão ao git
+# ============================================================
+
+# Skills e configurações de agentes de IA (Antigravity, Codex, etc.)
+.agents/
+.codex/
+.impeccable/
+skills-lock.json
+
+# Build gerado pelo Vite — recriado pelo CI/Render
+dist/
+
+# Dependências npm
+node_modules/
+
+# Dados locais de runtime e desenvolvimento
+data/
+data-demo/
+data_backup*/
+output/
+report-context.txt
+
+# Variáveis de ambiente — NUNCA no git
+.env
+.env.*
+!.env.example
+
+# Playwright e QA
+.playwright-cli/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Arquivos temporários / exportações
+*.xlsx
+*.tmp
+
+# Legado — screenshots da pasta public
 public/screenshots/
 public/*.png
 public/screenshot*
-dist/
-node_modules/
-data/accounts.json
-data/members.json
-data/groups.json
-data/surveys.json
-data/reports.json
-data/invitations.json
-data/responses.json
-data/sessions.json
-data/.identity-key
-report-context.txt
-.playwright-cli/
-data/qa/
-data/qa-report/
-
-.local-backups/
-.env
-data/*.json
-data/backups/
-output/
-data/.writer.lock
-data/*.tmp
-# Runtime data and generated browser dependencies are never published.
-data/
-data-demo/
-public/vendor/
-!public/vendor/fonts/
-!public/vendor/fonts/*
-!public/vendor/anime/
-!public/vendor/anime/*
-.env.*
-!.env.example
-*.xlsx
-
-.impeccable/config.local.json
-
-.impeccable/live/
-
-.impeccable/hook.cache.json
-data_backup*/
-__pycache__/
-*.pyc
-.agents/skills/impeccable/scripts/bin/

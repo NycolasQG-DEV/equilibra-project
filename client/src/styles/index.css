@@ -1,0 +1,6 @@
+/* Design system do Equilibra — importado pelo Vite */
+@import './tokens.css';
+@import './base.css';
+@import './components.css';
+@import './layouts.css';
+@import './utilities.css';
