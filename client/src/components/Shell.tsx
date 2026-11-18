@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ShellProps {
   currentRoute: string;
-  user?: { name: string; email: string; companyName: string; role?: string } | null;
+  user?: { name: string; email: string; companyName: string; role?: string; avatarUrl?: string | null } | null;
   children: React.ReactNode;
   onNavigate: (route: string) => void;
   onLogout: () => void;
@@ -75,7 +75,11 @@ export const Shell: React.FC<ShellProps> = ({
           <div className="shell-sidebar-footer">
             <div className="shell-user-card">
                 <div className="shell-user-avatar" aria-hidden="true">
-                  {initials}
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name || 'Foto de perfil'} />
+                  ) : (
+                    initials
+                  )}
                 </div>
                 <div className="shell-user-details">
                   <span className="shell-user-name" title={user?.name}>{user?.name || 'Gestor'}</span>

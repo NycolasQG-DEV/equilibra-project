@@ -33,6 +33,7 @@ interface AppUser {
   email: string;
   companyName: string;
   role?: string;
+  avatarUrl?: string | null;
 }
 
 /**
@@ -133,13 +134,14 @@ const App: React.FC = () => {
 
     async function checkSession() {
       try {
-        const account = await get<Account & { company?: string; companyName?: string }>('/auth/me');
+        const account = await get<Account & { company?: string; companyName?: string; avatarUrl?: string | null }>('/auth/me');
         if (account && account.id) {
           setUser({
             name: account.name,
             email: account.email,
             companyName: account.companyName || (account as any).company || 'Equilibra',
             role: account.role,
+            avatarUrl: account.avatarUrl || null,
           });
           await loadSurveys();
 
@@ -164,12 +166,13 @@ const App: React.FC = () => {
 
   // ───── 5. Handler de Login ─────
   const handleLogin = useCallback(
-    async (account: Account & { token?: string }) => {
+    async (account: Account & { token?: string; company?: string; companyName?: string; avatarUrl?: string | null }) => {
       setUser({
         name: account.name,
         email: account.email,
         companyName: (account as any).company || (account as any).companyName || 'Equilibra',
         role: account.role,
+        avatarUrl: account.avatarUrl || null,
       });
 
       try {
@@ -329,6 +332,65 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <span className="badge badge-success text-[10px]">Ativo</span>
+                </div>
+
+                {/* Foto de Perfil */}
+                <div className="flex items-center gap-3 pb-3 border-b border-border">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-primary text-white flex items-center justify-center font-bold text-sm flex-shrink-0 border border-border shadow-sm">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      (user.name || 'G').slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <label className="btn btn-secondary btn-xs cursor-pointer">
+                        <i className="fa-solid fa-camera mr-1" aria-hidden="true" /> Escolher Foto
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert('A imagem deve ter no máximo 2MB.');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              const avatarUrl = reader.result as string;
+                              try {
+                                await post('/auth/avatar', { avatarUrl });
+                                setUser((prev) => prev ? { ...prev, avatarUrl } : null);
+                              } catch (err: any) {
+                                alert(err?.message || 'Erro ao salvar foto.');
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      {user.avatarUrl && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs color-danger"
+                          onClick={async () => {
+                            try {
+                              await post('/auth/avatar', { avatarUrl: null });
+                              setUser((prev) => prev ? { ...prev, avatarUrl: null } : null);
+                            } catch (err: any) {
+                              alert(err?.message || 'Erro ao remover foto.');
+                            }
+                          }}
+                        >
+                          <i className="fa-solid fa-trash-can mr-1" aria-hidden="true" /> Remover
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[10px] color-text-muted block">Foto exibida na barra lateral e perfil.</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-xs">
