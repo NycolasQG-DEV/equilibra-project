@@ -46,34 +46,38 @@ async function loadAll() {
   const sb = getClient();
   if (!sb) return null;
 
-  const result = {};
+  // Busca todas as tabelas em PARALELO para reduzir tempo de inicialização.
+  // Timeout global de 20s — suficiente mesmo com latência alta no cold start.
+  const TIMEOUT_MS = 20000;
 
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout ao conectar ao Supabase (5s)')), 5000)
+    setTimeout(() => reject(new Error(`Timeout ao conectar ao Supabase (${TIMEOUT_MS / 1000}s)`)), TIMEOUT_MS)
   );
 
   const fetchPromise = (async () => {
-    for (const table of TABLES) {
-      try {
-        const { data, error } = await sb
-          .from(table)
-          .select('id, data');
-
-        if (error) {
-          console.warn(`[Supabase] Aviso ao ler tabela "${table}":`, error.message);
-          result[table] = [];
-        } else {
-          result[table] = (data || []).map((row) => ({
+    const entries = await Promise.all(
+      TABLES.map(async (table) => {
+        try {
+          const { data, error } = await sb.from(table).select('id, data');
+          if (error) {
+            // PGRST205 = tabela inexistente no schema cache — aviso, não erro fatal
+            const level = error.code === 'PGRST205' ? 'warn' : 'warn';
+            console[level](`[Supabase] Aviso ao ler tabela "${table}": ${error.message}`);
+            return [table, []];
+          }
+          const rows = (data || []).map((row) => ({
             ...row.data,
             id: row.id || row.data?.id
           }));
+          console.log(`[Supabase] "${table}" carregada — ${rows.length} registro(s).`);
+          return [table, rows];
+        } catch (err) {
+          console.error(`[Supabase] Erro ao carregar "${table}":`, err.message);
+          return [table, []];
         }
-      } catch (err) {
-        console.error(`[Supabase] Erro ao carregar "${table}":`, err.message);
-        result[table] = [];
-      }
-    }
-    return result;
+      })
+    );
+    return Object.fromEntries(entries);
   })();
 
   return Promise.race([fetchPromise, timeoutPromise]);
