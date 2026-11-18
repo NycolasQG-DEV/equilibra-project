@@ -18,7 +18,9 @@ export const Shell: React.FC<ShellProps> = ({
   const navItems = [
     { id: 'hoje', label: 'Hoje', icon: 'fa-gauge-high', description: 'Painel & Pulso' },
     { id: 'pesquisas', label: 'Pesquisas', icon: 'fa-clipboard-list', description: 'Ciclos de Escuta' },
+    { id: 'evidencias', label: 'Evidências', icon: 'fa-folder-open', description: 'AEP Multimétodo' },
     { id: 'resultados', label: 'Diagnóstico', icon: 'fa-chart-pie', description: 'Relatórios & IA' },
+    { id: 'riscos', label: 'Riscos NR-1', icon: 'fa-shield-halved', description: 'Matriz 5x5 & Achados' },
     { id: 'acoes', label: 'Plano de Ação', icon: 'fa-list-check', description: 'Medidas 5W2H' },
     { id: 'organizacao', label: 'Organização', icon: 'fa-building-user', description: 'Colaboradores & Setores' },
     { id: 'configuracoes', label: 'Configurações', icon: 'fa-gear', description: 'Conta & Integrações' },
