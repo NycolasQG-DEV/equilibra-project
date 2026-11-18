@@ -8,6 +8,7 @@ import { SurveyCreateModal } from './views/SurveyCreateModal';
 import { ResultsView } from './views/ResultsView';
 import { ActionsView } from './views/ActionsView';
 import { OrganizationView } from './views/OrganizationView';
+import { OnboardingView } from './views/OnboardingView';
 import { get, post } from './core/api';
 import type { Survey, Account } from '../../types';
 
@@ -18,7 +19,8 @@ type Route =
   | 'resultados'
   | 'acoes'
   | 'organizacao'
-  | 'configuracoes';
+  | 'configuracoes'
+  | 'onboarding';
 
 interface AppUser {
   name: string;
@@ -34,6 +36,7 @@ const App: React.FC = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [surveyModalOpen, setSurveyModalOpen] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // ───── 1. Verificar sessão existente ao montar ─────
   useEffect(() => {
@@ -48,6 +51,15 @@ const App: React.FC = () => {
             role: account.role,
           });
           await loadSurveys();
+          // Verificar se precisa de onboarding
+          try {
+            const ws = await get<{ onboardingContext: unknown }>('/management/workspace');
+            if (!ws.onboardingContext) {
+              setNeedsOnboarding(true);
+            }
+          } catch {
+            // Ignora — não bloqueia o app
+          }
         }
       } catch {
         // Sem sessão — mostra AuthView
@@ -70,13 +82,24 @@ const App: React.FC = () => {
   };
 
   // ───── 3. Handler de Login ─────
-  const handleLogin = useCallback((account: Account & { token?: string }) => {
+  const handleLogin = useCallback(async (account: Account & { token?: string }) => {
     setUser({
       name: account.name,
       email: account.email,
       companyName: (account as any).company || (account as any).companyName || 'Equilibra',
       role: account.role,
     });
+    // Verificar onboarding após login
+    try {
+      const ws = await get<{ onboardingContext: unknown }>('/management/workspace');
+      if (!ws.onboardingContext) {
+        setNeedsOnboarding(true);
+        setRoute('onboarding');
+        return;
+      }
+    } catch {
+      // Ignora — não bloqueia o app
+    }
     setRoute('hoje');
     loadSurveys();
   }, []);
@@ -90,6 +113,7 @@ const App: React.FC = () => {
     }
     setUser(null);
     setSurveys([]);
+    setNeedsOnboarding(false);
     setRoute('hoje');
   }, []);
 
@@ -122,6 +146,24 @@ const App: React.FC = () => {
   // ───── Tela de Login ─────
   if (!user) {
     return <AuthView onLogin={handleLogin} />;
+  }
+
+  // ───── Onboarding (primeira vez) ─────
+  if (needsOnboarding || route === 'onboarding') {
+    return (
+      <OnboardingView
+        onComplete={() => {
+          setNeedsOnboarding(false);
+          setRoute('hoje');
+          loadSurveys();
+        }}
+        onSkip={() => {
+          setNeedsOnboarding(false);
+          setRoute('hoje');
+          loadSurveys();
+        }}
+      />
+    );
   }
 
   // ───── App Principal ─────

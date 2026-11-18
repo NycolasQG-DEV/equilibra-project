@@ -538,21 +538,31 @@ router.get('/meta', protectedRoute, (req, res) => res.json({
 }));
 
 router.put('/meta/account', protectedRoute, (req, res) => {
-  const companyName = clean(req.body.companyName || req.body.company);
-  if (!companyName) return fail(res, 400, 'Informe o nome da empresa.');
   const accounts = read('accounts');
   const org = accounts.find((item) => item.id === req.account.id);
   if (!org) return fail(res, 404, 'Organização não encontrada.');
-  org.company = companyName;
-  org.updatedAt = new Date().toISOString();
-  const user = accounts.find((item) => item.id === req.account.userId);
-  if (user && user.id !== org.id) {
-    user.company = companyName;
-    user.updatedAt = new Date().toISOString();
+
+  // Allow companyName update
+  if (req.body.companyName || req.body.company) {
+    const companyName = clean(req.body.companyName || req.body.company);
+    if (!companyName) return fail(res, 400, 'Informe o nome da empresa.');
+    org.company = companyName;
+    const user = accounts.find((item) => item.id === req.account.userId);
+    if (user && user.id !== org.id) {
+      user.company = companyName;
+      user.updatedAt = new Date().toISOString();
+    }
   }
+
+  // Allow onboardingContext update (EQ-007 / FASE 04)
+  if (req.body.onboardingContext && typeof req.body.onboardingContext === 'object') {
+    org.onboardingContext = { ...req.body.onboardingContext };
+  }
+
+  org.updatedAt = new Date().toISOString();
   write('accounts', accounts);
   req.account = currentAccount(req);
-  res.json({ ok: true, companyName, account: publicAccount(req.account) });
+  res.json({ ok: true, account: publicAccount(req.account) });
 });
 
 router.delete('/auth/me', protectedRoute, (req, res) => {

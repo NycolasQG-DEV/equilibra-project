@@ -57,11 +57,13 @@ function createRouter(protectedRoute) {
     const data = repo.get(req.account.id);
     const today = require("../domain/dates").today();
     const terminal = ["effective", "ineffective", "cancelled"];
+    const account = storage.read("accounts").find((a) => a.id === req.account.id);
     res.json({
       assessments: data.assessments,
       actions: data.actions,
       schedules: data.schedules,
       audit: data.audit.slice(-100).reverse(),
+      onboardingContext: account?.onboardingContext || null,
       workflow: {
         actionTransitions: require("../domain/workflow").TRANSITIONS,
       },
