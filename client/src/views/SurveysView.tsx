@@ -81,27 +81,29 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
   return (
     <div className="p-6 max-w-7xl mx-auto" ref={containerRef}>
       {/* Cabeçalho da View */}
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="view-title">Pesquisas & Ciclos de Diagnóstico</h1>
-          <p className="view-subtitle">
+          <h1 className="page-title">Pesquisas & Ciclos de Diagnóstico</h1>
+          <p className="page-subtitle">
             Gerencie os ciclos psicossociais, acompanhe a taxa de quorum e abra novas coletas.
           </p>
         </div>
-        <button type="button" className="btn btn-primary btn-lg" onClick={onCreateNew}>
-          <i className="fa-solid fa-plus" aria-hidden="true" />
+        <button type="button" className="btn btn-primary" onClick={onCreateNew}>
+          <i className="fa-solid fa-plus mr-1" aria-hidden="true" />
           <span>Nova Pesquisa</span>
         </button>
       </div>
 
       {/* Barra de Filtros e Busca */}
-      <div className="card p-4 mb-6 flex items-center justify-between flex-wrap gap-4 bg-surface">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="toolbar">
+        <div className="filter-tabs" role="tablist">
           {(['all', 'open', 'closed', 'draft'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
-              className={`btn btn-sm ${filter === mode ? 'btn-primary' : 'btn-secondary'}`}
+              role="tab"
+              aria-selected={filter === mode}
+              className={`filter-tab ${filter === mode ? 'active' : ''}`}
               onClick={() => setFilter(mode)}
             >
               {mode === 'all' && 'Todos os Ciclos'}
@@ -112,7 +114,7 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
           ))}
         </div>
 
-        <div className="w-full max-w-xs">
+        <div className="toolbar-search">
           <input
             type="text"
             className="input"
@@ -154,7 +156,7 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
                   </span>
                 </div>
 
-                <h3 className="font-bold text-lg mb-1 text-primary">{survey.title}</h3>
+                <h3 className="font-semibold text-base mb-1 color-text-primary">{survey.title}</h3>
                 <p className="table-subtext mb-3">{survey.cycle} • {survey.model}</p>
 
                 <div className="card bg-surface-subtle p-3 mb-4 rounded-md flex justify-between text-sm">

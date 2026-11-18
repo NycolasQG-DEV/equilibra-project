@@ -300,7 +300,7 @@ export const RiskAssessmentView: React.FC = () => {
             key={s}
             role="tab"
             aria-selected={filterStatus === s}
-            className={`filter-tab ${filterStatus === s ? 'filter-tab--active' : ''}`}
+            className={`filter-tab ${filterStatus === s ? 'active filter-tab--active' : ''}`}
             onClick={() => setFilterStatus(s)}
           >
             {{ all: 'Todos', investigating: 'Em investigação', evaluated: 'Avaliados', dismissed: 'Dispensados' }[s]}
@@ -320,9 +320,16 @@ export const RiskAssessmentView: React.FC = () => {
         <div className="empty-state">
           <i className="fa-solid fa-shield-halved empty-state-icon" aria-hidden="true" />
           <p className="empty-state-title">Nenhum achado registrado</p>
-          <p className="empty-state-desc">
-            Registre achados de risco a partir dos resultados das pesquisas de escuta.
+          <p className="empty-state-desc mb-4">
+            Registre achados de risco a partir dos resultados das pesquisas de escuta ou de observações em campo.
           </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => { setShowForm(true); setError(null); setForm(EMPTY_FORM); }}
+          >
+            <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Registrar Primeiro Achado
+          </button>
         </div>
       ) : (
         <div className="assessment-list">

@@ -4,35 +4,35 @@
    ========================================================================== */
 
 :root {
-  /* ── Brand Colors (Deep Royal Purple, Electric Violet & Lilac Accents) ── */
-  --color-primary: #7C3AED;             /* Roxo Vibrante Sofisticado (Violet-600) */
-  --color-primary-dark: #6D28D9;        /* Violet-700 */
-  --color-primary-deep: #5B21B6;        /* Violet-800 */
-  --color-primary-hover: #6D28D9;
-  --color-primary-active: #5B21B6;
-  --color-primary-subtle: #F5F3FF;       /* Violet-50 */
-  --color-primary-subtle-hover: #EDE9FE;/* Violet-100 */
-  --color-primary-border: #DDD6FE;      /* Violet-200 */
-  --color-primary-gradient: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
-  --color-primary-glow: 0 4px 20px -2px rgba(124, 58, 237, 0.35);
+  /* ── Brand Colors (Authoritative Deep Royal Purple & Indigo) ── */
+  --color-primary: #4338CA;             /* Indigo 700 — tom roxo/índigo sólido, executivo e sóbrio */
+  --color-primary-dark: #3730A3;        /* Indigo 800 */
+  --color-primary-deep: #312E81;        /* Indigo 900 */
+  --color-primary-hover: #3730A3;
+  --color-primary-active: #312E81;
+  --color-primary-subtle: #EEF2FF;       /* Indigo 50 */
+  --color-primary-subtle-hover: #E0E7FF; /* Indigo 100 */
+  --color-primary-border: #C7D2FE;       /* Indigo 200 */
+  --color-primary-gradient: var(--color-primary); /* Sem gradientes chamativos — cor sólida */
+  --color-primary-glow: none;
 
-  --color-accent: #6366F1;              /* Indigo contemporâneo */
+  --color-accent: #4F46E5;              /* Indigo 600 contemporâneo */
   --color-accent-subtle: #EEF2FF;
   --color-accent-border: #C7D2FE;
-  --color-accent-hover: #4F46E5;
+  --color-accent-hover: #4338CA;
 
-  /* ── Dark Navigation & Sidebar (Obsidian Violet Craft) ── */
-  --sidebar-bg: #0F0E17;                /* Obsidian profundo com undertone violeta */
-  --sidebar-surface: #181622;           /* Elevação do menu */
+  /* ── Dark Navigation & Sidebar (Obsidian Slate Craft) ── */
+  --sidebar-bg: #090A0F;                /* Obsidian neutro profundo e elegante */
+  --sidebar-surface: #12131A;           /* Elevação do menu */
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-border-subtle: rgba(255, 255, 255, 0.04);
   --sidebar-text-primary: #F8FAFC;
   --sidebar-text-secondary: #94A3B8;
   --sidebar-text-muted: #64748B;
-  --sidebar-active-bg: linear-gradient(90deg, rgba(124, 58, 237, 0.22) 0%, rgba(99, 102, 241, 0.08) 100%);
-  --sidebar-active-border: #8B5CF6;
+  --sidebar-active-bg: rgba(99, 102, 241, 0.12); /* Sólido sutil sem gradiente neon */
+  --sidebar-active-border: #6366F1;
   --sidebar-active-text: #FFFFFF;
-  --sidebar-active-glow: 0 0 15px rgba(124, 58, 237, 0.25);
+  --sidebar-active-glow: none;
 
   /* ── Neutral Canvas & Elevated Surfaces ── */
   --color-bg: #F8FAFC;                 /* Canvas repousante e limpo */

@@ -319,21 +319,21 @@ const App: React.FC = () => {
               <div className="card p-5 bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-surface-subtle color-text-secondary flex items-center justify-center font-bold border border-border">
                       <i className="fa-solid fa-building" aria-hidden="true" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-primary m-0">Perfil Organizacional</h3>
+                      <h3 className="font-semibold text-sm color-text-primary m-0">Perfil Organizacional</h3>
                       <span className="text-[11px] color-text-muted">Dados cadastrais e enquadramento</span>
                     </div>
                   </div>
-                  <span className="badge badge-primary text-[10px]">Ativo</span>
+                  <span className="badge badge-success text-[10px]">Ativo</span>
                 </div>
 
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between py-1 border-b border-border-subtle">
                     <span className="color-text-muted">Razão Social:</span>
-                    <strong className="text-primary">{user.companyName}</strong>
+                    <strong className="color-text-primary">{user.companyName}</strong>
                   </div>
                   <div className="flex justify-between py-1 border-b border-border-subtle">
                     <span className="color-text-muted">Gestor Responsável:</span>
@@ -364,11 +364,11 @@ const App: React.FC = () => {
               <div className="card p-5 bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center font-bold border border-success-border">
                       <i className="fa-solid fa-shield-halved" aria-hidden="true" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-primary m-0">Privacidade & LGPD (NR-1)</h3>
+                      <h3 className="font-semibold text-sm color-text-primary m-0">Privacidade & LGPD (NR-1)</h3>
                       <span className="text-[11px] color-text-muted">Anonimização e salvaguardas</span>
                     </div>
                   </div>
@@ -378,7 +378,7 @@ const App: React.FC = () => {
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between py-1 border-b border-border-subtle">
                     <span className="color-text-muted">Quórum de Anonimato:</span>
-                    <strong>Mínimo de 5 respostas</strong>
+                    <strong className="color-text-primary">Mínimo de 5 respostas</strong>
                   </div>
                   <div className="flex justify-between py-1 border-b border-border-subtle">
                     <span className="color-text-muted">Criptografia em Repouso:</span>
@@ -404,29 +404,29 @@ const App: React.FC = () => {
               <div className="card p-5 bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-surface-subtle color-text-secondary flex items-center justify-center font-bold border border-border">
                       <i className="fa-solid fa-share-nodes" aria-hidden="true" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-primary m-0">Canais de Coleta & Disparo</h3>
+                      <h3 className="font-semibold text-sm color-text-primary m-0">Canais de Coleta & Disparo</h3>
                       <span className="text-[11px] color-text-muted">WhatsApp e Web Links</span>
                     </div>
                   </div>
-                  <span className="badge badge-primary text-[10px]">Habilitado</span>
+                  <span className="badge badge-neutral text-[10px]">Habilitado</span>
                 </div>
 
                 <div className="space-y-2 text-xs color-text-secondary">
-                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between">
+                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between border border-border">
                     <span className="flex items-center gap-2">
                       <i className="fa-brands fa-whatsapp text-success text-base" aria-hidden="true" />
-                      <strong>WhatsApp API (Baileys / Evolution)</strong>
+                      <strong className="color-text-primary">WhatsApp API (Baileys / Evolution)</strong>
                     </span>
                     <span className="badge badge-success text-[10px]">Pronto</span>
                   </div>
-                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between">
+                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between border border-border">
                     <span className="flex items-center gap-2">
-                      <i className="fa-solid fa-globe text-primary text-base" aria-hidden="true" />
-                      <strong>Link Web Individual e Resposta Pública</strong>
+                      <i className="fa-solid fa-globe color-text-secondary text-base" aria-hidden="true" />
+                      <strong className="color-text-primary">Link Web Individual e Resposta Pública</strong>
                     </span>
                     <span className="badge badge-success text-[10px]">Ativo</span>
                   </div>
@@ -437,11 +437,11 @@ const App: React.FC = () => {
               <div className="card p-5 bg-surface border border-border space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-surface-subtle color-text-secondary flex items-center justify-center font-bold border border-border">
                       <i className="fa-solid fa-floppy-disk" aria-hidden="true" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-primary m-0">Persistência & Backup</h3>
+                      <h3 className="font-semibold text-sm color-text-primary m-0">Persistência & Backup</h3>
                       <span className="text-[11px] color-text-muted">Sincronização Cloud & Local</span>
                     </div>
                   </div>

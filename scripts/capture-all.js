@@ -14,6 +14,7 @@ const fs = require('fs');
 
   console.log('1. Navegando para http://localhost:3000...');
   await page.goto('http://localhost:3000', { waitUntil: 'networkidle' });
+  await page.screenshot({ path: path.join(screenshotDir, '01-login.png') });
 
   // Criar uma nova conta
   const tabs = await page.$$('button');

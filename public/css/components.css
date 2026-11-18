@@ -40,25 +40,27 @@
   box-shadow: none;
 }
 
-/* Primary Button (Electric Purple Gradient with subtle inner light) */
+/* Primary Button (Solid Deep Royal Purple/Indigo with crisp hairline inner light) */
 .btn-primary {
-  background: var(--color-primary-gradient);
+  background-color: var(--color-primary);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--color-primary-dark);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #6D28D9 0%, #4F46E5 100%);
+  background-color: var(--color-primary-hover);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+  border-color: var(--color-primary-deep);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-0.5px);
 }
 
 .btn-primary:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.3);
+  background-color: var(--color-primary-active);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* Secondary Button (Clean Slate Card) */
@@ -77,19 +79,20 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* Danger Button */
+/* Danger Button (Solid Crimson) */
 .btn-danger {
-  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  background-color: #DC2626;
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  border-color: #B91C1C;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.16);
   font-weight: 600;
 }
 
 .btn-danger:hover {
-  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-  transform: translateY(-1px);
+  background-color: #B91C1C;
+  border-color: #991B1B;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  transform: translateY(-0.5px);
 }
 
 /* Ghost Button */
@@ -443,12 +446,12 @@
   background-color: rgba(255, 255, 255, 0.6);
 }
 
-.filter-tabs button.active, .filter-tabs .tab-btn.active {
+.filter-tabs button.active, .filter-tabs .tab-btn.active, .filter-tabs button.filter-tab--active {
   background-color: #ffffff;
   color: var(--color-primary);
   font-weight: 600;
-  border-color: rgba(0, 0, 0, 0.05);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .filter-tab-count {
@@ -465,7 +468,8 @@
   color: var(--color-text-secondary);
 }
 
-.filter-tabs button.active .filter-tab-count {
+.filter-tabs button.active .filter-tab-count,
+.filter-tabs button.filter-tab--active .filter-tab-count {
   background-color: var(--color-primary-subtle);
   color: var(--color-primary);
 }
@@ -741,26 +745,25 @@
   }
 }
 
-/* ── Auth Screen (Linear / Raycast Style) ── */
+/* ── Auth Screen (Clean Executive Canvas) ── */
 .auth-page-bg {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--color-bg);
-  background-image: radial-gradient(circle at 50% 12%, rgba(124, 58, 237, 0.12) 0%, transparent 60%);
   padding: var(--space-6) var(--space-4);
 }
 
 .auth-brand-glow {
-  box-shadow: 0 8px 24px -4px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .auth-card-elevated {
   background-color: #FFFFFF;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(124, 58, 237, 0.04);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
   padding: 32px;
 }
 
@@ -816,4 +819,59 @@
 
 .btn-password-toggle:hover {
   color: var(--color-primary);
+}
+
+/* ── Unified Action Toolbar (Segmented Filters + Search) ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.toolbar-search {
+  width: 280px;
+  max-width: 100%;
+}
+
+/* ── Kanban Board Craft (NR-1 Action Plans) ── */
+.kanban-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 1024px) {
+  .kanban-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kanban-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kanban-column {
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+}
+
+.kanban-empty {
+  text-align: center;
+  padding: 48px 16px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  margin-top: var(--space-2);
 }

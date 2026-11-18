@@ -51,11 +51,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
       <div className="w-full max-w-sm space-y-6">
         {/* Logo e Branding */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white text-2xl mb-3 shadow-lg auth-brand-glow">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white text-xl mb-3 shadow-sm">
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-extrabold text-primary">Equilibra</h1>
-          <p className="text-xs color-text-muted">Gestão Integrada de Riscos Psicossociais · NR-1 / NR-17</p>
+          <h1 className="text-2xl font-bold color-text-primary tracking-tight m-0">Equilibra</h1>
+          <p className="text-xs color-text-secondary mt-1">Gestão Integrada de Riscos Psicossociais · NR-1 / NR-17</p>
         </div>
 
         {/* Card de Auth */}
