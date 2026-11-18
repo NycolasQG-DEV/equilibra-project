@@ -10,7 +10,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const TABLES = ['accounts', 'members', 'groups', 'surveys', 'reports', 'invitations', 'responses', 'sessions', 'management'];
+const TABLES = ['accounts', 'members', 'groups', 'surveys', 'reports', 'invitations', 'responses', 'sessions', 'management', 'evidences'];
 
 let client = null;
 
