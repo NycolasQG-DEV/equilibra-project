@@ -5,11 +5,12 @@ import path from 'node:path';
 export default defineConfig({
   plugins: [react()],
   root: 'client',
-  publicDir: path.resolve(__dirname, './public'),
+  publicDir: false,
   build: {
     outDir: '../dist/client',
     emptyOutDir: true,
     sourcemap: true,
+    chunkSizeWarningLimit: 1500,
   },
   server: {
     port: 5173,
@@ -21,7 +22,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './client/src'),
+      '@': path.resolve(import.meta.dirname, './client/src'),
     },
   },
 });
