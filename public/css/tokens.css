@@ -1,45 +1,60 @@
 /* ==========================================================================
-   Equilibra Design System — Tokens (High-End SaaS Purple & Clean Modern White)
+   Equilibra Design System — Tokens (High-End SaaS Purple & Obsidian Craft)
+   Inspirado no ecossistema moderno Linear / Raycast / Stripe / Resend
    ========================================================================== */
 
 :root {
-  /* ── Brand Colors (Deep Royal Purple & Lilac Accents) ── */
-  --color-primary: #6366F1;             /* Indigo/Purple contemporâneo e sofisticado */
-  --color-primary-dark: #4F46E5;        /* Tom escuro de foco */
-  --color-primary-hover: #4338CA;
-  --color-primary-active: #3730A3;
-  --color-primary-subtle: #EEF2FF;       /* Fundo suave para tags e navegação ativa */
-  --color-primary-subtle-hover: #E0E7FF;
-  --color-primary-border: #C7D2FE;
+  /* ── Brand Colors (Deep Royal Purple, Electric Violet & Lilac Accents) ── */
+  --color-primary: #7C3AED;             /* Roxo Vibrante Sofisticado (Violet-600) */
+  --color-primary-dark: #6D28D9;        /* Violet-700 */
+  --color-primary-deep: #5B21B6;        /* Violet-800 */
+  --color-primary-hover: #6D28D9;
+  --color-primary-active: #5B21B6;
+  --color-primary-subtle: #F5F3FF;       /* Violet-50 */
+  --color-primary-subtle-hover: #EDE9FE;/* Violet-100 */
+  --color-primary-border: #DDD6FE;      /* Violet-200 */
+  --color-primary-gradient: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+  --color-primary-glow: 0 4px 20px -2px rgba(124, 58, 237, 0.35);
 
-  --color-accent: #8B5CF6;              /* Roxo violeta elegante */
-  --color-accent-subtle: #F5F3FF;
-  --color-accent-rose: var(--color-accent);
-  --color-accent-rose-hover: #7C3AED;
-  --color-accent-rose-subtle: #EDE9FE;
+  --color-accent: #6366F1;              /* Indigo contemporâneo */
+  --color-accent-subtle: #EEF2FF;
+  --color-accent-border: #C7D2FE;
+  --color-accent-hover: #4F46E5;
 
-  /* ── Context & Topbar ── */
-  --color-context-bar-bg: #1E1B4B;      /* Roxo noturno sofisticado */
+  /* ── Dark Navigation & Sidebar (Obsidian Violet Craft) ── */
+  --sidebar-bg: #0F0E17;                /* Obsidian profundo com undertone violeta */
+  --sidebar-surface: #181622;           /* Elevação do menu */
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-border-subtle: rgba(255, 255, 255, 0.04);
+  --sidebar-text-primary: #F8FAFC;
+  --sidebar-text-secondary: #94A3B8;
+  --sidebar-text-muted: #64748B;
+  --sidebar-active-bg: linear-gradient(90deg, rgba(124, 58, 237, 0.22) 0%, rgba(99, 102, 241, 0.08) 100%);
+  --sidebar-active-border: #8B5CF6;
+  --sidebar-active-text: #FFFFFF;
+  --sidebar-active-glow: 0 0 15px rgba(124, 58, 237, 0.25);
 
   /* ── Neutral Canvas & Elevated Surfaces ── */
-  --color-bg: #F8FAFC;                 /* Canvas cinza-azulado muito claro e repousante */
-  --color-surface: #FFFFFF;            /* Branco puro e nítido */
-  --color-surface-subtle: #F1F5F9;     /* Cabeçalhos de tabelas e inputs */
+  --color-bg: #F8FAFC;                 /* Canvas repousante e limpo */
+  --color-surface: #FFFFFF;            /* Branco puro nítido */
+  --color-surface-subtle: #F1F5F9;     /* Slate-100 para headers de tabela, tabs e inputs */
   --color-surface-hover: #F8FAFC;
+  --color-surface-muted: #F8FAFC;
 
-  /* ── Clean Hairline Borders (Sem sombras falsas) ── */
-  --color-border: #E2E8F0;             /* Borda nítida de 1px */
-  --color-border-subtle: #F1F5F9;
-  --color-border-strong: #CBD5E1;
+  /* ── Hairline Borders ── */
+  --color-border: #E2E8F0;             /* Borda nítida de 1px Slate-200 */
+  --color-border-subtle: #F1F5F9;      /* Slate-100 */
+  --color-border-strong: #CBD5E1;      /* Slate-300 */
+  --color-border-hover: #94A3B8;
 
   /* ── Typography & Contrasts (WCAG AAA) ── */
-  --color-text-primary: #0F172A;       /* Slate 900: leitura perfeita */
+  --color-text-primary: #0F172A;       /* Slate 900: legibilidade máxima */
   --color-text-secondary: #475569;     /* Slate 600: subtítulos e dados */
   --color-text-muted: #94A3B8;         /* Slate 400: datas e metadados */
   --color-text-on-primary: #FFFFFF;
   --color-text-on-accent: #FFFFFF;
 
-  /* ── Semantic Status Roles (Puro e equilibrado) ── */
+  /* ── Semantic Status Roles ── */
   --color-success: #10B981;
   --color-success-bg: #ECFDF5;
   --color-success-border: #A7F3D0;
@@ -81,23 +96,9 @@
   --band-unclassified-text: #1E293B;
   --band-unclassified-border: #E2E8F0;
 
-  /* ── Group & Segment Hues ── */
-  --group-1: #10B981;
-  --group-2: #3B82F6;
-  --group-3: #F59E0B;
-  --group-4: #6366F1;
-  --group-5: #EF4444;
-  --group-6: #F97316;
-  --group-7: #14B8A6;
-  --group-8: #8B5CF6;
-  --group-9: #EC4899;
-  --group-10: #0EA5E9;
-  --group-11: #EAB308;
-  --group-12: #A855F7;
-
   /* ── Typography Scale (Outfit + Inter: Elegância & Legibilidade) ── */
-  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --font-size-xs: 0.75rem;    /* 12px */
@@ -129,20 +130,23 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* ── Modern Subtle Radii (Sem exageros, refinado) ── */
+  /* ── Modern Subtle Radii (Linear Style) ── */
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 20px;
   --radius-pill: 9999px;
   --radius-full: 9999px;
 
-  /* ── Elegant Glass/Hairline Shadows (Sem sombras 3D pesadas) ── */
+  /* ── Multi-Layer Soft Shadows (Craft SaaS) ── */
   --shadow-none: none;
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -4px rgba(15, 23, 42, 0.02);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 8px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl: 0 20px 32px -8px rgba(15, 23, 42, 0.12), 0 8px 12px -6px rgba(15, 23, 42, 0.04);
 
   /* ── Layer Stacking ── */
   --z-base: 1;
@@ -155,5 +159,6 @@
 
   /* ── Transitions ── */
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-normal: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 350ms cubic-bezier(0.16, 1, 0.3, 1);
 }

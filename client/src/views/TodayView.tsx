@@ -51,7 +51,11 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [adoptingTemplate, setAdoptingTemplate] = useState<string | null>(null);
 
-  const firstName = user?.name ? user.name.trim().split(' ')[0] : 'Gestor';
+  const firstName = user?.name
+    ? (/^(dr|dra|sr|sra)\.?$/i.test(user.name.trim().split(' ')[0])
+      ? user.name.trim().split(' ').slice(0, 2).join(' ')
+      : user.name.trim().split(' ')[0])
+    : 'Gestor';
   const hour = new Date().getHours();
   const timeGreeting = hour >= 5 && hour < 12 ? 'Bom dia' : hour >= 12 && hour < 18 ? 'Boa tarde' : 'Boa noite';
   const dateFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -183,7 +187,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border">
         <div>
           <h1 className="text-2xl font-bold text-primary">
-            {timeGreeting}, {firstName}.
+            {timeGreeting}, {firstName}
           </h1>
           <p className="text-sm color-text-secondary capitalize">
             {dateFormatted} · Painel integrado de riscos psicossociais e planos de ação (NR-1 / NR-17)

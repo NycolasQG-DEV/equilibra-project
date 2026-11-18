@@ -143,8 +143,8 @@ const App: React.FC = () => {
           await loadSurveys();
 
           try {
-            const ws = await get<{ onboardingContext: unknown }>('/management/workspace');
-            if (!ws.onboardingContext) {
+            const hasOnboarding = (account as any).onboardingContext || sessionStorage.getItem('equilibra_onboarding_skipped') === 'true';
+            if (!hasOnboarding) {
               setNeedsOnboarding(true);
             }
           } catch {
@@ -172,8 +172,8 @@ const App: React.FC = () => {
       });
 
       try {
-        const ws = await get<{ onboardingContext: unknown }>('/management/workspace');
-        if (!ws.onboardingContext) {
+        const hasOnboarding = (account as any).onboardingContext || sessionStorage.getItem('equilibra_onboarding_skipped') === 'true';
+        if (!hasOnboarding) {
           setNeedsOnboarding(true);
           navigateTo('onboarding');
           return;
@@ -255,6 +255,7 @@ const App: React.FC = () => {
           loadSurveys();
         }}
         onSkip={() => {
+          sessionStorage.setItem('equilibra_onboarding_skipped', 'true');
           setNeedsOnboarding(false);
           navigateTo('hoje');
           loadSurveys();
@@ -303,21 +304,172 @@ const App: React.FC = () => {
 
       case 'configuracoes':
         return (
-          <div className="p-8 max-w-2xl mx-auto text-center space-y-3">
-            <i className="fa-solid fa-gear text-4xl color-text-muted" aria-hidden="true" />
-            <h2 className="text-lg font-bold text-primary">Configurações do Workspace</h2>
-            <p className="text-xs color-text-secondary leading-relaxed">
-              Gestão de credenciais, parâmetros de retenção LGPD, notificações por e-mail/WhatsApp e preferências
-              de faturamento da empresa <strong>{user.companyName}</strong>.
-            </p>
-            <div className="pt-4 flex justify-center gap-3">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => navigateTo('onboarding')}
-              >
-                <i className="fa-solid fa-sliders mr-1" aria-hidden="true" /> Revisar Perfil da Empresa
-              </button>
+          <div className="page-container space-y-6">
+            <div className="page-header">
+              <div>
+                <h1 className="page-title">Configurações do Workspace</h1>
+                <p className="page-subtitle">
+                  Gestão da empresa, conformidade LGPD, integrações de comunicação e parâmetros da NR-1 / NR-17.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1: Perfil da Empresa */}
+              <div className="card p-5 bg-surface border border-border space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                      <i className="fa-solid fa-building" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-primary m-0">Perfil Organizacional</h3>
+                      <span className="text-[11px] color-text-muted">Dados cadastrais e enquadramento</span>
+                    </div>
+                  </div>
+                  <span className="badge badge-primary text-[10px]">Ativo</span>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">Razão Social:</span>
+                    <strong className="text-primary">{user.companyName}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">Gestor Responsável:</span>
+                    <span className="color-text-secondary">{user.name}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">E-mail Corporativo:</span>
+                    <span className="color-text-secondary">{user.email}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="color-text-muted">Perfil de Permissão:</span>
+                    <span className="badge badge-neutral text-[10px]">{user.role || 'Administrador / SST'}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm w-full"
+                    onClick={() => navigateTo('onboarding')}
+                  >
+                    <i className="fa-solid fa-sliders mr-1" aria-hidden="true" /> Atualizar Contexto & CNAE
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: Privacidade & LGPD */}
+              <div className="card p-5 bg-surface border border-border space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center font-bold">
+                      <i className="fa-solid fa-shield-halved" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-primary m-0">Privacidade & LGPD (NR-1)</h3>
+                      <span className="text-[11px] color-text-muted">Anonimização e salvaguardas</span>
+                    </div>
+                  </div>
+                  <span className="badge badge-success text-[10px]">Conforme</span>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">Quórum de Anonimato:</span>
+                    <strong>Mínimo de 5 respostas</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">Criptografia em Repouso:</span>
+                    <span>HMAC-SHA256 Fail-Closed</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="color-text-muted">Isolamento Multi-tenant:</span>
+                    <span>Segregação estrita por Workspace</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="color-text-muted">Auditoria de Expurgo:</span>
+                    <span>Logs imutáveis de expurgo seguro</span>
+                  </div>
+                </div>
+
+                <div className="notice-box notice-box--info text-[11px]">
+                  <i className="fa-solid fa-lock notice-icon" aria-hidden="true" />
+                  <span>Respostas individuais são irrevogavelmente anonimizadas e agrupadas por setor.</span>
+                </div>
+              </div>
+
+              {/* Card 3: Canais de Escuta */}
+              <div className="card p-5 bg-surface border border-border space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                      <i className="fa-solid fa-share-nodes" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-primary m-0">Canais de Coleta & Disparo</h3>
+                      <span className="text-[11px] color-text-muted">WhatsApp e Web Links</span>
+                    </div>
+                  </div>
+                  <span className="badge badge-primary text-[10px]">Habilitado</span>
+                </div>
+
+                <div className="space-y-2 text-xs color-text-secondary">
+                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <i className="fa-brands fa-whatsapp text-success text-base" aria-hidden="true" />
+                      <strong>WhatsApp API (Baileys / Evolution)</strong>
+                    </span>
+                    <span className="badge badge-success text-[10px]">Pronto</span>
+                  </div>
+                  <div className="p-2 bg-surface-subtle rounded-md flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <i className="fa-solid fa-globe text-primary text-base" aria-hidden="true" />
+                      <strong>Link Web Individual e Resposta Pública</strong>
+                    </span>
+                    <span className="badge badge-success text-[10px]">Ativo</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Backup & Snapshot */}
+              <div className="card p-5 bg-surface border border-border space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold">
+                      <i className="fa-solid fa-floppy-disk" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-primary m-0">Persistência & Backup</h3>
+                      <span className="text-[11px] color-text-muted">Sincronização Cloud & Local</span>
+                    </div>
+                  </div>
+                  <span className="badge badge-neutral text-[10px]">Sincronizado</span>
+                </div>
+
+                <p className="text-xs color-text-secondary leading-relaxed m-0">
+                  O workspace possui persistência atômica transacional no servidor com suporte a espelhamento contínuo
+                  em PostgreSQL gerenciado via Supabase.
+                </p>
+
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm flex-1"
+                    onClick={() => navigateTo('hoje')}
+                  >
+                    <i className="fa-solid fa-gauge-high mr-1" aria-hidden="true" /> Ir para o Painel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm flex-1"
+                    onClick={() => navigateTo('pesquisas')}
+                  >
+                    <i className="fa-solid fa-clipboard-list mr-1" aria-hidden="true" /> Ver Pesquisas
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );

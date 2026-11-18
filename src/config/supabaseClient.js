@@ -48,29 +48,35 @@ async function loadAll() {
 
   const result = {};
 
-  for (const table of TABLES) {
-    try {
-      const { data, error } = await sb
-        .from(table)
-        .select('id, data');
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout ao conectar ao Supabase (5s)')), 5000)
+  );
 
-      if (error) {
-        console.warn(`[Supabase] Aviso ao ler tabela "${table}":`, error.message);
+  const fetchPromise = (async () => {
+    for (const table of TABLES) {
+      try {
+        const { data, error } = await sb
+          .from(table)
+          .select('id, data');
+
+        if (error) {
+          console.warn(`[Supabase] Aviso ao ler tabela "${table}":`, error.message);
+          result[table] = [];
+        } else {
+          result[table] = (data || []).map((row) => ({
+            ...row.data,
+            id: row.id || row.data?.id
+          }));
+        }
+      } catch (err) {
+        console.error(`[Supabase] Erro ao carregar "${table}":`, err.message);
         result[table] = [];
-      } else {
-        // Converte os registros { id, data } para a lista original de objetos JSON
-        result[table] = (data || []).map((row) => ({
-          ...row.data,
-          id: row.id || row.data?.id
-        }));
       }
-    } catch (err) {
-      console.error(`[Supabase] Erro ao carregar "${table}":`, err.message);
-      result[table] = [];
     }
-  }
+    return result;
+  })();
 
-  return result;
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 /**

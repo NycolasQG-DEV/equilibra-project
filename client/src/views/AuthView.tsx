@@ -47,11 +47,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface-subtle px-4">
+    <div className="auth-page-bg">
       <div className="w-full max-w-sm space-y-6">
         {/* Logo e Branding */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white text-2xl mb-3 shadow-lg">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white text-2xl mb-3 shadow-lg auth-brand-glow">
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-extrabold text-primary">Equilibra</h1>
@@ -59,19 +59,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
         </div>
 
         {/* Card de Auth */}
-        <div className="card p-6 bg-surface border border-border shadow-sm space-y-4">
+        <div className="auth-card-elevated space-y-4">
           {/* Tabs de Modo */}
-          <div className="flex border border-border rounded-lg overflow-hidden text-xs font-semibold">
+          <div className="auth-tabs">
             <button
               type="button"
-              className={`flex-1 py-2 transition-colors ${mode === 'login' ? 'bg-primary text-white' : 'hover:bg-surface-subtle'}`}
+              className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
               onClick={() => { setMode('login'); setError(null); }}
             >
               Entrar
             </button>
             <button
               type="button"
-              className={`flex-1 py-2 transition-colors ${mode === 'register' ? 'bg-primary text-white' : 'hover:bg-surface-subtle'}`}
+              className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
               onClick={() => { setMode('register'); setError(null); }}
             >
               Criar Conta
@@ -141,9 +141,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs color-text-muted hover:color-primary"
+                  className="btn-password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
                 >
                   <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true" />
                 </button>

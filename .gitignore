@@ -1,3 +1,6 @@
+public/screenshots/
+public/*.png
+public/screenshot*
 dist/
 node_modules/
 data/accounts.json
