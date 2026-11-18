@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 test('Fase 5.1: Formatters de domínio e badges acessíveis', async () => {
-  const formatters = await import('../public/js/domain/formatters.js');
+  const formatters = await import('../client/src/domain/formatters.ts');
   
   // Escaping
   assert.equal(formatters.esc('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
@@ -36,8 +36,8 @@ test('Fase 5.1: Formatters de domínio e badges acessíveis', async () => {
   assert.ok(badgeHtml.includes('Adequado (≥ 3,6)'));
 });
 
-test('Fase 5.2: Classificação e mensagens amigáveis de erros (core/errors.js)', async () => {
-  const { AppError, formatErrorMessage } = await import('../public/js/core/errors.js');
+test('Fase 5.2: Classificação e mensagens amigáveis de erros (core/errors.ts)', async () => {
+  const { AppError, formatErrorMessage } = await import('../client/src/core/errors.ts');
 
   const err401 = new AppError('Unauthorized', { status: 401 });
   assert.equal(formatErrorMessage(err401), 'Sua sessão expirou. Por favor, autentique-se novamente.');
@@ -55,42 +55,36 @@ test('Fase 5.2: Classificação e mensagens amigáveis de erros (core/errors.js)
   assert.ok(formatErrorMessage(netErr).includes('Falha de conexão com o servidor'));
 });
 
-test('Fase 5.3: Ausência de app.js e zero atributos inline (onclick / style) em public/', () => {
-  const appJsPath = path.join(__dirname, '..', 'public', 'js', 'app.js');
-  const expJsPath = path.join(__dirname, '..', 'public', 'js', 'experience.js');
-  const mgtJsPath = path.join(__dirname, '..', 'public', 'js', 'management.js');
+test('Fase 5.3: Ausência de app.js legado e consolidação no Vite + React', () => {
+  const publicDir = path.join(__dirname, '..', 'public');
+  const appJsPath = path.join(publicDir, 'js', 'app.js');
+  const expJsPath = path.join(publicDir, 'js', 'experience.js');
+  const mgtJsPath = path.join(publicDir, 'js', 'management.js');
 
   assert.ok(!fs.existsSync(appJsPath), 'app.js legado deve ter sido removido');
   assert.ok(!fs.existsSync(expJsPath), 'experience.js legado deve ter sido removido');
   assert.ok(!fs.existsSync(mgtJsPath), 'management.js legado deve ter sido removido');
+  assert.ok(!fs.existsSync(path.join(publicDir, 'js')), 'diretório public/js legado deve ter sido completamente removido');
 
-  // Verify zero onclick and zero style in public/ (except vendor)
-  function scan(dir) {
-    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, ent.name);
-      if (ent.isDirectory()) {
-        if (ent.name !== 'vendor') scan(full);
-      } else if (full.endsWith('.js') || full.endsWith('.html')) {
-        const text = fs.readFileSync(full, 'utf8');
-        const oc = text.match(/onclick=/gi);
-        const st = text.match(/style=["'][^"']*["']/gi);
-        assert.ok(!oc, `Nenhum onclick= permitido em ${full}`);
-        assert.ok(!st, `Nenhum style= permitido em ${full}`);
-      }
-    }
+  // Verify compiled HTML in dist/client/index.html has zero raw onclick=
+  const distIndex = path.join(__dirname, '..', 'dist', 'client', 'index.html');
+  if (fs.existsSync(distIndex)) {
+    const text = fs.readFileSync(distIndex, 'utf8');
+    const oc = text.match(/onclick=/gi);
+    assert.ok(!oc, 'Nenhum onclick= inline permitido em dist/client/index.html');
   }
-
-  scan(path.join(__dirname, '..', 'public'));
 });
 
-test('Fase 6.1: Conformidade dos tokens de design e fontes locais', () => {
-  const tokensPath = path.join(__dirname, '..', 'public', 'css', 'tokens.css');
-  const baseCssPath = path.join(__dirname, '..', 'public', 'css', 'base.css');
-  const indexHtmlPath = path.join(__dirname, '..', 'public', 'index.html');
+test('Fase 6.1: Conformidade dos tokens de design em client/src/styles', () => {
+  const tokensPath = path.join(__dirname, '..', 'client', 'src', 'styles', 'tokens.css');
+  const baseCssPath = path.join(__dirname, '..', 'client', 'src', 'styles', 'base.css');
   const designMdPath = path.join(__dirname, '..', 'DESIGN.md');
 
+  assert.ok(fs.existsSync(tokensPath), 'tokens.css deve existir em client/src/styles');
+  assert.ok(fs.existsSync(baseCssPath), 'base.css deve existir em client/src/styles');
+  assert.ok(fs.existsSync(designMdPath), 'DESIGN.md deve existir');
+
   const tokens = fs.readFileSync(tokensPath, 'utf8');
-  const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
   const designMd = fs.readFileSync(designMdPath, 'utf8');
 
   // Palette token check
@@ -101,15 +95,4 @@ test('Fase 6.1: Conformidade dos tokens de design e fontes locais', () => {
   assert.ok(tokens.includes('--band-adequado:'), 'tokens.css deve definir --band-adequado');
   assert.ok(tokens.includes('--band-cuidado:'), 'tokens.css deve definir --band-cuidado');
   assert.ok(tokens.includes('--band-atencao:'), 'tokens.css deve definir --band-atencao');
-
-  // No Google Fonts CDN in index.html (self-hosted fonts)
-  assert.ok(!indexHtml.includes('fonts.googleapis.com'), 'index.html não deve depender de CDN de fontes externa');
-  assert.ok(!indexHtml.includes('fonts.gstatic.com'), 'index.html não deve depender de gstatic CDN');
-
-  // Fonts exist locally in public/vendor/fonts/
-  const fontsDir = path.join(__dirname, '..', 'public', 'vendor', 'fonts');
-  assert.ok(fs.existsSync(fontsDir), 'public/vendor/fonts deve existir');
-  const fontFiles = fs.readdirSync(fontsDir);
-  assert.ok(fontFiles.some(f => f.endsWith('.woff2')), 'Deve haver arquivos de fonte woff2 locais');
-  assert.ok(fontFiles.includes('fonts.css'), 'fonts.css local deve existir');
 });

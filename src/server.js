@@ -32,20 +32,22 @@ app.use('/api/management', management.createRouter(api.protectedRoute));
 app.use('/api/evidence', evidence.createRouter(api.protectedRoute));
 app.use('/api', api);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }));
-// Servir a aplicação React oficial (dist/client) como prioridade
+// Servir a aplicação React (dist/client gerado pelo Vite)
 const clientDist = path.join(__dirname, '..', 'dist', 'client');
-const publicDir = path.join(__dirname, '..', 'public');
-const hasDist = fs.existsSync(clientDist);
+const distIndex = path.join(clientDist, 'index.html');
 
-app.use(express.static(hasDist ? clientDist : publicDir));
-if (hasDist) {
-  app.use(express.static(publicDir));
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+} else {
+  console.warn('[Servidor] dist/client não encontrado — execute npm run build antes de iniciar em produção.');
 }
 app.get('/health', (_request, response) => response.json({ status: 'ok' }));
 app.get('*path', (_request, response) => {
-  const distIndex = path.join(__dirname, '..', 'dist', 'client', 'index.html');
-  const fileToSend = fs.existsSync(distIndex) ? distIndex : path.join(__dirname, '..', 'public', 'index.html');
-  response.sendFile(fileToSend);
+  if (fs.existsSync(distIndex)) {
+    response.sendFile(distIndex);
+  } else {
+    response.status(503).send('Aplicação não compilada. Execute npm run build.');
+  }
 });
 app.use((error, _request, response, _next) => {
   if (error instanceof SyntaxError && 'body' in error) return response.status(400).json({ error: 'JSON invÃ¡lido.' });

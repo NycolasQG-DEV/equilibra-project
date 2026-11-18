@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
+import './styles/index.css';
 import { Shell } from './components/Shell';
 import { AuthView } from './views/AuthView';
 import { TodayView } from './views/TodayView';

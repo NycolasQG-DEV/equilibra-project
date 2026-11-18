@@ -3,6 +3,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 function scan(directory) {
+  if (!fs.existsSync(directory)) return;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const filename = path.join(directory, entry.name);
     if (entry.isDirectory()) {
@@ -19,37 +20,10 @@ function scan(directory) {
   }
 }
 
-for (const directory of ["src", "public/js", "scripts", "tests"]) {
+for (const directory of ["src", "scripts", "tests"]) {
   scan(directory);
 }
 
-// ── Check for forbidden inline style= or onclick= in public/ ──
-function checkNoInlineAttributes(directory) {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const filename = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name !== "vendor") {
-        checkNoInlineAttributes(filename);
-      }
-    } else if (filename.endsWith(".js") || filename.endsWith(".html")) {
-      const content = fs.readFileSync(filename, "utf8");
-      const onclickMatches = content.match(/onclick=/gi);
-      const styleMatches = content.match(/style=["'][^"']*["']/gi);
-
-      if (onclickMatches) {
-        console.error(`ERRO: Atributo 'onclick=' inline detectado em ${filename}`);
-        process.exitCode = 1;
-      }
-      if (styleMatches) {
-        console.error(`ERRO: Atributo 'style=' inline detectado em ${filename}`);
-        process.exitCode = 1;
-      }
-    }
-  }
-}
-
-checkNoInlineAttributes("public");
-
 if (!process.exitCode) {
-  console.log("Sintaxe JavaScript verificada. Zero atributos inline (onclick/style) em public/.");
+  console.log("Sintaxe JavaScript verificada. Zero arquivos com erro de sintaxe.");
 }

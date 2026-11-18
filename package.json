@@ -14,9 +14,7 @@
     "check": "node scripts/check.js",
     "e2e": "node scripts/e2e.js",
     "qa": "node scripts/qa-server.js",
-    "recover": "node scripts/recovery.js",
-    "vendor": "node scripts/vendor.js",
-    "postinstall": "node scripts/vendor.js"
+    "recover": "node scripts/recovery.js"
   },
   "engines": {
     "node": ">=20.12"
