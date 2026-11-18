@@ -467,7 +467,19 @@ router.post('/members/import', protectedRoute, async (req, res) => {
   res.status(201).json({ imported: review.valid, groupsCreated });
 });
 
+router.get('/members/:id', protectedRoute, (req, res) => {
+  if (req.account.role === 'viewer') return fail(res, 403, 'Acesso restrito a administradores.');
+  const member = scoped('members', req.account.id).find((item) => item.id === req.params.id);
+  if (!member) return fail(res, 404, 'Pessoa não encontrada.');
+  res.json(publicMember(member));
+});
+
 router.get('/groups', protectedRoute, (req, res) => res.json(scoped('groups', req.account.id)));
+router.get('/groups/:id', protectedRoute, (req, res) => {
+  const group = scoped('groups', req.account.id).find((item) => item.id === req.params.id);
+  if (!group) return fail(res, 404, 'Grupo não encontrado.');
+  res.json(group);
+});
 function groupFields(req, accountId) {
   const name = clean(req.body.name);
   const memberIds = Array.isArray(req.body.memberIds) ? [...new Set(req.body.memberIds)] : [];
