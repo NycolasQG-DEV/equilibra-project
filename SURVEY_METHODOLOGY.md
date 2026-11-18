@@ -50,26 +50,34 @@ A média de cada subescala é calculada individualmente por participante e, post
 
 ## 2. Faixas de Referência e Avaliação de Tendência
 
-Para orientar a priorização das intervenções de SST de maneira objetiva e visual, o Equilibra classifica os fatores consolidados em 3 faixas semafóricas:
+Para orientar a triagem visual e a priorização operacional de intervenções, o Equilibra classifica os fatores consolidados em 3 faixas semafóricas de sinalização:
 
-| Faixa | Intervalo de Média | Semáforo | Interpretação Operacional |
+| Faixa | Intervalo de Média | Semáforo | Interpretação Operacional (Triagem) |
 |---|---|:---:|---|
-| **Atenção Prioritária** | Média $< 2,80$ | 🔴 Vermelho | Ponto crítico com forte percepção desfavorável. Demanda investigação imediata e planejamento de ação mitigatória no PGR. |
-| **Cuidado / Monitoramento** | $2,80 \le \text{Média} < 3,60$ | 🟡 Amarelo | Condição intermediária. Requer acompanhamento periódico e fortalecimento das medidas preventivas existentes. |
+| **Atenção Prioritária** | Média $< 2,80$ | 🔴 Vermelho | Ponto crítico com forte percepção desfavorável. Demanda investigação da atividade real e priorização de medidas no PGR. |
+| **Cuidado / Monitoramento** | $2,80 \le \text{Média} < 3,60$ | 🟡 Amarelo | Condição intermediária. Requer acompanhamento periódico e fortalecimento dos controles existentes. |
 | **Adequado / Protetivo** | Média $\ge 3,60$ | 🟢 Verde | Percepção predominantemente favorável. Manter as boas práticas organizacionais e reforçar a cultura de segurança. |
 
-### Avaliação de Tendência Histórica (Deltas)
-Ao comparar o ciclo atual com um ciclo anterior compatível (mesmo instrumento e público):
-- **Evolução Positiva:** $\Delta > +0,15$ (aumento estatisticamente perceptível de bem-estar).
-- **Declínio / Alerta:** $\Delta < -0,15$ (queda significativa na percepção das condições de trabalho).
-- **Estável:** $-0,15 \le \Delta \le +0,15$ (flutuações menores dentro da margem de tolerância).
+> [!IMPORTANT]
+> **Nota de Enquadramento Regulatório:** As faixas de corte acima (2,80 e 3,60) são parâmetros internos de triagem operacional em revisão contínua. Elas **não** constituem faixas normativas da NR-1 nem determinam, por si sós, nível legal de risco ocupacional ou diagnóstico clínico de saúde.
+
+### Avaliação de Tendência Histórica (Deltas Descritivos)
+Ao comparar o ciclo atual com um ciclo anterior estritamente compatível (mesmo instrumento, público e escopo):
+- **Variação Descritiva Favorável:** $\Delta > +0,15$ (indicativo de melhora relativa na percepção das condições de trabalho).
+- **Variação Descritiva Desfavorável:** $\Delta < -0,15$ (indicativo de alerta / retração perceptível que requer apuração).
+- **Estabilidade Relativa:** $-0,15 \le \Delta \le +0,15$ (flutuações dentro da margem operacional de tolerância).
+
+*Nota Estatística:* Os deltas de ciclos refletem variações descritivas observadas na amostra. Eles **não** constituem comprovação inferencial de significância estatística nem nexo causal, os quais dependem de testes de hipótese e controle de variáveis intervenientes.
 
 ---
 
-## 3. Diretrizes de Proteção de Sigilo e Privacidade
+## 3. Diretrizes de Proteção de Sigilo, Quórum e Confidencialidade
 
 ### 3.1 Quórum Mínimo de Divulgação ($N \ge 5$)
-Nenhum resultado quantitativo é divulgado para grupos com menos de 5 respondentes. A exigência de 5 respostas é um controle de produto desenhado para evitar constrangimento e garantir a confidencialidade das opiniões expressas.
+Nenhum resultado quantitativo é divulgado para grupos com menos de 5 respondentes. A exigência de 5 respostas é estritamente uma **salvaguarda de supressão e proteção da confidencialidade** do respondente, impedindo a identificação direta de opiniões individuais.
+
+> [!WARNING]
+> **Distinção Essencial:** O cumprimento da barreira de $N \ge 5$ **não** garante, por si só, representatividade estatística ou suficiência amostral da empresa. A representatividade amostral deve ser avaliada pelo RH/SST considerando o tamanho da população total exposta, a distribuição das funções e as taxas de adesão.
 
 ### 3.2 Partição Determinística de Segmentos
 Em pesquisas corporativas com múltiplos departamentos ou áreas:
@@ -83,9 +91,15 @@ Se dois ciclos fechados em períodos próximos possuírem públicos com diferen�
 
 ---
 
-## 4. Integração com a NR-1 e o PGR
+## 4. Integração com a NR-1 (GRO/PGR) e a NR-17
 
-O questionário de percepção psicossocial é uma das ferramentas recomendadas para identificação de perigos e fatores de estresse no ambiente corporativo, conforme preconizado no Gerenciamento de Riscos Ocupacionais (GRO) da NR-1.
+Conforme o capítulo 1.5 da NR-1 (em vigor desde 26/05/2026) e as diretrizes do Guia de Fatores de Riscos Psicossociais do Ministério do Trabalho e Emprego (MTE):
 
-1. **Abordagem Complementar:** Os resultados devem ser articulados com Análise Ergonômica do Trabalho (AET), inspeções nos postos, diálogo com a CIPA e dados de absenteísmo / saúde ocupacional.
-2. **Termo de Responsabilidade Técnica:** O relatório exige o registro formal de aceite pelo responsável técnico (médico do trabalho, engenheiro de segurança ou gestor de SST), reafirmando que as intervenções e o plano de ação são de responsabilidade direta da organização.
+1. **Questionário Não é Diagnóstico Conclusivo:** Questionários são ferramentas de triagem e escuta inicial. Eles não esgotam o processo de identificação de perigos e não dispensam a avaliação técnica dos processos, ambientes e da atividade real de trabalho.
+2. **Integração com AEP e AET (NR-17):** A avaliação de riscos psicossociais deve subsidiar a Avaliação Ergonômica Preliminar (AEP) e, quando houver indicação de complexidade ou necessidade de aprofundamento, a Análise Ergonômica do Trabalho (AET).
+3. **Quatro Camadas da Gestão:** A plataforma segrega de forma rastreável:
+   - **Dado Observado:** Registros de pesquisas, observações e dados operacionais agregados.
+   - **Interpretação:** Leitura descritiva de tendências com parâmetros transparentes.
+   - **Hipótese:** Possíveis fatores contribuintes a investigar in loco (sem presunção de causa).
+   - **Decisão Técnica/Organizacional:** Validação formal da avaliação e aprovação de medidas por profissional e organização competentes.
+4. **Termo de Responsabilidade Técnica:** O relatório exige o registro formal de aceite pelo responsável técnico (médico do trabalho, engenheiro de segurança, ergonomista ou gestor de SST designado), reafirmando que o julgamento de risco e as medidas preventivas são de responsabilidade da organização.

@@ -1566,7 +1566,7 @@ function renderSolutionsPortal(report, factors, isViewer) {
 
               <div class="solution-card-footer">
                 ${!isViewer ? `
-                  <button type="button" class="btn btn-primary btn-sm quick-add-solution-btn" data-action="quick-add-solution"
+                  <button type="button" class="btn btn-secondary btn-sm quick-add-solution-btn" data-action="quick-add-solution"
                     data-report-id="${attr(report.id)}"
                     data-factor-key="${attr(f.key)}"
                     data-factor-label="${attr(f.label || f.key)}"
@@ -1575,7 +1575,7 @@ function renderSolutionsPortal(report, factors, isViewer) {
                     data-days="${attr(sol.days)}"
                     data-criteria="${attr(sol.criteria)}"
                     data-desc="${attr(sol.description)}">
-                    <i class="fa-solid fa-plus-circle" aria-hidden="true"></i> Adicionar ao Plano de Ação NR-1
+                    <i class="fa-solid fa-clipboard-question mr-1" aria-hidden="true"></i> Propor Medida / Investigar
                   </button>
                 ` : `
                   <span class="badge badge-neutral">

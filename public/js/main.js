@@ -417,16 +417,12 @@ document.addEventListener('click', async (e) => {
     if (trigger.disabled) return;
     trigger.disabled = true;
     const originalHtml = trigger.innerHTML;
-    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cadastrando...';
+    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Registrando proposta...';
 
     const reportId = trigger.dataset.reportId;
     const factorKey = trigger.dataset.factorKey;
     const factorLabel = trigger.dataset.factorLabel || factorKey;
     const title = trigger.dataset.solutionTitle;
-    const owner = trigger.dataset.owner || 'RH / Gestão Operacional';
-    const days = Number(trigger.dataset.days) || 30;
-    const criteria = trigger.dataset.criteria || 'Redução da sobrecarga e melhoria na próxima escuta';
-    const desc = trigger.dataset.desc || 'Ação preventiva gerada pelo Portal de Soluções Equilibra (NR-1)';
 
     try {
       await store.loadManagement();
@@ -437,48 +433,24 @@ document.addEventListener('click', async (e) => {
         assessment = await post('/management/assessments', {
           reportId,
           factor: factorKey,
-          title: `Avaliação do Fator: ${factorLabel}`,
-          context: `Achado identificado na escuta psicossocial NR-1: fator na faixa de atenção/cuidado.`,
-          existingMeasures: 'Medidas em análise preliminar pelo SESMT/RH.',
-          decision: `Implementação da ação preventiva recomendada: ${title}`,
-          classification: 'high',
-          status: 'evaluated'
+          title: `Investigação: ${factorLabel}`,
+          context: `Sinal identificado na escuta psicossocial NR-1. Proposta sugerida: ${title}. Aguarda investigação da atividade real e validação técnica do SESMT/RH.`,
+          existingMeasures: 'Controles existentes em levantamento preliminar junto ao SESMT/RH.',
+          decision: `Proposta de intervenção preliminar para o PGR/NR-1. Pendente de avaliação técnica formal.`,
+          classification: 'pending',
+          status: 'investigating'
         });
-      } else if (assessment.status !== 'evaluated') {
-        assessment = await put(`/management/assessments/${assessment.id}`, {
-          ...assessment,
-          context: assessment.context || `Achado identificado na escuta psicossocial NR-1.`,
-          decision: `Implementação da ação preventiva recomendada: ${title}`,
-          classification: 'high',
-          status: 'evaluated'
-        });
+        await store.loadManagement();
+        showToast(`Proposta de investigação para "${factorLabel}" registrada com sucesso! Conclua a avaliação técnica para aprovar a ação no PGR.`, 'info');
+      } else {
+        showToast(`Já existe registro em andamento para "${factorLabel}". Acesse Planos de Ação para validar ou revisar.`, 'info');
       }
 
-      const now = new Date();
-      const due = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      const rev = new Date(due.getTime() + 15 * 24 * 60 * 60 * 1000);
-      const fmtDate = (d) => d.toISOString().slice(0, 10);
-
-      await post('/management/actions', {
-        assessmentId: assessment.id,
-        title,
-        owner,
-        dueDate: fmtDate(due),
-        reviewDate: fmtDate(rev),
-        priority: 'high',
-        successCriteria: criteria,
-        description: desc
-      });
-
-      await store.loadManagement();
-      showToast(`Ação preventiva "${title}" integrada ao Plano de Ação da NR-1 com sucesso!`, 'success');
-
-      trigger.className = 'badge badge-success';
-      trigger.innerHTML = '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Integrado ao Plano de Ação';
+      trigger.outerHTML = '<a href="#acoes" class="btn btn-secondary btn-sm"><i class="fa-solid fa-clipboard-question mr-1" aria-hidden="true"></i> Proposta em Investigação →</a>';
     } catch (err) {
       trigger.disabled = false;
       trigger.innerHTML = originalHtml;
-      showToast(err.message || 'Erro ao cadastrar ação preventiva.', 'error');
+      showToast(err.message || 'Erro ao registrar proposta de investigação.', 'error');
     }
   } else if (action === 'toggle-chart-table') {
     const targetId = trigger.dataset.target;

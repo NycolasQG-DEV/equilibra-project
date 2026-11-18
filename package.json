@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "build": "vite build",
+    "client:dev": "vite",
+    "client:preview": "vite preview",
     "test": "node --test tests/*.test.js",
     "check": "node scripts/check.js",
     "e2e": "node scripts/e2e.js",
