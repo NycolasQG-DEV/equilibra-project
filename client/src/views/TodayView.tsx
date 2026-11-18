@@ -209,7 +209,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
         <div className="p-3 rounded-lg flex items-center gap-3 bg-surface border border-success">
           <i className="fa-solid fa-circle-check text-success text-lg" aria-hidden="true" />
           <div className="text-sm">
-            <strong className="font-semibold text-success">Operação em conformidade: </strong>
+            <strong className="font-semibold text-success">Monitoramento ativo: </strong>
             <span>Todas as coletas ativas estão recebendo respostas e o plano de ação segue o cronograma estabelecido.</span>
           </div>
         </div>

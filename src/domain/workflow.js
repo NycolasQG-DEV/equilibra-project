@@ -53,6 +53,15 @@ function validateAssessment(input, report) {
       ["pending", "low", "medium", "high"],
       "Prioridade técnica",
     ),
+    // Campos da matriz 5×5 (severidade × probabilidade)
+    severity: input.severity != null ? Number(input.severity) : null,
+    probability: input.probability != null ? Number(input.probability) : null,
+    riskScore: input.riskScore != null ? Number(input.riskScore) : null,
+    riskLevel: text(input.riskLevel, 50) || null,
+    // Campos de caracterização do perigo
+    groupExposed: text(input.groupExposed, 300) || null,
+    hazard: text(input.hazard, 300) || null,
+    consequence: text(input.consequence, 300) || null,
   };
 }
 const ACTION_STATES = [

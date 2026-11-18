@@ -58,7 +58,8 @@ function encryptPhone(phone) {
     return `enc:${iv.toString('base64')}:${cipher.getAuthTag().toString('base64')}:${encrypted.toString('base64')}`;
   } catch (err) {
     console.error('[Crypto] Falha ao criptografar telefone:', err.message);
-    return phone;
+    // NUNCA retornar texto puro — falha fechada (fail-closed)
+    throw new Error('[Crypto] Não foi possível criptografar o dado de identidade. Verifique a configuração de EQUILIBRA_DATA_KEY.');
   }
 }
 

@@ -4,7 +4,9 @@ import { get, post } from '../core/api';
 interface FactorMetric {
   key: string;
   label: string;
-  mean: number;
+  // Backend returns `average`; support both for resilience
+  average?: number;
+  mean?: number;
   favorableRatio?: number;
   unfavorableRatio?: number;
   neutralRatio?: number;
@@ -17,9 +19,15 @@ interface ReportItem {
   title: string;
   cycle: string;
   model: string;
-  generatedAt: string;
-  totalInvited: number;
-  totalAnswered: number;
+  // Backend primary fields
+  closedAt?: string;
+  responseCount?: number;
+  responsesCount?: number;
+  invitedCount?: number;
+  // Frontend-normalized aliases (may come from either backend naming)
+  generatedAt?: string;
+  totalInvited?: number;
+  totalAnswered?: number;
   participationRate: number;
   factors?: FactorMetric[];
   groupBreakdown?: Array<{
@@ -30,6 +38,14 @@ interface ReportItem {
     participationRate: number;
     isSuppressed: boolean;
     factors?: Record<string, number>;
+  }>;
+  // Backend returns `insights` array; may also carry `hypotheses`
+  insights?: Array<{
+    factorKey?: string;
+    factorLabel?: string;
+    observation?: string;
+    hypothesis?: string;
+    recommendedInvestigation?: string;
   }>;
   hypotheses?: Array<{
     factorKey: string;
@@ -197,7 +213,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   <div className="text-[11px] color-text-muted">{report.cycle}</div>
                   <div className="mt-2 flex items-center justify-between text-[11px]">
                     <span className="badge badge-neutral text-[10px]">
-                      {report.totalAnswered} respostas
+                      {report.responseCount ?? report.responsesCount ?? report.totalAnswered ?? '—'} respostas
                     </span>
                     <span className="font-semibold">{((report.participationRate || 0) * 100).toFixed(0)}% adesão</span>
                   </div>
@@ -216,14 +232,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     <span className="badge badge-primary text-xs mb-1">{selectedReport.cycle}</span>
                     <h2 className="text-lg font-bold text-primary">{selectedReport.title}</h2>
                     <p className="text-xs color-text-muted">
-                      Modelo: {selectedReport.model} · Consolidado em: {new Date(selectedReport.generatedAt || Date.now()).toLocaleDateString('pt-BR')}
+                      Modelo: {selectedReport.model} · Consolidado em: {new Date(selectedReport.closedAt || selectedReport.generatedAt || Date.now()).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 text-center">
                     <div>
                       <span className="text-xs color-text-muted block">Participantes</span>
-                      <strong className="text-xl font-bold">{selectedReport.totalAnswered}</strong>
-                      <span className="text-[10px] color-text-muted block">de {selectedReport.totalInvited} convidados</span>
+                      <strong className="text-xl font-bold">{selectedReport.responseCount ?? selectedReport.responsesCount ?? selectedReport.totalAnswered ?? '—'}</strong>
+                      <span className="text-[10px] color-text-muted block">de {selectedReport.invitedCount ?? selectedReport.totalInvited ?? '—'} convidados</span>
                     </div>
                     <div className="border-l border-border pl-4">
                       <span className="text-xs color-text-muted block">Taxa de Adesão</span>
@@ -260,7 +276,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                 {selectedReport.factors && selectedReport.factors.length > 0 ? (
                   <div className="space-y-3">
                     {selectedReport.factors.map((factor) => {
-                      const mean = factor.mean || 0;
+                      const mean = factor.average ?? factor.mean ?? 0;
                       const percentage = Math.min(100, Math.max(0, ((mean - 1) / 4) * 100));
                       const isAttention = mean < 2.8;
                       const isFavorable = mean >= 3.6;
@@ -301,53 +317,63 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   Hipóteses estruturadas para direcionar a Análise Ergonômica Preliminar (AEP) in loco. O responsável técnico deve validar a pertinência antes de cadastrar a medida definitiva no PGR.
                 </p>
 
-                <div className="space-y-4">
-                  {(selectedReport.hypotheses && selectedReport.hypotheses.length > 0
-                    ? selectedReport.hypotheses
-                    : [
-                        {
-                          factorKey: 'carga',
-                          factorLabel: 'Exigências Psicológicas & Prazos',
-                          observation: 'Relatos recorrentes de sobrecarga em fechamentos de ciclo.',
-                          hypothesis: 'Concentração de demandas críticas no final do período sem distribuição equilibrada entre as equipes.',
-                          recommendedInvestigation: 'Revisar cronograma de entrega das atividades e verificar necessidade de suporte ou rodízio de tarefas.',
-                        },
-                        {
-                          factorKey: 'comunicacao',
-                          factorLabel: 'Segurança Psicológica & Abertura',
-                          observation: 'Hesitação na expressão de dúvidas técnicas ou reporte precoce de incidentes operacionais.',
-                          hypothesis: 'Canal de comunicação verticalizado com receio de julgamento por erros corriqueiros.',
-                          recommendedInvestigation: 'Realizar oficina participativa com líderes para incentivar feedback construtivo e segurança de comunicação.',
-                        },
-                      ]
-                  ).map((hypo, idx) => (
-                    <div key={idx} className="p-4 border border-border rounded-lg bg-surface-subtle space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-primary">{hypo.factorLabel}</span>
-                        <span className="badge badge-primary text-[10px]">Hipótese Investigativa</span>
+                {(() => {
+                  // Unifica hypotheses (campo antigo) e insights (campo atual do backend)
+                  const items = (
+                    selectedReport.hypotheses && selectedReport.hypotheses.length > 0
+                      ? selectedReport.hypotheses
+                      : selectedReport.insights && selectedReport.insights.length > 0
+                      ? selectedReport.insights
+                      : []
+                  );
+                  if (items.length === 0) {
+                    return (
+                      <div className="text-center py-6">
+                        <i className="fa-regular fa-clock text-2xl color-text-muted mb-2" aria-hidden="true" />
+                        <p className="text-xs color-text-secondary">
+                          Evidência insuficiente para compor hipóteses neste ciclo. As hipóteses investigativas são geradas automaticamente após o encerramento do período de coleta com quórum amostral atingido.
+                        </p>
                       </div>
-                      <p className="text-xs color-text-secondary m-0">
-                        <strong>Dado observado:</strong> {hypo.observation}
-                      </p>
-                      <p className="text-xs color-text-secondary m-0">
-                        <strong>Hipótese técnica:</strong> {hypo.hypothesis}
-                      </p>
-                      <div className="p-2 bg-surface rounded border border-border text-xs">
-                        <strong className="text-primary block mb-1">Medida preventiva sugerida para validação:</strong>
-                        <span>{hypo.recommendedInvestigation}</span>
-                      </div>
-                      <div className="pt-2 flex justify-end">
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-xs"
-                          onClick={() => handleAdoptProposal(hypo)}
-                        >
-                          <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar no Plano de Ação (5W2H)
-                        </button>
-                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-4">
+                      {items.map((hypo: any, idx: number) => (
+                        <div key={hypo.factorKey || idx} className="p-4 border border-border rounded-lg bg-surface-subtle space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-primary">{hypo.factorLabel}</span>
+                            <span className="badge badge-primary text-[10px]">Hipótese Investigativa</span>
+                          </div>
+                          {hypo.observation && (
+                            <p className="text-xs color-text-secondary m-0">
+                              <strong>Dado observado:</strong> {hypo.observation}
+                            </p>
+                          )}
+                          {hypo.hypothesis && (
+                            <p className="text-xs color-text-secondary m-0">
+                              <strong>Hipótese técnica:</strong> {hypo.hypothesis}
+                            </p>
+                          )}
+                          {hypo.recommendedInvestigation && (
+                            <div className="p-2 bg-surface rounded border border-border text-xs">
+                              <strong className="text-primary block mb-1">Medida preventiva sugerida para validação:</strong>
+                              <span>{hypo.recommendedInvestigation}</span>
+                            </div>
+                          )}
+                          <div className="pt-2 flex justify-end">
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-xs"
+                              onClick={() => handleAdoptProposal(hypo)}
+                            >
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar no Plano de Ação (5W2H)
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
             </div>
           )}
