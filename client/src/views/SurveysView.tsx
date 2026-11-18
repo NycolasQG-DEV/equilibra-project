@@ -9,6 +9,14 @@ interface SurveysViewProps {
   onViewResults: (id: string) => void;
 }
 
+const cleanSurveyTitle = (title: string, cycle?: string) => {
+  let cleaned = (title || '').trim();
+  if (cycle && cleaned.toLowerCase().endsWith(` - ${cycle.toLowerCase()}`)) {
+    cleaned = cleaned.slice(0, -(cycle.length + 3)).trim();
+  }
+  return cleaned || title;
+};
+
 export const SurveysView: React.FC<SurveysViewProps> = ({
   surveys,
   onCreateNew,
@@ -156,21 +164,38 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
                   </span>
                 </div>
 
-                <h3 className="font-semibold text-base mb-1 color-text-primary">{survey.title}</h3>
-                <p className="table-subtext mb-3">{survey.cycle} • {survey.model}</p>
+                <div title={survey.title}>
+                  <h3 className="font-semibold text-base mb-1 color-text-primary">
+                    {cleanSurveyTitle(survey.title, survey.cycle)}
+                  </h3>
+                  <p className="table-subtext mb-3 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1">
+                      <i className="fa-regular fa-calendar text-[11px]" aria-hidden="true" />
+                      {survey.cycle}
+                    </span>
+                    {survey.model && survey.model !== survey.title && !survey.title.includes(survey.model) && (
+                      <>
+                        <span>•</span>
+                        <span>{survey.model}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
 
-                <div className="card bg-surface-subtle p-3 mb-4 rounded-md flex justify-between text-sm">
+                <div className="card bg-surface-subtle p-3 mb-4 rounded-md flex items-center justify-between text-sm">
                   <div>
                     <span className="color-text-muted block text-xs">Respostas</span>
-                    <strong className="num">{survey.responseCount || 0}</strong>
+                    <strong className="num text-base">{survey.responseCount || 0}</strong>
+                    <span className="text-xs color-text-muted ml-1">/ {survey.totalMembersCount || 0} público</span>
                   </div>
-                  <div>
-                    <span className="color-text-muted block text-xs">Público Alvo</span>
-                    <strong className="num">{survey.totalMembersCount || 0}</strong>
-                  </div>
-                  <div>
-                    <span className="color-text-muted block text-xs">Quorum Mínimo</span>
-                    <strong className="num">5</strong>
+                  <div
+                    className="text-right cursor-help"
+                    title="Proteção de Privacidade: os resultados por setor só são consolidados com quórum mínimo de 5 respostas para assegurar o sigilo individual."
+                  >
+                    <span className="badge badge-neutral text-[10px] inline-flex items-center gap-1 font-normal">
+                      <i className="fa-solid fa-shield-halved text-primary" aria-hidden="true" />
+                      Quórum mín. 5
+                    </span>
                   </div>
                 </div>
               </div>

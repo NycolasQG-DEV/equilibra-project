@@ -5,10 +5,10 @@ const HSE = 'https://www.hse.gov.uk/stress/standards/step2/surveys.htm';
 const definitions = [
   [
     'organizacao',
-    'NR-1 & GRO — Diagnóstico de Condições & Organização do Trabalho',
-    'Mapeamento amplo dos 12 fatores de risco psicossocial para inventário do PGR/GRO (Portaria MTE NR-1).',
+    'Condições e Organização do Trabalho',
+    'Mapeamento dos fatores de risco psicossocial para inventário preventivo (alinhado às diretrizes da NR-1).',
     'nr1-pgr',
-    'Triagem Geral GRO/PGR',
+    'Triagem Geral',
     [
       ['volume', 'Volume de trabalho', 'O volume de tarefas e demandas é compatível com a minha jornada normal de trabalho.'],
       ['ritmo', 'Ritmo de trabalho', 'Consigo executar as tarefas sem ser submetido a ritmo ou aceleração temporal excessiva.'],
@@ -73,10 +73,10 @@ const definitions = [
   ],
   [
     'respeito',
-    'Prevenção ao Assédio & Canal de Escuta Protegida (Lei 14.457/22)',
-    'Auditoria de conformidade com a Lei 14.457/22 (CIPA): prevenção ao assédio moral e sexual e canais protegidos.',
+    'Prevenção ao Assédio & Canal Ético',
+    'Auditoria e percepção de respeito, prevenção ao assédio e canais confidenciais (alinhado à Lei 14.457/22).',
     'assedio-compliance',
-    'Compliance & Lei 14.457/22',
+    'Cultura de Respeito',
     [
       ['tratamento_digno', 'Cultura de civilidade', 'O tratamento cotidiano entre colegas e lideranças é pautado pela dignidade e respeito.'],
       ['prevencao_moral', 'Proteção contra humilhações', 'A empresa coíbe ativamente condutas vexatórias, gritos, ofensas ou perseguição moral.'],
@@ -118,7 +118,7 @@ const definitions = [
   ],
   [
     'pulso',
-    'Pulso Ágil Mensal NR-1 — Termômetro de Estabilidade Psicossocial',
+    'Pulso Mensal de Estabilidade Psicossocial',
     'Monitoramento contínuo breve e repetível dos 4 pilares fundamentais da saúde e clima no trabalho.',
     'pulso',
     'Monitoramento Contínuo',
@@ -131,8 +131,8 @@ const definitions = [
   ],
   [
     'medidas',
-    'Eficácia das Medidas Preventivas & Plano de Ação PGR',
-    'Auditoria de percepção sobre a aplicabilidade e efetividade prática das intervenções e medidas adotadas pelo SESMT/RH.',
+    'Eficácia das Medidas Preventivas',
+    'Auditoria de percepção sobre a aplicabilidade e efetividade prática das intervenções e medidas adotadas.',
     'eficacia',
     'Auditoria do Plano de Ação',
     [

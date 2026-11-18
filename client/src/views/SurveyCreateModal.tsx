@@ -11,8 +11,8 @@ interface SurveyCreateModalProps {
 const CATALOG_MODELS = [
   {
     id: 'seguranca_psicologica',
-    name: 'Segurança Psicológica & Autonomia (Escala Edmondson)',
-    description: 'Avaliação de voz ativa, confiança mútua e abertura para relatar erros sem retaliação.',
+    name: 'Segurança Psicológica & Autonomia',
+    description: 'Avaliação de voz ativa, confiança mútua e abertura para relatar erros (baseado na escala Edmondson).',
     methodologicalStatus: 'Exploratório · Triagem inicial',
     category: 'Relacional',
   },

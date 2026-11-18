@@ -35,6 +35,14 @@ interface TodayViewProps {
   onOpenNewAction: () => void;
 }
 
+const cleanSurveyTitle = (title: string, cycle?: string) => {
+  let cleaned = (title || '').trim();
+  if (cycle && cleaned.toLowerCase().endsWith(` - ${cycle.toLowerCase()}`)) {
+    cleaned = cleaned.slice(0, -(cycle.length + 3)).trim();
+  }
+  return cleaned || title;
+};
+
 export const TodayView: React.FC<TodayViewProps> = ({
   user,
   onNavigate,
@@ -297,10 +305,15 @@ export const TodayView: React.FC<TodayViewProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Planos de Ação NR-1 */}
+        {/* Card 3: Planos de Ação */}
         <div className="card p-5 bg-surface flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider color-text-muted">Planos de Ação (NR-1)</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider color-text-muted">Planos de Ação</span>
+              <span className="text-muted cursor-help" title="Alinhado às diretrizes de medidas preventivas (NR-1)">
+                <i className="fa-solid fa-circle-info text-[11px]" aria-hidden="true" />
+              </span>
+            </div>
             <span className={`badge ${overdueActions.length > 0 ? 'badge-danger' : 'badge-success'}`}>
               {overdueActions.length > 0 ? `${overdueActions.length} em atraso` : 'Em dia'}
             </span>
@@ -317,7 +330,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
               className="text-primary hover:underline font-medium"
               onClick={() => onNavigate('acoes')}
             >
-              Ver Kanban de Ações 5W2H →
+              Ver Quadro de Ações →
             </button>
           </div>
         </div>
@@ -358,9 +371,14 @@ export const TodayView: React.FC<TodayViewProps> = ({
               {activeActions.length === 0 ? (
                 <div className="space-y-4 py-2">
                   <div className="pb-2 border-b border-border">
-                    <h3 className="text-xs font-semibold color-text-primary m-0">Inicie o Plano de Ação Preventivo (NR-1)</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-xs font-semibold color-text-primary m-0">Planos de Ação Recomendados</h3>
+                      <span className="text-muted cursor-help" title="Medidas preventivas alinhadas às diretrizes de riscos psicossociais (NR-1)">
+                        <i className="fa-solid fa-circle-info text-[11px]" aria-hidden="true" />
+                      </span>
+                    </div>
                     <p className="text-xs color-text-secondary m-0 mt-0.5">
-                      Adote uma medida estruturada recomendada para iniciar a gestão ativa de riscos:
+                      Sugestões estruturadas para iniciar a prevenção na sua equipe:
                     </p>
                   </div>
 
@@ -414,7 +432,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
                           <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center text-sm border border-success-border">
                             <i className="fa-solid fa-shield-halved" aria-hidden="true" />
                           </div>
-                          <span className="badge badge-success text-[10px]">Lei 14.457/22</span>
+                          <span className="badge badge-success text-[10px] cursor-help" title="Conformidade com a Lei 14.457/22 (CIPA) e canal ético de acolhimento">Institucional</span>
                         </div>
                         <div>
                           <h4 className="text-xs font-semibold color-text-primary mb-1">Prevenção ao Assédio</h4>
@@ -433,7 +451,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
                               id: 'assedio',
                               title: 'Canal de Acolhimento & Prevenção ao Assédio',
                               what: 'Divulgar código de conduta institucional e canal protegido de escuta e apuração sem retaliação.',
-                              why: 'Conformidade com a Lei 14.457/22 (CIPA) e promoção de ambiente respeitoso (NR-1).',
+                              why: 'Promoção de ambiente seguro e canal ético de escuta (alinhado à Lei 14.457/22 e NR-1).',
                               hierarchy: 'organizacional',
                             })
                           }
@@ -609,9 +627,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
                         return (
                           <tr key={s.id} className={hasNoResponses ? 'bg-danger-subtle/10' : ''}>
-                            <td>
+                            <td title={s.title}>
                               <div className="font-semibold text-sm hover:text-primary cursor-pointer" onClick={() => onNavigate('pesquisas')}>
-                                {s.title}
+                                {cleanSurveyTitle(s.title, s.cycle)}
                               </div>
                               {hasNoResponses && (
                                 <span className="badge badge-danger text-[10px] mt-1">sem respostas</span>
