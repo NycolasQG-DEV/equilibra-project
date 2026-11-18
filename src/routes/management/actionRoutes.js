@@ -93,13 +93,24 @@ module.exports = function createRouter() {
           measurement = reportFor(req.account, req.body.reportId);
         const comparison = compareReports(measurement, baseline);
         if (!comparison.comparable) throw new DomainError(comparison.reason);
+        const factorDelta = comparison.factors.find(
+          (factor) => factor.key === assessment.factor,
+        )?.delta;
+        const efficacyStatus =
+          factorDelta > 0 ? 'improved' : (factorDelta < 0 ? 'worsened' : 'neutral');
         return repo.update(
           row,
           {
             measurementReportId: measurement.id,
-            measurementDelta: comparison.factors.find(
-              (factor) => factor.key === assessment.factor,
-            )?.delta,
+            measurementDelta: factorDelta,
+            reviewOutcome: {
+              baselineScore: baseline.result?.find((f) => f.key === assessment.factor)?.mean || null,
+              measurementScore: measurement.result?.find((f) => f.key === assessment.factor)?.mean || null,
+              delta: factorDelta,
+              efficacyStatus,
+              evaluatedAt: new Date().toISOString(),
+              alertNeeded: factorDelta < 0,
+            },
           },
           req.body.version,
         );

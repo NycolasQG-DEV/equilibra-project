@@ -87,6 +87,15 @@ function validateAction(input, assessment, previous) {
     throw new DomainError(
       "A revisão não pode ocorrer antes do prazo de execução.",
     );
+  // Regra NR-1 subitem 1.5.4.4.6: Revisão bienal de riscos e eficácia (máximo 2 anos)
+  const maxBiennialDate = new Date();
+  maxBiennialDate.setFullYear(maxBiennialDate.getFullYear() + 2);
+  const maxBiennialStr = maxBiennialDate.toISOString().slice(0, 10);
+  if (reviewDate > maxBiennialStr) {
+    throw new DomainError(
+      "O prazo de revisão não pode exceder o limite bienal de 2 anos (NR-1 subitem 1.5.4.4.6).",
+    );
+  }
   const review = text(input.review);
   if (
     ["implemented", "effective", "ineffective"].includes(status) &&
@@ -119,6 +128,8 @@ function validateAction(input, assessment, previous) {
     ),
     status,
     review,
+    hierarchy: input.hierarchy || previous?.hierarchy || "organizacional",
+    reviewOutcome: input.reviewOutcome || previous?.reviewOutcome || null,
   };
 }
 module.exports = {
