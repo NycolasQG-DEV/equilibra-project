@@ -310,7 +310,7 @@ const App: React.FC = () => {
               <div>
                 <h1 className="page-title">Configurações do Workspace</h1>
                 <p className="page-subtitle">
-                  Gestão da empresa, conformidade LGPD, integrações de comunicação e parâmetros da NR-1 / NR-17.
+                  Dados da empresa, integrações e preferências da conta.
                 </p>
               </div>
             </div>

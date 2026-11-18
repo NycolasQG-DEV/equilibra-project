@@ -269,8 +269,7 @@ export const RiskAssessmentView: React.FC = () => {
         <div>
           <h1 className="page-title">Avaliação de Riscos Psicossociais</h1>
           <p className="page-subtitle">
-            Registre e classifique achados de risco usando a matriz 5×5 (severidade × probabilidade).
-            Toda avaliação exige validação humana explícita antes de integrar o PGR.
+            Classifique e priorize fatores de risco através da matriz 5×5 (severidade × probabilidade).
           </p>
         </div>
         <button
@@ -281,16 +280,6 @@ export const RiskAssessmentView: React.FC = () => {
           <i className="fa-solid fa-plus mr-2" aria-hidden="true" />
           Novo Achado
         </button>
-      </div>
-
-      {/* ── Aviso de 4 camadas ─────────────────────────────────────────── */}
-      <div className="notice-box notice-box--info">
-        <i className="fa-solid fa-layer-group notice-icon" aria-hidden="true" />
-        <span>
-          <strong>4 camadas obrigatórias:</strong> Dado observado → Interpretação descritiva →
-          Hipótese técnica → <em>Decisão técnica/humana.</em> Nenhum achado é automaticamente
-          classificado como "avaliado" — a conclusão exige validação explícita do avaliador habilitado.
-        </span>
       </div>
 
       {/* ── Filtros de status ──────────────────────────────────────────── */}

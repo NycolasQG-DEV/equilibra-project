@@ -55,7 +55,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-bold color-text-primary tracking-tight m-0">Equilibra</h1>
-          <p className="text-xs color-text-secondary mt-1">Gestão Integrada de Riscos Psicossociais · NR-1 / NR-17</p>
+          <p className="text-xs color-text-secondary mt-1">Gestão de Riscos Psicossociais no Trabalho</p>
         </div>
 
         {/* Card de Auth */}
@@ -166,10 +166,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          {/* Aviso LGPD / Conformidade */}
+          {/* Aviso de Sigilo */}
           <div className="pt-2 border-t border-border text-[11px] color-text-muted text-center">
-            <p>Dados tratados em conformidade com a <strong>LGPD</strong> e <strong>NR-1</strong>.</p>
-            <p>Sigilo individual garantido. Resultados consolidados por setor (mín. 5 respondentes).</p>
+            <p className="m-0">Ambiente seguro com sigilo e respostas 100% anônimas.</p>
           </div>
         </div>
       </div>

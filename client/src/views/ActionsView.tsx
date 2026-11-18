@@ -179,9 +179,9 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Planos de Ação & Medidas Preventivas (5W2H)</h1>
+          <h1 className="page-title">Planos de Ação</h1>
           <p className="page-subtitle">
-            Gestão integrada do GRO/PGR (NR-1.5): medidas de controle, hierarquia preventiva, evidências e ciclo de eficácia
+            Acompanhamento de medidas preventivas, responsáveis, prazos e eficácia.
           </p>
         </div>
         <button
@@ -192,7 +192,7 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
             setIsModalOpen(true);
           }}
         >
-          <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Nova Ação Preventiva
+          <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Nova Ação
         </button>
       </div>
 
@@ -209,17 +209,6 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
           <span>{successMsg}</span>
         </div>
       )}
-
-      {/* Princípio de Governança NR-1 */}
-      <div className="notice-box notice-box--info">
-        <i className="fa-solid fa-scale-balanced notice-icon" aria-hidden="true" />
-        <div>
-          <strong className="block font-semibold mb-0.5">Diferenciação Estrita: Implantação ≠ Eficácia</strong>
-          <span>
-            Uma medida preventiva implantada não pode ser considerada eficaz automaticamente. Conforme a NR-1.5.5, a eficácia deve ser aferida em ciclos subsequentes de escuta ou reavaliação técnica.
-          </span>
-        </div>
-      </div>
 
       {/* Kanban Board */}
       {loading ? (

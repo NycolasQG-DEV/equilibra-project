@@ -190,7 +190,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
             {timeGreeting}, {firstName}
           </h1>
           <p className="page-subtitle">
-            {dateFormatted} · Painel integrado de riscos psicossociais e planos de ação (NR-1 / NR-17)
+            {dateFormatted} · Acompanhamento de escutas, indicadores e planos de ação
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -391,7 +391,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
                               id: 'prazos',
                               title: 'Revisão de Demandas & Ritmo Sustentável',
                               what: 'Mapear picos de entrega e instituir intervalos de pausa programada entre ciclos de trabalho intensivo.',
-                              why: 'Prevenção de estresse ocupacional e mitigação de fadiga mental contínua (NR-1 / NR-17).',
+                              why: 'Prevenção de sobrecarga e melhoria da sustentabilidade do ritmo de trabalho.',
                               hierarchy: 'organizacional',
                             })
                           }
@@ -708,10 +708,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
             )}
           </div>
 
-          {/* Card: Governança & Eficácia NR-1 */}
+          {/* Card: Resumo de Planos de Ação */}
           <div className="card p-5 bg-surface border border-border">
             <h3 className="text-xs font-bold uppercase tracking-wider color-text-muted mb-3">
-              Governança & Ciclo NR-1
+              Planos de Ação
             </h3>
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-border">
