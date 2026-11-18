@@ -49,8 +49,13 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [membersCount, setMembersCount] = useState(0);
   const [groupsCount, setGroupsCount] = useState(1);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [adoptingTemplate, setAdoptingTemplate] = useState<string | null>(null);
 
-  const firstName = user?.name ? user.name.trim().split(' ')[0] : 'Gestor';
+  const firstName = user?.name
+    ? (/^(dr|dra|sr|sra)\.?$/i.test(user.name.trim().split(' ')[0])
+      ? user.name.trim().split(' ').slice(0, 2).join(' ')
+      : user.name.trim().split(' ')[0])
+    : 'Gestor';
   const hour = new Date().getHours();
   const timeGreeting = hour >= 5 && hour < 12 ? 'Bom dia' : hour >= 12 && hour < 18 ? 'Boa tarde' : 'Boa noite';
   const dateFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -127,6 +132,40 @@ export const TodayView: React.FC<TodayViewProps> = ({
     });
   };
 
+  const handleAdoptTemplate = async (template: {
+    id: string;
+    title: string;
+    what: string;
+    why: string;
+    hierarchy: 'administrativa' | 'organizacional' | 'coletiva';
+  }) => {
+    try {
+      setAdoptingTemplate(template.id);
+      setError(null);
+      await post('/management/actions', {
+        title: template.title,
+        what: template.what,
+        why: template.why,
+        where: 'Geral / Estabelecimento principal',
+        who: firstName ? `${firstName} (RH / SST)` : 'Comitê de SST / RH',
+        when: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        how: 'Alinhamento em reunião operacional com líderes e registro em ata',
+        status: 'planned',
+        controlHierarchy: template.hierarchy,
+        efficacyCriteria: 'Evolução favorável do indicador no próximo ciclo e redução de atritos operacionais',
+      });
+      const workspaceRes = await get<{ actions?: Action5W2H[] }>('/management/workspace');
+      if (workspaceRes?.actions) {
+        setActions(workspaceRes.actions);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao adotar medida preventiva.');
+    } finally {
+      setAdoptingTemplate(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 max-w-7xl mx-auto">
@@ -147,10 +186,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
       {/* 1. Header de Boas-Vindas */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold text-primary">
-            {timeGreeting}, {firstName}.
+          <h1 className="page-title">
+            {timeGreeting}, {firstName}
           </h1>
-          <p className="text-sm color-text-secondary capitalize">
+          <p className="page-subtitle">
             {dateFormatted} · Painel integrado de riscos psicossociais e planos de ação (NR-1 / NR-17)
           </p>
         </div>
@@ -209,7 +248,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
         <div className="p-3 rounded-lg flex items-center gap-3 bg-surface border border-success">
           <i className="fa-solid fa-circle-check text-success text-lg" aria-hidden="true" />
           <div className="text-sm">
-            <strong className="font-semibold text-success">Operação em conformidade: </strong>
+            <strong className="font-semibold text-success">Monitoramento ativo: </strong>
             <span>Todas as coletas ativas estão recebendo respostas e o plano de ação segue o cronograma estabelecido.</span>
           </div>
         </div>
@@ -224,7 +263,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
             <span className="badge badge-primary">{surveys.length} ativas</span>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-primary mb-1">{surveys.length}</div>
+            <div className="text-3xl font-bold color-text-primary mb-1">{surveys.length}</div>
             <p className="text-xs color-text-secondary">
               {totalResponses} de {totalInvited} respostas recebidas ({aggregateRate.toFixed(1)}% de adesão global)
             </p>
@@ -242,7 +281,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
             <i className="fa-solid fa-users text-primary-light" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-primary mb-1">{membersCount}</div>
+            <div className="text-3xl font-bold color-text-primary mb-1">{membersCount}</div>
             <p className="text-xs color-text-secondary">
               Distribuídos em {groupsCount} {groupsCount === 1 ? 'setor ativo' : 'setores ativos'} na organização
             </p>
@@ -267,7 +306,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
             </span>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-primary mb-1">{activeActions.length}</div>
+            <div className="text-3xl font-bold color-text-primary mb-1">{activeActions.length}</div>
             <p className="text-xs color-text-secondary">
               {onTrackActionsCount} no prazo · {overdueActions.length} em atraso · {reviewDueActions.length} para revisão
             </p>
@@ -291,11 +330,11 @@ export const TodayView: React.FC<TodayViewProps> = ({
           <div className="card bg-surface overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface-subtle">
               <div className="flex items-center gap-2">
-                <i className="fa-solid fa-list-check text-primary" aria-hidden="true" />
-                <h2 className="text-base font-bold text-primary m-0">
+                <i className="fa-solid fa-list-check color-text-muted" aria-hidden="true" />
+                <h2 className="text-sm font-semibold color-text-primary m-0">
                   Planos de Ação & Tarefas em Execução
                 </h2>
-                <span className="badge badge-primary">{activeActions.length}</span>
+                <span className="badge badge-neutral">{activeActions.length}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -317,21 +356,141 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
             <div className="p-4">
               {activeActions.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-subtle text-primary mb-3">
-                    <i className="fa-solid fa-shield-heart text-xl" aria-hidden="true" />
+                <div className="space-y-4 py-2">
+                  <div className="pb-2 border-b border-border">
+                    <h3 className="text-xs font-semibold color-text-primary m-0">Inicie o Plano de Ação Preventivo (NR-1)</h3>
+                    <p className="text-xs color-text-secondary m-0 mt-0.5">
+                      Adote uma medida estruturada recomendada para iniciar a gestão ativa de riscos:
+                    </p>
                   </div>
-                  <h3 className="text-sm font-semibold mb-1">Nenhum plano de ação ativo no ciclo</h3>
-                  <p className="text-xs color-text-secondary max-w-md mx-auto mb-4">
-                    Após consolidar as respostas das pesquisas ou registrar observações ergonômicas, adote medidas preventivas estruturadas para o PGR.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={onOpenNewAction}
-                  >
-                    <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Cadastrar Medida Preventiva
-                  </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Template 1 */}
+                    <div className="card p-3 bg-surface border border-border flex flex-col justify-between hover:border-border-strong transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-surface-subtle color-text-secondary flex items-center justify-center text-sm border border-border">
+                            <i className="fa-solid fa-clock-rotate-left" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-neutral text-[10px]">Organizacional</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold color-text-primary mb-1">Revisão de Prazos & Ritmo</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Equilíbrio de demandas e pausas ativas para prevenir sobrecarga contínua.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'prazos'}
+                          className="btn btn-secondary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'prazos',
+                              title: 'Revisão de Demandas & Ritmo Sustentável',
+                              what: 'Mapear picos de entrega e instituir intervalos de pausa programada entre ciclos de trabalho intensivo.',
+                              why: 'Prevenção de estresse ocupacional e mitigação de fadiga mental contínua (NR-1 / NR-17).',
+                              hierarchy: 'organizacional',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'prazos' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Template 2 */}
+                    <div className="card p-3 bg-surface border border-border flex flex-col justify-between hover:border-border-strong transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center text-sm border border-success-border">
+                            <i className="fa-solid fa-shield-halved" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-success text-[10px]">Lei 14.457/22</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold color-text-primary mb-1">Prevenção ao Assédio</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Canal de acolhimento seguro, regras de conduta e garantia antirretaliação.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'assedio'}
+                          className="btn btn-secondary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'assedio',
+                              title: 'Canal de Acolhimento & Prevenção ao Assédio',
+                              what: 'Divulgar código de conduta institucional e canal protegido de escuta e apuração sem retaliação.',
+                              why: 'Conformidade com a Lei 14.457/22 (CIPA) e promoção de ambiente respeitoso (NR-1).',
+                              hierarchy: 'organizacional',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'assedio' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Template 3 */}
+                    <div className="card p-3 bg-surface border border-border flex flex-col justify-between hover:border-border-strong transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-surface-subtle color-text-secondary flex items-center justify-center text-sm border border-border">
+                            <i className="fa-solid fa-comments" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-neutral text-[10px]">Coletiva</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-semibold color-text-primary mb-1">Segurança Psicológica</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Espaço periódico para diálogo aberto, tratamento de erros e alinhamento de equipe.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'seguranca'}
+                          className="btn btn-secondary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'seguranca',
+                              title: 'Roda de Diálogo & Alinhamento de Equipe',
+                              what: 'Estruturar reuniões periódicas curtas com foco em melhoria contínua e comunicação aberta sem julgamento.',
+                              why: 'Aumento da segurança psicológica, clareza operacional e redução de atritos interpessoais.',
+                              hierarchy: 'coletiva',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'seguranca' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -402,11 +561,11 @@ export const TodayView: React.FC<TodayViewProps> = ({
           <div className="card bg-surface overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface-subtle">
               <div className="flex items-center gap-2">
-                <i className="fa-solid fa-clipboard-question text-primary" aria-hidden="true" />
-                <h2 className="text-base font-bold text-primary m-0">
+                <i className="fa-solid fa-clipboard-question color-text-muted" aria-hidden="true" />
+                <h2 className="text-sm font-semibold color-text-primary m-0">
                   Coletas em Andamento
                 </h2>
-                <span className="badge badge-primary">{surveys.length} ativas</span>
+                <span className="badge badge-neutral">{surveys.length} ativas</span>
               </div>
               <button
                 type="button"

@@ -500,6 +500,7 @@ function buildCycleReport({
         key: row.key,
         label: row.label,
         average: row.average,
+        mean: row.average,  // alias para compatibilidade com contratos do frontend
         n: responses.length,
         level: classification?.level || 'unclassified',
         levelLabel: classification?.label || 'Sem faixa',
@@ -683,7 +684,12 @@ function buildCycleReport({
     overallAverage: generalAverage,
     responseCount: isPublished ? responses.length : null,
     responsesCount: isPublished ? responses.length : null,
+    // Aliases para compatibilidade com contratos do frontend
+    totalAnswered: isPublished ? responses.length : null,
     invitedCount: totalInvited,
+    // Aliases para compatibilidade com contratos do frontend
+    totalInvited,
+    generatedAt: survey.closedAt || survey.endsAt || new Date().toISOString(),
     participationRate: participation.total.rate,
     factors,
     result,

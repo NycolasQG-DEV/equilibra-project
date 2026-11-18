@@ -134,17 +134,17 @@ export const OrganizationView: React.FC = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Organização & Mapeamento da Força de Trabalho</h1>
-          <p className="text-xs color-text-secondary">
+          <h1 className="page-title">Organização & Mapeamento da Força de Trabalho</h1>
+          <p className="page-subtitle">
             Base de colaboradores e setores para garantir quórum amostral válido nos ciclos de escuta
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className={`btn btn-sm ${tab === 'groups' ? 'btn-secondary' : 'btn-secondary'}`}
+            className="btn btn-secondary btn-sm"
             onClick={() => setGroupModal(true)}
           >
             <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Novo Setor
@@ -175,29 +175,29 @@ export const OrganizationView: React.FC = () => {
       {/* Stats rápidos */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-subtle text-primary text-lg">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-surface-subtle color-text-secondary text-base border border-border">
             <i className="fa-solid fa-users" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-primary">{members.length}</div>
+            <div className="text-2xl font-bold color-text-primary">{members.length}</div>
             <div className="text-xs color-text-muted">Colaboradores Mapeados</div>
           </div>
         </div>
         <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-subtle text-primary text-lg">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-surface-subtle color-text-secondary text-base border border-border">
             <i className="fa-solid fa-layer-group" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-primary">{groups.length}</div>
+            <div className="text-2xl font-bold color-text-primary">{groups.length}</div>
             <div className="text-xs color-text-muted">Setores / Grupos de Risco</div>
           </div>
         </div>
         <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-success-subtle text-success text-lg">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-success-subtle text-success text-base border border-success-border">
             <i className="fa-solid fa-shield-halved" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-success">
+            <div className="text-2xl font-bold text-success">
               {groups.filter((g) => (g.memberIds?.length || 0) >= 5).length}
             </div>
             <div className="text-xs color-text-muted">Setores com quórum mínimo (≥ 5)</div>
@@ -205,24 +205,28 @@ export const OrganizationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-border pb-2">
-        {(['people', 'groups'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`btn btn-sm ${tab === t ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTab(t)}
-          >
-            <i className={`fa-solid ${t === 'people' ? 'fa-users' : 'fa-layer-group'} mr-1`} aria-hidden="true" />
-            {t === 'people' ? `Colaboradores (${members.length})` : `Setores (${groups.length})`}
-          </button>
-        ))}
-        <div className="ml-auto">
+      {/* Toolbar: Tabs & Busca */}
+      <div className="toolbar">
+        <div className="filter-tabs" role="tablist">
+          {(['people', 'groups'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              className={`filter-tab ${tab === t ? 'active' : ''}`}
+              onClick={() => setTab(t)}
+            >
+              <i className={`fa-solid ${t === 'people' ? 'fa-users' : 'fa-layer-group'} mr-1.5`} aria-hidden="true" />
+              {t === 'people' ? `Colaboradores (${members.length})` : `Setores (${groups.length})`}
+            </button>
+          ))}
+        </div>
+        <div className="toolbar-search">
           <input
             type="text"
-            className="input text-xs w-56"
-            placeholder={tab === 'people' ? 'Buscar por nome, e-mail ou setor...' : 'Buscar setor...'}
+            className="input text-xs"
+            placeholder={tab === 'people' ? 'Buscar colaborador ou setor...' : 'Buscar setor...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

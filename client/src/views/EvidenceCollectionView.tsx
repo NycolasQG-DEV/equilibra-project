@@ -237,7 +237,7 @@ export const EvidenceCollectionView: React.FC = () => {
             key={t}
             role="tab"
             aria-selected={filterType === t}
-            className={`filter-tab ${filterType === t ? 'filter-tab--active' : ''}`}
+            className={`filter-tab ${filterType === t ? 'active filter-tab--active' : ''}`}
             onClick={() => setFilterType(t)}
           >
             {t === 'todos' ? 'Todas' : TYPE_LABELS[t as EvidenceType]}
@@ -259,9 +259,16 @@ export const EvidenceCollectionView: React.FC = () => {
         <div className="empty-state">
           <i className="fa-solid fa-folder-open empty-state-icon" aria-hidden="true" />
           <p className="empty-state-title">Nenhuma evidência registrada</p>
-          <p className="empty-state-desc">
-            Clique em "Nova Evidência" para adicionar observações, entrevistas ou documentos.
+          <p className="empty-state-desc mb-4">
+            Registre observações de campo, grupos focais, entrevistas ou documentos para alimentar as hipóteses técnicas.
           </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => { setShowForm(true); setError(null); setForm(EMPTY_FORM); }}
+          >
+            <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Registrar Primeira Evidência
+          </button>
         </div>
       ) : (
         <div className="evidence-grid">

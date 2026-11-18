@@ -177,10 +177,10 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Planos de Ação & Medidas Preventivas (5W2H)</h1>
-          <p className="text-xs color-text-secondary">
+          <h1 className="page-title">Planos de Ação & Medidas Preventivas (5W2H)</h1>
+          <p className="page-subtitle">
             Gestão integrada do GRO/PGR (NR-1.5): medidas de controle, hierarquia preventiva, evidências e ciclo de eficácia
           </p>
         </div>
@@ -211,25 +211,25 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
       )}
 
       {/* Princípio de Governança NR-1 */}
-      <div className="p-4 bg-surface-subtle border border-border rounded-lg text-xs space-y-1">
-        <div className="font-bold text-primary flex items-center gap-2">
-          <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
-          Diferenciação Estrita: Implantação ≠ Eficácia
+      <div className="notice-box notice-box--info">
+        <i className="fa-solid fa-scale-balanced notice-icon" aria-hidden="true" />
+        <div>
+          <strong className="block font-semibold mb-0.5">Diferenciação Estrita: Implantação ≠ Eficácia</strong>
+          <span>
+            Uma medida preventiva implantada não pode ser considerada eficaz automaticamente. Conforme a NR-1.5.5, a eficácia deve ser aferida em ciclos subsequentes de escuta ou reavaliação técnica.
+          </span>
         </div>
-        <p className="text-[11px] color-text-secondary m-0">
-          Uma medida preventiva implantada não pode ser considerada eficaz automaticamente. Conforme a NR-1.5.5, a eficácia deve ser aferida em ciclos subsequentes de escuta ou reavaliação técnica.
-        </p>
       </div>
 
       {/* Kanban Board */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="kanban-grid">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="skeleton h-96 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="kanban-grid">
           {columns.map((col) => {
             const colActions = actions.filter((a) => {
               if (col.id === 'effective') return a.status === 'effective';
@@ -237,9 +237,9 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
             });
 
             return (
-              <div key={col.id} className="card p-3 bg-surface-subtle border border-border flex flex-col">
+              <div key={col.id} className="kanban-column">
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
-                  <div className="flex items-center gap-2 font-bold text-xs text-primary">
+                  <div className="flex items-center gap-2 font-semibold text-xs color-text-primary">
                     <i className={col.icon} aria-hidden="true" />
                     <span>{col.label}</span>
                   </div>
@@ -248,12 +248,14 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {colActions.length === 0 ? (
-                    <div className="text-center py-8 text-xs color-text-muted">Nenhuma medida nesta etapa</div>
+                    <div className="kanban-empty">
+                      Nenhuma medida nesta etapa
+                    </div>
                   ) : (
                     colActions.map((action) => (
                       <div
                         key={action.id}
-                        className="card p-3 bg-surface border border-border shadow-xs hover:border-primary-light transition-all space-y-2"
+                        className="card p-3 bg-surface border border-border shadow-xs hover:border-border-strong transition-all space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <span className="badge badge-neutral text-[9px] uppercase tracking-wider">
@@ -267,7 +269,7 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
                           )}
                         </div>
 
-                        <h4 className="font-semibold text-xs text-primary leading-tight m-0">{action.title}</h4>
+                        <h4 className="font-semibold text-xs color-text-primary leading-tight m-0">{action.title}</h4>
                         <p className="text-[11px] color-text-secondary m-0 line-clamp-2">{action.what}</p>
 
                         <div className="text-[10px] color-text-muted pt-1 border-t border-border flex items-center justify-between">

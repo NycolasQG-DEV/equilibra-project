@@ -22,12 +22,9 @@ function key() {
     return cachedKey;
   }
 
-  // Se não houver EQUILIBRA_DATA_KEY definida, usa segredo existente do ambiente como semente
-  const fallbackSeed = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.GROQ_API_KEY;
-  if (fallbackSeed) {
-    cachedKey = crypto.createHash('sha256').update(`equilibra-identity-salt:${fallbackSeed}`).digest();
-    return cachedKey;
-  }
+  // SEGURANÇA: Sem EQUILIBRA_DATA_KEY configurada, não usar credenciais de outros serviços como semente.
+  // Derivar de outro segredo pode vazar padrões entre sistemas. Usar chave gerada por arquivo local.
+  // O fallback para SUPABASE_SERVICE_ROLE_KEY ou GROQ_API_KEY foi removido (Etapa 5 — LGPD/Segurança).
 
   // Tenta persistir ou ler .identity-key no disco
   const directory = process.env.EQUILIBRA_DATA_DIR || path.join(__dirname, '..', '..', 'data');
@@ -58,7 +55,8 @@ function encryptPhone(phone) {
     return `enc:${iv.toString('base64')}:${cipher.getAuthTag().toString('base64')}:${encrypted.toString('base64')}`;
   } catch (err) {
     console.error('[Crypto] Falha ao criptografar telefone:', err.message);
-    return phone;
+    // NUNCA retornar texto puro — falha fechada (fail-closed)
+    throw new Error('[Crypto] Não foi possível criptografar o dado de identidade. Verifique a configuração de EQUILIBRA_DATA_KEY.');
   }
 }
 

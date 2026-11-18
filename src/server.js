@@ -32,9 +32,21 @@ app.use('/api/management', management.createRouter(api.protectedRoute));
 app.use('/api/evidence', evidence.createRouter(api.protectedRoute));
 app.use('/api', api);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Servir a aplicação React oficial (dist/client) como prioridade
+const clientDist = path.join(__dirname, '..', 'dist', 'client');
+const publicDir = path.join(__dirname, '..', 'public');
+const hasDist = fs.existsSync(clientDist);
+
+app.use(express.static(hasDist ? clientDist : publicDir));
+if (hasDist) {
+  app.use(express.static(publicDir));
+}
 app.get('/health', (_request, response) => response.json({ status: 'ok' }));
-app.get('*path', (_request, response) => response.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+app.get('*path', (_request, response) => {
+  const distIndex = path.join(__dirname, '..', 'dist', 'client', 'index.html');
+  const fileToSend = fs.existsSync(distIndex) ? distIndex : path.join(__dirname, '..', 'public', 'index.html');
+  response.sendFile(fileToSend);
+});
 app.use((error, _request, response, _next) => {
   if (error instanceof SyntaxError && 'body' in error) return response.status(400).json({ error: 'JSON invÃ¡lido.' });
   console.error(error);
