@@ -3,7 +3,7 @@ const path = require('node:path');
 const supabase = require('./supabaseClient');
 
 const directory = process.env.EQUILIBRA_DATA_DIR || path.join(__dirname, '..', '..', 'data');
-const files = Object.fromEntries(['accounts', 'members', 'groups', 'surveys', 'reports', 'invitations', 'responses', 'sessions', 'management'].map((name) => [name, path.join(directory, `${name}.json`)]));
+const files = Object.fromEntries(['accounts', 'members', 'groups', 'surveys', 'reports', 'invitations', 'responses', 'sessions', 'management', 'evidences'].map((name) => [name, path.join(directory, `${name}.json`)]));
 
 let memoryCache = null;
 

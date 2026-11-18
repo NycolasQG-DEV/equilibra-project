@@ -9,6 +9,7 @@ import { ResultsView } from './views/ResultsView';
 import { ActionsView } from './views/ActionsView';
 import { OrganizationView } from './views/OrganizationView';
 import { OnboardingView } from './views/OnboardingView';
+import { EvidenceCollectionView } from './views/EvidenceCollectionView';
 import { get, post } from './core/api';
 import type { Survey, Account } from '../../types';
 
@@ -20,7 +21,8 @@ type Route =
   | 'acoes'
   | 'organizacao'
   | 'configuracoes'
-  | 'onboarding';
+  | 'onboarding'
+  | 'evidencias';
 
 interface AppUser {
   name: string;
@@ -218,6 +220,9 @@ const App: React.FC = () => {
             <p className="badge badge-neutral text-xs">Em desenvolvimento — FASE 03</p>
           </div>
         );
+
+      case 'evidencias':
+        return <EvidenceCollectionView />;
 
       default:
         return (
