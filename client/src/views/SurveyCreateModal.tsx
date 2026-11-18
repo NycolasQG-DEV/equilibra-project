@@ -18,17 +18,17 @@ const CATALOG_MODELS = [
   },
   {
     id: 'prevencao_assedio',
-    name: 'Prevenção ao Assédio & Canal Protegido (Lei 14.457/22)',
+    name: 'Prevenção ao Assédio & Canal Ético',
     description: 'Protocolos de integridade, escuta ética e canais confidenciais de denúncia.',
-    methodologicalStatus: 'Conformidade Lei 14.457/22 & NR-1',
+    methodologicalStatus: 'Prevenção e integridade',
     category: 'Organizacional',
   },
   {
     id: 'carga_trabalho',
-    name: 'Exigências Psicológicas & Carga de Trabalho (NR-1 / NR-17)',
+    name: 'Exigências Psicológicas & Ritmo de Trabalho',
     description: 'Percepção de ritmo acelerado, prazos exíguos, interrupções frequentes e pausas.',
-    methodologicalStatus: 'Exploratório · Suporte à AEP',
-    category: 'Ergonômico / Psicossocial',
+    methodologicalStatus: 'Escuta inicial',
+    category: 'Psicossocial',
   },
   {
     id: 'organizacao_condicoes',
@@ -250,14 +250,6 @@ export const SurveyCreateModal: React.FC<SurveyCreateModalProps> = ({
                 <option value={45}>45 dias de campo</option>
               </select>
             </div>
-          </div>
-
-          {/* Aviso Metodológico NR-1 / NR-17 */}
-          <div className="p-3 bg-surface-subtle border border-border rounded-lg text-[11px] color-text-secondary">
-            <strong className="font-semibold text-primary block mb-1">
-              <i className="fa-solid fa-scale-balanced mr-1" aria-hidden="true" /> Governança Metodológica (NR-1 / NR-17)
-            </strong>
-            A pesquisa atua como triagem exploratória para identificação precoce de perigos. O resultado consolida percepções para direcionar a Análise Ergonômica Preliminar (AEP) e não substitui avaliações aprofundadas nem emite diagnóstico individual.
           </div>
 
           <div className="dialog-footer pt-3 border-t border-border flex justify-end gap-2">

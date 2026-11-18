@@ -212,10 +212,6 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
   const stepContent: Record<string, React.ReactNode> = {
     company: (
       <div className="space-y-5">
-        <div className="p-3 bg-primary-subtle/10 border border-primary-light rounded-lg text-xs">
-          <strong className="text-primary">Por que isso importa:</strong> O contexto setorial orienta os instrumentos de avaliação e permite que o Equilibra sugira quais fatores de risco psicossocial são mais críticos para o seu segmento (NR-1.5 / NR-17 / Lei 14.457/22).
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="label text-xs font-semibold block mb-1">Nome da Empresa / Organização *</label>
@@ -279,11 +275,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
                 checked={data.hasExistingPGR}
                 onChange={(e) => update('hasExistingPGR', e.target.checked)}
               />
-              <span className="text-xs font-medium">A empresa já possui PGR (Programa de Gerenciamento de Riscos) elaborado por profissional habilitado</span>
+              <span className="text-xs font-medium">A organização já possui PGR estruturado</span>
             </label>
-            <p className="text-[11px] color-text-muted mt-1 ml-6">
-              O Equilibra funciona como apoio complementar ao GRO/PGR, não como substituto da avaliação técnica presencial obrigatória.
-            </p>
           </div>
         </div>
       </div>
@@ -291,10 +284,6 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
 
     establishment: (
       <div className="space-y-5">
-        <div className="p-3 bg-primary-subtle/10 border border-primary-light rounded-lg text-xs">
-          <strong className="text-primary">Por que isso importa:</strong> Estabelecimentos distintos podem ter perfis de risco diferentes. Cada local é avaliado de forma independente na NR-1 (GRO/PGR).
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="label text-xs font-semibold block mb-1">Nome do Estabelecimento Principal *</label>
@@ -350,7 +339,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
               value={data.cnae}
               onChange={(e) => update('cnae', e.target.value)}
             />
-            <p className="text-[11px] color-text-muted mt-1">O CNAE determina o grau de risco e os requisitos normativos aplicáveis</p>
+            <p className="text-[11px] color-text-muted mt-1">Ramo de atividade econômica principal</p>
           </div>
 
           <div>
@@ -370,15 +359,11 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
 
     structure: (
       <div className="space-y-5">
-        <div className="p-3 bg-primary-subtle/10 border border-primary-light rounded-lg text-xs">
-          <strong className="text-primary">Por que isso importa:</strong> Setores e processos de trabalho são as unidades de análise do GRO. A NR-1 exige que os riscos sejam identificados por grupo exposto e por processo/atividade.
-        </div>
-
         {/* Setores / Departamentos */}
         <div>
           <label className="label text-xs font-semibold block mb-1">Setores / Departamentos da Empresa</label>
           <p className="text-[11px] color-text-muted mb-2">
-            Cada setor com ≥ 5 colaboradores gera dados anonimizados no relatório. Setores menores são suprimidos para garantir o sigilo individual.
+            Departamentos para segmentação dos resultados. Setores com menos de 5 respostas são consolidados para preservar o anonimato.
           </p>
           <div className="flex gap-2 mb-3">
             <input
@@ -462,7 +447,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
           </div>
         </div>
 
-        {/* Fatores de Risco Específicos */}
+        {/* Características da Rotina */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="flex items-start gap-2 cursor-pointer select-none">
             <input
@@ -473,7 +458,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
             />
             <span className="text-xs">
               <strong className="block">Trabalho noturno habitual</strong>
-              <span className="color-text-muted">Exige avaliação ergonômica específica (NR-17) e requer atenção especial no PGR</span>
+              <span className="color-text-muted">Turnos noturnos requerem atenção a pausas e fadiga</span>
             </span>
           </label>
           <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -484,8 +469,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
               onChange={(e) => update('hasIntensiveSchedule', e.target.checked)}
             />
             <span className="text-xs">
-              <strong className="block">Jornadas extensas ou regime de prontidão</strong>
-              <span className="color-text-muted">Fator de risco psicossocial previsto na NR-1 (exigências de tempo e ritmo)</span>
+              <strong className="block">Jornadas extensas ou sobreaviso</strong>
+              <span className="color-text-muted">Horários sob demanda, viagens frequentes ou sobrecarga</span>
             </span>
           </label>
         </div>
@@ -569,9 +554,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, onSk
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white text-2xl mb-3 shadow-lg">
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-extrabold text-primary">Configuração Inicial do Equilibra</h1>
+          <h1 className="text-2xl font-extrabold text-primary">Configuração Inicial</h1>
           <p className="text-sm color-text-secondary text-center max-w-md mx-auto">
-            Registre o contexto organizacional para uma avaliação de riscos psicossociais precisa (NR-1 / NR-17)
+            Cadastre as informações da organização para personalizar as escutas e diagnósticos.
           </p>
         </div>
 

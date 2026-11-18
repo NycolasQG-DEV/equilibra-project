@@ -140,7 +140,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         <div>
           <h1 className="text-2xl font-bold text-primary">Diagnóstico & Relatórios de Escuta</h1>
           <p className="text-xs color-text-secondary">
-            Triagem exploratória, segregação de 4 camadas e subsídio técnico para a NR-1 (GRO/PGR) e NR-17 (AEP)
+            Resultados consolidados das escutas e indicadores psicossociais por setor.
           </p>
         </div>
 
@@ -250,27 +250,16 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     </div>
                   </div>
                 </div>
-
-                {/* Nota de Governança das 4 Camadas */}
-                <div className="p-3 bg-surface-subtle border border-border rounded-lg text-xs space-y-1">
-                  <div className="font-bold text-primary flex items-center gap-2">
-                    <i className="fa-solid fa-layer-group" aria-hidden="true" />
-                    Princípio de Governança das 4 Camadas (NR-1.5 / NR-17)
-                  </div>
-                  <p className="text-[11px] color-text-secondary m-0">
-                    O Equilibra segrega rigorosamente: <strong>(1) Dado Observado</strong> (respostas brutas), <strong>(2) Interpretação Descritiva</strong> (fatores e faixas), <strong>(3) Hipótese Técnica</strong> (prováveis causas organizacionais) e <strong>(4) Decisão Humana</strong> (validação obrigatória por profissional habilitado antes do registro no PGR).
-                  </p>
-                </div>
               </div>
 
-              {/* Camada 1 & 2: Fatores Avaliados & Escores Médios */}
+              {/* Fatores Avaliados & Escores Médios */}
               <div className="card p-5 bg-surface border border-border">
                 <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
                   <i className="fa-solid fa-chart-column" aria-hidden="true" />
-                  Camada 1 & 2: Escores por Fator Psicossocial & Interpretação
+                  Escores por Fator Psicossocial
                 </h3>
                 <p className="text-xs color-text-secondary mb-4">
-                  Escala de triagem operacional de 1,00 a 5,00. Escores abaixo de 2,80 indicam oportunidade de aprimoramento; escores iguais ou acima de 3,60 representam fatores protetivos no grupo avaliado.
+                  Escala de 1,00 a 5,00. Escores abaixo de 2,80 indicam oportunidade de atenção; escores iguais ou acima de 3,60 indicam fatores protetivos no grupo avaliado.
                 </p>
 
                 {selectedReport.factors && selectedReport.factors.length > 0 ? (

@@ -220,16 +220,6 @@ export const EvidenceCollectionView: React.FC = () => {
         </button>
       </div>
 
-      {/* ── Aviso metodológico ─────────────────────────────────────────── */}
-      <div className="notice-box notice-box--info">
-        <i className="fa-solid fa-circle-info notice-icon" aria-hidden="true" />
-        <span>
-          As evidências registradas aqui são <strong>dados observados</strong> e servem de
-          insumo para hipóteses técnicas. Interpretações e recomendações devem ser
-          elaboradas por profissional habilitado e validadas antes de integrar o PGR.
-        </span>
-      </div>
-
       {/* ── Filtros por tipo ───────────────────────────────────────────── */}
       <div className="filter-tabs" role="tablist" aria-label="Filtrar por tipo de evidência">
         {(['todos', ...Object.keys(TYPE_LABELS)] as Array<EvidenceType | 'todos'>).map((t) => (
