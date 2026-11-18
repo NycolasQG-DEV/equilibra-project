@@ -78,6 +78,7 @@ function buildDossierData(account) {
     evidences,
     assessments: managementState.assessments,
     actions: managementState.actions,
+    audit: managementState.audit,
     auditTrail: managementState.audit.slice(-50).reverse(),
   };
 }
