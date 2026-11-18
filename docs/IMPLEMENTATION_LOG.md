@@ -40,4 +40,33 @@
 
 ## 3. REGISTRO DE EXECUÇÃO POR ETAPAS
 
-*(Em atualização contínua conforme o avanço das etapas)*
+### Etapa 1 — Conclusão da Migração Frontend e Servidor de Produção
+- [x] Configuração de build no `render.yaml` atualizada para compilar a SPA via `npm install && npm run build`.
+- [x] Servidor Express (`src/server.js`) configurado para servir a distribuição oficial do Vite (`dist/client`) com fallback seguro para `dist/client/index.html`.
+- [x] Roteamento SPA em `client/src/main.tsx` com histórico real (`pushState` e `popstate`), permitindo acesso direto por URL a `/hoje`, `/pesquisas`, `/resultados`, `/acoes`, `/organizacao`, `/riscos`, `/evidencias` e fluxo público `/responder/:token`.
+- [x] Componente `RespondView.tsx` reescrito de forma autônoma, responsiva e acessível para respondentes com escala Likert (1 a 5).
+
+### Etapa 2 — Contratos e Harmonização Frontend x Backend
+- [x] Unificação e criação de aliases no motor de relatórios (`src/domain/reporting.js`): `totalAnswered`, `totalInvited`, `generatedAt` e `mean` mapeados diretamente aos dados apurados.
+- [x] Eliminação de hipóteses e dados fictícios de fallback em `client/src/views/ResultsView.tsx`: exibição de estado vazio transparente quando o quórum amostral ainda não foi atingido.
+- [x] Persistência da exclusão de coletas diretamente via API (`del('/surveys/' + id)`) no `main.tsx`.
+
+### Etapa 3 — Avaliação de Riscos (NR-1/NR-17) e Planos de Ação
+- [x] Validação integral da matriz 5x5 em `src/domain/workflow.js`: persistência e retorno de `severity`, `probability`, `riskScore`, `riskLevel`, `groupExposed`, `hazard` e `consequence`.
+- [x] Correção metodológica em `client/src/views/RiskAssessmentView.tsx`: eliminação de menções indevidas a um pretenso "Anexo III da NR-1", documentando a matriz 5x5 como ferramenta técnica organizacional nos termos do subitem 1.5.4.4.2 da NR-1.
+- [x] Reestruturação da tela inicial (`client/src/views/TodayView.tsx`): remoção de blocos redundantes de fatores, inclusão de 3 templates visuais e acionáveis de medidas preventivas 5W2H (Sobrecarga, Lei 14.457/22 e Diálogo/Segurança Psicológica).
+
+### Etapa 5 — Segurança, Criptografia e Privacidade (LGPD)
+- [x] Endurecimento criptográfico em `src/config/identityCrypto.js`: remoção de semente de fallback baseada em chaves de terceiros (Supabase/Groq).
+- [x] Falha segura (*fail-closed*): bloqueio do retorno de telefone em texto puro quando a cifra AES-256-GCM falhar.
+
+### Etapa 6 — Catálogo e Rigor Metodológico
+- [x] Saneamento de `src/domain/surveyCatalog.js`: remoção de alegações de obrigatoriedade normativa de questionários, reafirmando seu papel como ferramentas estruturadas de triagem exploratória para apoio ao PGR e AEP.
+- [x] Preservação de disclaimers éticos obrigatórios: ausência de laudo médico, diagnóstico clínico ou certificação legal automática.
+
+---
+
+## 4. STATUS ATUAL DE QUALIDADE
+- **Testes Automatizados:** 90/90 testes passando (`node --test tests/*.test.js`).
+- **Verificação de Atributos:** 0 atributos inline (`style`/`onclick`) em HTML público (`npm run check`).
+- **Build de Produção:** Compilação do Vite sem erros (`dist/client` gerado com sucesso).

@@ -3,7 +3,7 @@
  *
  * Motor de Avaliação de Riscos Psicossociais — NR-1
  *
- * Implementa a matriz 5×5 severidade × probabilidade conforme Anexo III NR-1.
+ * Implementa a matriz técnica 5×5 (severidade × probabilidade) para gradação de riscos no âmbito do GRO/PGR (NR-1 subitem 1.5.4.4.2).
  * Mantém separação de camadas:
  *   1ª — Dado observado (pontuação do fator)
  *   2ª — Interpretação descritiva (categoria de risco)
@@ -269,7 +269,7 @@ export const RiskAssessmentView: React.FC = () => {
         <div>
           <h1 className="page-title">Avaliação de Riscos Psicossociais</h1>
           <p className="page-subtitle">
-            Registre e classifique achados de risco usando a matriz NR-1 (severidade × probabilidade).
+            Registre e classifique achados de risco usando a matriz 5×5 (severidade × probabilidade).
             Toda avaliação exige validação humana explícita antes de integrar o PGR.
           </p>
         </div>
@@ -353,7 +353,7 @@ export const RiskAssessmentView: React.FC = () => {
                 </p>
                 {a.riskScore !== undefined && (
                   <p className="assessment-score">
-                    Pontuação NR-1: <strong>{a.riskScore}</strong>
+                    Escore de Risco: <strong>{a.riskScore}</strong>
                     {a.severity !== undefined && a.probability !== undefined && (
                       <span className="text-muted"> (S{a.severity} × P{a.probability})</span>
                     )}
@@ -471,16 +471,16 @@ export const RiskAssessmentView: React.FC = () => {
                 />
               </div>
 
-              {/* Matriz NR-1 ─────────────────────────────────────────── */}
+              {/* Matriz 5x5 ─────────────────────────────────────────── */}
               <div className="form-group form-group--full">
-                <p className="form-label">Matriz de Risco NR-1 — Severidade × Probabilidade</p>
+                <p className="form-label">Matriz de Risco 5×5 — Severidade × Probabilidade</p>
                 <p className="form-hint mb-2">
                   Clique na célula que representa a combinação de severidade (linhas) e probabilidade (colunas).
                   Pontuação atual: <strong>{riskScore}</strong> —
                   <span className={RISK_LEVEL_CSS[riskLevel]}>{RISK_LEVEL_LABELS[riskLevel]}</span>
                 </p>
 
-                <div className="risk-matrix" role="grid" aria-label="Matriz de risco NR-1">
+                <div className="risk-matrix" role="grid" aria-label="Matriz de risco 5x5 severidade por probabilidade">
                   <div className="matrix-axis-label matrix-axis-col">Probabilidade →</div>
                   <div className="matrix-grid">
                     <div className="matrix-header-row">
@@ -605,7 +605,7 @@ export const RiskAssessmentView: React.FC = () => {
             <div className="modal-body detail-grid">
               {selected.riskScore !== undefined && (
                 <div className="detail-row">
-                  <span className="detail-label">Pontuação NR-1</span>
+                  <span className="detail-label">Escore de Risco</span>
                   <span>
                     <strong>{selected.riskScore}</strong>
                     {selected.severity !== undefined && (

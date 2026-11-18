@@ -1,4 +1,4 @@
-// Catálogo oficial de instrumentos psicossociais e metodologias para conformidade com a NR-1 / GRO.
+// Catálogo de instrumentos psicossociais e roteiros de triagem estruturada para apoio ao GRO/PGR (NR-1 e NR-17).
 const MTE = 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/manuais-e-publicacoes/2026/perguntas-e-respostas-gro-pgr-maio-2026/@@download/file';
 const HSE = 'https://www.hse.gov.uk/stress/standards/step2/surveys.htm';
 
@@ -8,7 +8,7 @@ const definitions = [
     'NR-1 & GRO — Diagnóstico de Condições & Organização do Trabalho',
     'Mapeamento amplo dos 12 fatores de risco psicossocial para inventário do PGR/GRO (Portaria MTE NR-1).',
     'nr1-pgr',
-    'NR-1 & GRO Obrigatório',
+    'Triagem Geral GRO/PGR',
     [
       ['volume', 'Volume de trabalho', 'O volume de tarefas e demandas é compatível com a minha jornada normal de trabalho.'],
       ['ritmo', 'Ritmo de trabalho', 'Consigo executar as tarefas sem ser submetido a ritmo ou aceleração temporal excessiva.'],

@@ -334,7 +334,7 @@ const App: React.FC = () => {
             user={user}
             onNavigate={(r) => navigateTo(r)}
             onOpenNewSurvey={() => setSurveyModalOpen(true)}
-            onOpenNewAction={() => setActionModalOpen(true)}
+            onOpenNewAction={() => navigateTo('acoes')}
           />
         );
     }

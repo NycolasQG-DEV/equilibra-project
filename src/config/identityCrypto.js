@@ -22,12 +22,9 @@ function key() {
     return cachedKey;
   }
 
-  // Se não houver EQUILIBRA_DATA_KEY definida, usa segredo existente do ambiente como semente
-  const fallbackSeed = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.GROQ_API_KEY;
-  if (fallbackSeed) {
-    cachedKey = crypto.createHash('sha256').update(`equilibra-identity-salt:${fallbackSeed}`).digest();
-    return cachedKey;
-  }
+  // SEGURANÇA: Sem EQUILIBRA_DATA_KEY configurada, não usar credenciais de outros serviços como semente.
+  // Derivar de outro segredo pode vazar padrões entre sistemas. Usar chave gerada por arquivo local.
+  // O fallback para SUPABASE_SERVICE_ROLE_KEY ou GROQ_API_KEY foi removido (Etapa 5 — LGPD/Segurança).
 
   // Tenta persistir ou ler .identity-key no disco
   const directory = process.env.EQUILIBRA_DATA_DIR || path.join(__dirname, '..', '..', 'data');

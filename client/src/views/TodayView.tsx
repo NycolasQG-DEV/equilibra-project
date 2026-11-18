@@ -49,6 +49,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [membersCount, setMembersCount] = useState(0);
   const [groupsCount, setGroupsCount] = useState(1);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [adoptingTemplate, setAdoptingTemplate] = useState<string | null>(null);
 
   const firstName = user?.name ? user.name.trim().split(' ')[0] : 'Gestor';
   const hour = new Date().getHours();
@@ -125,6 +126,40 @@ export const TodayView: React.FC<TodayViewProps> = ({
       setCopyFeedback(surveyId);
       setTimeout(() => setCopyFeedback(null), 3000);
     });
+  };
+
+  const handleAdoptTemplate = async (template: {
+    id: string;
+    title: string;
+    what: string;
+    why: string;
+    hierarchy: 'administrativa' | 'organizacional' | 'coletiva';
+  }) => {
+    try {
+      setAdoptingTemplate(template.id);
+      setError(null);
+      await post('/management/actions', {
+        title: template.title,
+        what: template.what,
+        why: template.why,
+        where: 'Geral / Estabelecimento principal',
+        who: firstName ? `${firstName} (RH / SST)` : 'Comitê de SST / RH',
+        when: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        how: 'Alinhamento em reunião operacional com líderes e registro em ata',
+        status: 'planned',
+        controlHierarchy: template.hierarchy,
+        efficacyCriteria: 'Evolução favorável do indicador no próximo ciclo e redução de atritos operacionais',
+      });
+      const workspaceRes = await get<{ actions?: Action5W2H[] }>('/management/workspace');
+      if (workspaceRes?.actions) {
+        setActions(workspaceRes.actions);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao adotar medida preventiva.');
+    } finally {
+      setAdoptingTemplate(null);
+    }
   };
 
   if (loading) {
@@ -317,21 +352,150 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
             <div className="p-4">
               {activeActions.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-subtle text-primary mb-3">
-                    <i className="fa-solid fa-shield-heart text-xl" aria-hidden="true" />
+                <div className="space-y-4 py-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
+                    <div>
+                      <h3 className="text-sm font-bold text-primary m-0">Inicie o Plano de Ação Preventivo (NR-1)</h3>
+                      <p className="text-xs color-text-secondary m-0">
+                        Adote uma medida estruturada recomendada ou crie um plano personalizado:
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-xs whitespace-nowrap self-start sm:self-auto"
+                      onClick={() => onNavigate('acoes')}
+                    >
+                      <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Criar Plano Manual
+                    </button>
                   </div>
-                  <h3 className="text-sm font-semibold mb-1">Nenhum plano de ação ativo no ciclo</h3>
-                  <p className="text-xs color-text-secondary max-w-md mx-auto mb-4">
-                    Após consolidar as respostas das pesquisas ou registrar observações ergonômicas, adote medidas preventivas estruturadas para o PGR.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={onOpenNewAction}
-                  >
-                    <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Cadastrar Medida Preventiva
-                  </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Template 1 */}
+                    <div className="card p-3 bg-surface-subtle border border-border flex flex-col justify-between hover:border-primary-light transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-sm">
+                            <i className="fa-solid fa-clock-rotate-left" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-neutral text-[10px]">Organizacional</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-primary mb-1">Revisão de Prazos & Ritmo</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Equilíbrio de demandas e pausas ativas para prevenir sobrecarga contínua.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'prazos'}
+                          className="btn btn-primary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'prazos',
+                              title: 'Revisão de Demandas & Ritmo Sustentável',
+                              what: 'Mapear picos de entrega e instituir intervalos de pausa programada entre ciclos de trabalho intensivo.',
+                              why: 'Prevenção de estresse ocupacional e mitigação de fadiga mental contínua (NR-1 / NR-17).',
+                              hierarchy: 'organizacional',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'prazos' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Template 2 */}
+                    <div className="card p-3 bg-surface-subtle border border-border flex flex-col justify-between hover:border-primary-light transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-success-subtle text-success flex items-center justify-center text-sm">
+                            <i className="fa-solid fa-shield-halved" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-success text-[10px]">Lei 14.457/22</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-primary mb-1">Prevenção ao Assédio</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Canal de acolhimento seguro, regras de conduta e garantia antirretaliação.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'assedio'}
+                          className="btn btn-primary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'assedio',
+                              title: 'Canal de Acolhimento & Prevenção ao Assédio',
+                              what: 'Divulgar código de conduta institucional e canal protegido de escuta e apuração sem retaliação.',
+                              why: 'Conformidade com a Lei 14.457/22 (CIPA) e promoção de ambiente respeitoso (NR-1).',
+                              hierarchy: 'organizacional',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'assedio' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Template 3 */}
+                    <div className="card p-3 bg-surface-subtle border border-border flex flex-col justify-between hover:border-primary-light transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-8 h-8 rounded-lg bg-warning-subtle text-warning flex items-center justify-center text-sm">
+                            <i className="fa-solid fa-comments" aria-hidden="true" />
+                          </div>
+                          <span className="badge badge-neutral text-[10px]">Coletiva</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-primary mb-1">Segurança Psicológica</h4>
+                          <p className="text-[11px] color-text-secondary m-0">
+                            Espaço periódico para diálogo aberto, tratamento de erros e alinhamento de equipe.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 mt-2 border-t border-border">
+                        <button
+                          type="button"
+                          disabled={adoptingTemplate === 'seguranca'}
+                          className="btn btn-primary btn-xs w-full"
+                          onClick={() =>
+                            handleAdoptTemplate({
+                              id: 'seguranca',
+                              title: 'Roda de Diálogo & Alinhamento de Equipe',
+                              what: 'Estruturar reuniões periódicas curtas com foco em melhoria contínua e comunicação aberta sem julgamento.',
+                              why: 'Aumento da segurança psicológica, clareza operacional e redução de atritos interpessoais.',
+                              hierarchy: 'coletiva',
+                            })
+                          }
+                        >
+                          {adoptingTemplate === 'seguranca' ? (
+                            'Adotando...'
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Adotar Medida
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
