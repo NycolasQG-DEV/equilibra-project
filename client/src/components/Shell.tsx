@@ -26,78 +26,78 @@ export const Shell: React.FC<ShellProps> = ({
 
   const initials = user?.name
     ? user.name
-        .trim()
-        .split(' ')
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
+      .trim()
+      .split(' ')
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
     : 'G';
 
   return (
     <div className="shell-layout">
       {/* Sidebar Lateral */}
-      <aside className="shell-sidebar" aria-label="Menu principal">
-        {/* Brand */}
-        <div className="shell-brand">
-          <div className="shell-brand-icon-wrap">
-            <i className="fa-solid fa-scale-balanced shell-brand-icon" aria-hidden="true" />
+        <aside className="shell-sidebar" aria-label="Menu principal">
+          {/* Brand */}
+          <div className="shell-brand">
+            <div className="shell-brand-icon-wrap">
+              <i className="fa-solid fa-scale-balanced shell-brand-icon" aria-hidden="true" />
+            </div>
+            <div className="shell-brand-info">
+              <span className="shell-brand-title">Equilibra</span>
+              <span className="shell-brand-sub">Riscos Psicossociais</span>
+            </div>
           </div>
-          <div className="shell-brand-info">
-            <span className="shell-brand-title">Equilibra</span>
-            <span className="shell-brand-sub">Riscos Psicossociais</span>
-          </div>
-        </div>
 
-        {/* Nav */}
-        <nav className="shell-nav" aria-label="Navegação principal">
-          {navItems.map((item) => {
-            const isActive = currentRoute === item.id;
-            return (
+          {/* Nav */}
+          <nav className="shell-nav" aria-label="Navegação principal">
+            {navItems.map((item) => {
+              const isActive = currentRoute === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`shell-nav-link ${isActive ? 'active' : ''}`}
+                  onClick={() => onNavigate(item.id)}
+                  title={item.description}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <i className={`fa-solid ${item.icon} shell-nav-icon`} aria-hidden="true" />
+                  <span className="shell-nav-label">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Footer do Sidebar */}
+          <div className="shell-sidebar-footer">
+            <div className="shell-user-card">
+                <div className="shell-user-avatar" aria-hidden="true">
+                  {initials}
+                </div>
+                <div className="shell-user-details">
+                  <span className="shell-user-name" title={user?.name}>{user?.name || 'Gestor'}</span>
+                  <span className="shell-user-company" title={user?.companyName}>
+                    {user?.companyName || 'Empresa'}
+                  </span>
+                </div>
+              </div>
               <button
-                key={item.id}
                 type="button"
-                className={`shell-nav-link ${isActive ? 'active' : ''}`}
-                onClick={() => onNavigate(item.id)}
-                title={item.description}
-                aria-current={isActive ? 'page' : undefined}
+                className="shell-logout-btn"
+                onClick={onLogout}
+                title="Sair do sistema"
+                aria-label="Sair"
               >
-                <i className={`fa-solid ${item.icon} shell-nav-icon`} aria-hidden="true" />
-                <span className="shell-nav-label">{item.label}</span>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
               </button>
-            );
-          })}
-        </nav>
+            </div>
+        </aside>
 
-        {/* Footer do Sidebar */}
-        <div className="shell-sidebar-footer">
-          <div className="shell-user-card">
-            <div className="shell-user-avatar" aria-hidden="true">
-              {initials}
-            </div>
-            <div className="shell-user-details">
-              <span className="shell-user-name" title={user?.name}>{user?.name || 'Gestor'}</span>
-              <span className="shell-user-company" title={user?.companyName}>
-                {user?.companyName || 'Empresa'}
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="shell-logout-btn"
-            onClick={onLogout}
-            title="Sair do sistema"
-            aria-label="Sair"
-          >
-            <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
-          </button>
+        {/* Conteúdo Principal */}
+          <main className="shell-content" id="main-content">
+            <div className="shell-viewport">{children}</div>
+          </main>
         </div>
-      </aside>
-
-      {/* Conteúdo Principal */}
-      <main className="shell-content" id="main-content">
-        <div className="shell-viewport">{children}</div>
-      </main>
-    </div>
-  );
+        );
 };

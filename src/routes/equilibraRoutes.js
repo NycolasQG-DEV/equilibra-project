@@ -777,7 +777,7 @@ router.get('/whatsapp/status', protectedRoute, async (req, res) => {
 router.get('/whatsapp/qr', protectedRoute, async (req, res) => {
   try {
     let client = null;
-    try { client = require('../services/whatsappLocalClient'); } catch {}
+    try { client = require('../services/whatsappLocalClient'); } catch { }
     const accountId = req.account.id;
 
     if (client) {
@@ -814,7 +814,7 @@ router.get('/whatsapp/qr', protectedRoute, async (req, res) => {
 router.post('/whatsapp/reset', protectedRoute, async (req, res) => {
   try {
     let client = null;
-    try { client = require('../services/whatsappLocalClient'); } catch {}
+    try { client = require('../services/whatsappLocalClient'); } catch { }
     if (client && client.resetAuth) {
       await client.resetAuth(req.account.id);
     }

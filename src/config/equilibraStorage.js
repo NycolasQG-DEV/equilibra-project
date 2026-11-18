@@ -80,7 +80,7 @@ function rawWrite(name, value) {
         fs.unlinkSync(temporary);
       } catch {
         fs.writeFileSync(files[name], `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-        try { fs.unlinkSync(temporary); } catch {}
+        try { fs.unlinkSync(temporary); } catch { }
       }
     } else {
       throw err;
@@ -121,7 +121,7 @@ function writeMany(changes) {
         fs.unlinkSync(temporary);
       } catch {
         fs.writeFileSync(journal, JSON.stringify(changes), { encoding: 'utf8', mode: 0o600 });
-        try { fs.unlinkSync(temporary); } catch {}
+        try { fs.unlinkSync(temporary); } catch { }
       }
     } else {
       throw err;
@@ -131,7 +131,7 @@ function writeMany(changes) {
   for (const [name, value] of Object.entries(changes)) rawWrite(name, value);
   try {
     if (fs.existsSync(journal)) fs.unlinkSync(journal);
-  } catch {}
+  } catch { }
 }
 
 function write(name, value) { writeMany({ [name]: value }); }
