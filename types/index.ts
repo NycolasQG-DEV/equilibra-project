@@ -116,6 +116,108 @@ export interface ActionPlanItem {
   createdAt: string;
 }
 
+export type RiskLevel = 'trivial' | 'toleravel' | 'moderado' | 'substancial' | 'intoleravel';
+export type AssessmentStatus = 'investigating' | 'evaluated' | 'rejected' | 'archived';
+
+export interface RiskAssessment {
+  id: string;
+  tenantId?: string;
+  establishmentId?: string;
+  departmentId?: string;
+  factor: string;
+  category: 'organizacional' | 'relacional' | 'ergonomico' | 'psicossocial';
+  hazard: string;
+  consequence: string;
+  severity: 1 | 2 | 3 | 4 | 5;
+  probability: 1 | 2 | 3 | 4 | 5;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  sourceType: 'questionario' | 'observacao' | 'oficina' | 'entrevista' | 'documental';
+  observedDataSummary: string;
+  descriptiveInterpretation: string;
+  technicalHypothesis: string;
+  status: AssessmentStatus;
+  version: number;
+  evaluatorId?: string;
+  evaluatorName?: string;
+  evaluatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ActionStatus = 'planned' | 'in_progress' | 'implemented' | 'effective' | 'ineffective' | 'cancelled';
+
+export interface Action5W2H {
+  id: string;
+  tenantId?: string;
+  assessmentId?: string;
+  title: string;
+  what: string;
+  why: string;
+  where: string;
+  who: string;
+  when: string;
+  how: string;
+  howMuch?: string;
+  dueDate: string;
+  status: ActionStatus;
+  controlHierarchy: 'eliminacao' | 'substituicao' | 'engenharia_coletiva' | 'administrativa' | 'individual';
+  efficacyCriteria: string;
+  reviewDate?: string;
+  evidenceCount?: number;
+  evidences?: Array<{
+    id: string;
+    description: string;
+    fileUrl?: string;
+    registeredBy: string;
+    registeredAt: string;
+  }>;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Establishment {
+  id: string;
+  tenantId?: string;
+  name: string;
+  cnpj?: string;
+  cnae?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  totalWorkers?: number;
+  sectors?: string[];
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface WorkProcess {
+  id: string;
+  establishmentId: string;
+  name: string;
+  description?: string;
+  activities: string[];
+  shiftType?: 'diurno' | 'noturno' | 'revezamento' | 'flexivel';
+  workerCount: number;
+}
+
+export interface EvidenceRecord {
+  id: string;
+  tenantId: string;
+  establishmentId?: string;
+  departmentId?: string;
+  method: 'questionario' | 'observacao' | 'oficina' | 'entrevista' | 'documento';
+  date: string;
+  location: string;
+  participantCount?: number;
+  description: string;
+  keyFindings: string[];
+  registeredBy: string;
+  confidentialityNote?: string;
+  createdAt: string;
+}
+
 export interface WhatsAppConnectionStatus {
   connected: boolean;
   phone?: string;

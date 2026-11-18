@@ -20,7 +20,7 @@ const fail = (res, status, error) => res.status(status).json({ error });
 const { derive: passwordHash, verify: validPassword } = require('../services/passwordService');
 const email = (value) => clean(value, 254).toLowerCase();
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-const cookie = (req) => (req.headers.cookie || '').split(';').map((part) => part.trim()).find((part) => part.startsWith('equilibra_session='))?.split('=')[1];
+const cookie = (req) => (req.headers.cookie || '').split(';').map((part) => part.trim()).find((part) => part.startsWith('equilibra_session='))?.split('=')[1] || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
 const SESSION_DURATION = 30 * 86400000;
 const sendCookie = (res, token) => res.cookie('equilibra_session', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: SESSION_DURATION });
 const scoped = (name, accountId) => read(name).filter((item) => item.accountId === accountId);
@@ -285,7 +285,7 @@ router.post('/auth/register', (req, res) => {
   ensureGeneralGroup(workspace?.id || account.id);
   const token = crypto.randomBytes(32).toString('hex'), sessions = read('sessions');
   sessions.push({ accountId: account.id, tokenHash: hash(token), expiresAt: Date.now() + SESSION_DURATION }); write('sessions', sessions);
-  sendCookie(res, token); res.status(201).json(publicAccount(currentAccount({ headers: { cookie: `equilibra_session=${token}` } })));
+  sendCookie(res, token); res.status(201).json({ ...publicAccount(currentAccount({ headers: { cookie: `equilibra_session=${token}` } })), token });
 });
 router.post('/auth/login', (req, res) => {
   const address = email(req.body.email), key = `${req.ip}:${address}`, state = attempts.get(key) || { count: 0, until: 0 };
@@ -295,7 +295,7 @@ router.post('/auth/login', (req, res) => {
   attempts.delete(key);
   const token = crypto.randomBytes(32).toString('hex'), sessions = read('sessions');
   sessions.push({ accountId: account.id, tokenHash: hash(token), expiresAt: Date.now() + SESSION_DURATION }); write('sessions', sessions);
-  sendCookie(res, token); res.json(publicAccount(currentAccount({ headers: { cookie: `equilibra_session=${token}` } })));
+  sendCookie(res, token); res.json({ ...publicAccount(currentAccount({ headers: { cookie: `equilibra_session=${token}` } })), token });
 });
 router.get('/auth/me', (req, res) => { const account = currentAccount(req); res.json(account ? publicAccount(account) : null); });
 router.put('/auth/me', protectedRoute, (req, res) => {
