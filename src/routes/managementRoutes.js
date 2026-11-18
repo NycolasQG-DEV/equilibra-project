@@ -146,20 +146,23 @@ function createRouter(protectedRoute) {
     });
     res.status(204).end();
   });
-  router.get("/dossier", (req, res) => {
-    const state = repo.get(req.account.id);
-    res.json({
-      generatedAt: new Date().toISOString(),
-      organization: req.account.company,
-      limitations:
-        "Documentação de apoio. Não substitui avaliação técnica ou documentos ocupacionais exigíveis.",
-      reports: storage
-        .read("reports")
-        .filter((row) => row.accountId === req.account.id),
-      assessments: state.assessments,
-      actions: state.actions,
-      audit: state.audit,
-    });
+  router.get("/dossier", async (req, res, next) => {
+    try {
+      const { buildDossierData, generateDossierPdf } = require("../services/dossierService");
+      const dossierData = buildDossierData(req.account);
+      if (req.query.format === "pdf") {
+        const pdfBuffer = await generateDossierPdf(dossierData);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="equilibra-dossie-pgr-${dossierData.snapshotHash}.pdf"`,
+        );
+        return res.send(pdfBuffer);
+      }
+      res.json(dossierData);
+    } catch (err) {
+      next(err);
+    }
   });
   router.get("/measures", (_req, res) => {
     const { getAllMeasures } = require("../domain/measuresCatalog");
