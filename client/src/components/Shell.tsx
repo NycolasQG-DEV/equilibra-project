@@ -16,7 +16,7 @@ export const Shell: React.FC<ShellProps> = ({
   onLogout,
 }) => {
   const navItems = [
-    { id: 'hoje', label: 'Hoje', icon: 'fa-gauge-high', description: 'Painel & Pulso' },
+    { id: 'hoje', label: 'Hoje', icon: 'fa-house', description: 'Visão Geral & Pulso' },
     { id: 'pesquisas', label: 'Pesquisas', icon: 'fa-clipboard-list', description: 'Ciclos de Escuta' },
     { id: 'evidencias', label: 'Evidências', icon: 'fa-folder-open', description: 'AEP Multimétodo' },
     { id: 'resultados', label: 'Diagnóstico', icon: 'fa-chart-pie', description: 'Relatórios & IA' },

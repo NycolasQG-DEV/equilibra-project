@@ -308,10 +308,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
         {/* Card 3: Planos de Ação */}
         <div className="card p-5 bg-surface flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center">
               <span className="text-xs font-semibold uppercase tracking-wider color-text-muted">Planos de Ação</span>
-              <span className="text-muted cursor-help" title="Alinhado às diretrizes de medidas preventivas (NR-1)">
-                <i className="fa-solid fa-circle-info text-[11px]" aria-hidden="true" />
+              <span className="info-hint-icon" title="Alinhado às diretrizes de medidas preventivas (NR-1)">
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
               </span>
             </div>
             <span className={`badge ${overdueActions.length > 0 ? 'badge-danger' : 'badge-success'}`}>
@@ -371,10 +371,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
               {activeActions.length === 0 ? (
                 <div className="space-y-4 py-2">
                   <div className="pb-2 border-b border-border">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center">
                       <h3 className="text-xs font-semibold color-text-primary m-0">Planos de Ação Recomendados</h3>
-                      <span className="text-muted cursor-help" title="Medidas preventivas alinhadas às diretrizes de riscos psicossociais (NR-1)">
-                        <i className="fa-solid fa-circle-info text-[11px]" aria-hidden="true" />
+                      <span className="info-hint-icon" title="Medidas preventivas alinhadas às diretrizes de riscos psicossociais (NR-1)">
+                        <i className="fa-solid fa-circle-info" aria-hidden="true" />
                       </span>
                     </div>
                     <p className="text-xs color-text-secondary m-0 mt-0.5">

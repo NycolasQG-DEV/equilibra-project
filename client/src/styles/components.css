@@ -875,3 +875,32 @@
   background-color: var(--color-surface);
   margin-top: var(--space-2);
 }
+
+/* ── Info Hint Icon (Micro-interaction & Optical Tooltip Alignment) ── */
+.info-hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  color: var(--color-text-muted);
+  cursor: help;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  line-height: 1;
+  position: relative;
+  top: -1px;
+}
+
+.info-hint-icon:hover {
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+.info-hint-icon i {
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: 0;
+  display: inline-block;
+}
