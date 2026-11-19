@@ -182,21 +182,19 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
                   </p>
                 </div>
 
-                <div className="card bg-surface-subtle p-3 mb-4 rounded-md flex items-center justify-between text-sm">
-                  <div>
-                    <span className="color-text-muted block text-xs">Respostas</span>
-                    <strong className="num text-base">{survey.responseCount || 0}</strong>
-                    <span className="text-xs color-text-muted ml-1">/ {survey.totalMembersCount || 0} público</span>
-                  </div>
-                  <div
-                    className="text-right cursor-help"
-                    title="Proteção de Privacidade: os resultados por setor só são consolidados com quórum mínimo de 5 respostas para assegurar o sigilo individual."
+                <div className="survey-stats-row">
+                  <span className="survey-stat">
+                    <i className="fa-solid fa-users survey-stat-icon" aria-hidden="true" />
+                    <strong>{survey.responseCount || 0}</strong>
+                    <span>/ {survey.totalMembersCount || 0}</span>
+                  </span>
+                  <span
+                    className="badge badge-neutral survey-quorum-badge"
+                    title="Resultados consolidados com quórum mínimo de 5 respostas para assegurar o sigilo individual."
                   >
-                    <span className="badge badge-neutral text-[10px] inline-flex items-center gap-1 font-normal">
-                      <i className="fa-solid fa-shield-halved text-primary" aria-hidden="true" />
-                      Quórum mín. 5
-                    </span>
-                  </div>
+                    <i className="fa-solid fa-shield-halved" aria-hidden="true" />
+                    Quórum 5
+                  </span>
                 </div>
               </div>
 

@@ -897,28 +897,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  vertical-align: middle;
-  width: 15px;
-  height: 15px;
-  margin-left: 6px;
+  width: 14px;
+  height: 14px;
   color: var(--color-text-muted);
   cursor: help;
   transition: color var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
   line-height: 1;
-  position: relative;
-  top: -1px;
 }
 
 .info-hint-icon:hover {
   color: var(--color-primary);
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 .info-hint-icon i {
   font-size: 11px;
   line-height: 1;
-  vertical-align: 0;
-  display: inline-block;
+  display: block;
 }
 
 /* ── Modern Stat Cards (Organization & Metrics) ── */
@@ -967,10 +963,53 @@
   font-weight: 500;
 }
 
+/* ── Survey Card Stats Row ── */
+.survey-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-bottom: var(--space-4);
+}
+
+.survey-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.survey-stat strong {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.survey-stat span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.survey-stat-icon {
+  color: var(--color-primary);
+  font-size: 11px;
+}
+
+.survey-quorum-badge {
+  font-size: 10px !important;
+  gap: 4px;
+  cursor: help;
+}
+
 /* ── Evidence Module Craft (FASE 05) ── */
 .evidence-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-4);
 }
@@ -989,6 +1028,7 @@
   position: relative;
   overflow: hidden;
   width: 100%;
+  min-width: 0;
 }
 
 .evidence-card:hover {
@@ -1003,6 +1043,7 @@
   justify-content: space-between;
   gap: var(--space-2);
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .evidence-type-badge {

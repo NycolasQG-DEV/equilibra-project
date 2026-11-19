@@ -37,9 +37,11 @@ interface TodayViewProps {
 
 const cleanSurveyTitle = (title: string, cycle?: string) => {
   let cleaned = (title || '').trim();
-  if (cycle && cleaned.toLowerCase().endsWith(` - ${cycle.toLowerCase()}`)) {
-    cleaned = cleaned.slice(0, -(cycle.length + 3)).trim();
+  if (cycle) {
+    const escapedCycle = cycle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleaned = cleaned.replace(new RegExp(`\\s*[-–—]\\s*${escapedCycle}$`, 'i'), '').trim();
   }
+  // Remove também repetições genéricas como "- Ciclo ..." se já especificado
   return cleaned || title;
 };
 
@@ -316,7 +318,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
         {/* Card 3: Planos de Ação */}
         <div className="card p-5 bg-surface flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
+            <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider color-text-muted">Planos de Ação</span>
               <span className="info-hint-icon" title="Alinhado às diretrizes de medidas preventivas (NR-1)">
                 <i className="fa-solid fa-circle-info" aria-hidden="true" />
@@ -379,7 +381,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
               {activeActions.length === 0 ? (
                 <div className="space-y-4 py-2">
                   <div className="pb-2 border-b border-border">
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1.5">
                       <h3 className="text-xs font-semibold color-text-primary m-0">Planos de Ação Recomendados</h3>
                       <span className="info-hint-icon" title="Medidas preventivas alinhadas às diretrizes de riscos psicossociais (NR-1)">
                         <i className="fa-solid fa-circle-info" aria-hidden="true" />
@@ -591,7 +593,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
                 <h2 className="text-sm font-semibold color-text-primary m-0">
                   Coletas em Andamento
                 </h2>
-                <span className="badge badge-neutral">{surveys.length > 0 ? `${surveys.length} ativas` : 'Nenhuma ativa'}</span>
+                {surveys.length > 0 && (
+                  <span className="badge badge-neutral">{surveys.length} ativas</span>
+                )}
               </div>
               <button
                 type="button"
@@ -604,15 +608,17 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
             <div className="p-0">
               {surveys.length === 0 ? (
-                <div className="text-center py-10 px-4">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-surface-subtle text-primary text-xl mb-3 border border-border">
+                <div className="text-center py-12 px-6">
+                  <div className="w-12 h-12 rounded-full bg-primary-subtle text-primary text-lg inline-flex items-center justify-center mb-3">
                     <i className="fa-solid fa-clipboard-list" aria-hidden="true" />
                   </div>
-                  <h3 className="font-semibold text-sm color-text-primary mb-1">Nenhuma coleta ativa neste ciclo</h3>
-                  <p className="text-xs color-text-secondary max-w-sm mx-auto mb-4">
-                    Abra um novo ciclo de escuta para começar a receber colaborações anônimas dos colaboradores.
+                  <h3 className="font-semibold text-sm color-text-primary mb-1.5">
+                    Nenhuma coleta ativa neste ciclo
+                  </h3>
+                  <p className="text-xs color-text-secondary max-w-md mx-auto mb-5 leading-relaxed">
+                    Inicie um novo ciclo de escuta para coletar percepções anônimas da equipe com sigilo e conformidade NR-1.
                   </p>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={onOpenNewSurvey}>
+                  <button type="button" className="btn btn-primary btn-sm px-4" onClick={onOpenNewSurvey}>
                     <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Abrir Nova Coleta
                   </button>
                 </div>
