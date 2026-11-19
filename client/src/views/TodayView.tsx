@@ -608,22 +608,22 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
             <div className="p-0">
               {surveys.length === 0 ? (
-                <div className="text-center py-12 px-6">
-                  <div className="w-12 h-12 rounded-full bg-primary-subtle text-primary text-lg inline-flex items-center justify-center mb-3">
+                <div className="home-empty-coletas">
+                  <div className="w-14 h-14 rounded-full bg-primary-subtle text-primary text-xl inline-flex items-center justify-center mb-4">
                     <i className="fa-solid fa-clipboard-list" aria-hidden="true" />
                   </div>
-                  <h3 className="font-semibold text-sm color-text-primary mb-1.5">
+                  <h3 className="font-semibold text-base color-text-primary mb-2">
                     Nenhuma coleta ativa neste ciclo
                   </h3>
-                  <p className="text-xs color-text-secondary max-w-md mx-auto mb-5 leading-relaxed">
+                  <p className="text-xs color-text-secondary max-w-md mx-auto mb-6 leading-relaxed">
                     Inicie um novo ciclo de escuta para coletar percepções anônimas da equipe com sigilo e conformidade NR-1.
                   </p>
-                  <button type="button" className="btn btn-primary btn-sm px-4" onClick={onOpenNewSurvey}>
-                    <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Abrir Nova Coleta
+                  <button type="button" className="btn btn-primary btn-sm px-5 py-2.5" onClick={onOpenNewSurvey}>
+                    <i className="fa-solid fa-plus mr-1.5" aria-hidden="true" /> Abrir Nova Coleta
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto py-2">
                   <table className="table w-full">
                     <thead>
                       <tr>

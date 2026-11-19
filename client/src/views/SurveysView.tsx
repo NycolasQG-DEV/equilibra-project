@@ -93,7 +93,7 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
         <div>
           <h1 className="page-title">Pesquisas & Ciclos de Diagnóstico</h1>
           <p className="page-subtitle">
-            Gerencie os ciclos psicossociais, acompanhe a taxa de quorum e abra novas coletas.
+            Gerencie os ciclos psicossociais, acompanhe a taxa de adesão e abra novas coletas.
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={onCreateNew}>
@@ -186,14 +186,7 @@ export const SurveysView: React.FC<SurveysViewProps> = ({
                   <span className="survey-stat">
                     <i className="fa-solid fa-users survey-stat-icon" aria-hidden="true" />
                     <strong>{survey.responseCount || 0}</strong>
-                    <span>/ {survey.totalMembersCount || 0}</span>
-                  </span>
-                  <span
-                    className="badge badge-neutral survey-quorum-badge"
-                    title="Resultados consolidados com quórum mínimo de 5 respostas para assegurar o sigilo individual."
-                  >
-                    <i className="fa-solid fa-shield-halved" aria-hidden="true" />
-                    Quórum 5
+                    <span>/ {survey.totalMembersCount || 0} respostas</span>
                   </span>
                 </div>
               </div>

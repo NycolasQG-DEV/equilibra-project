@@ -1000,10 +1000,10 @@
   font-size: 11px;
 }
 
-.survey-quorum-badge {
-  font-size: 10px !important;
-  gap: 4px;
-  cursor: help;
+/* ── Home Coletas Empty State ── */
+.home-empty-coletas {
+  text-align: center;
+  padding: 64px 24px 72px 24px;
 }
 
 /* ── Evidence Module Craft (FASE 05) ── */
