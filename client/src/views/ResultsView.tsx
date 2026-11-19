@@ -281,9 +281,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                               <strong className="text-sm font-bold">{mean.toFixed(2)}</strong>
                             </div>
                           </div>
-                          <div className="h-2 w-full bg-border rounded-full overflow-hidden">
+                          <div className="score-progress-track">
                             <div
-                              className={`h-full ${isAttention ? 'bg-danger' : isFavorable ? 'bg-success' : 'bg-primary'}`}
+                              className={`score-progress-bar ${isAttention ? 'bar-attention' : isFavorable ? 'bar-favorable' : 'bar-moderate'}`}
                               style={{ width: `${percentage}%` }}
                             />
                           </div>

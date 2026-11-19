@@ -174,33 +174,33 @@ export const OrganizationView: React.FC = () => {
 
       {/* Stats rápidos */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-surface-subtle color-text-secondary text-base border border-border">
+        <div className="stat-card">
+          <div className="stat-card-icon" style={{ backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)', borderColor: 'var(--color-primary-border)' }}>
             <i className="fa-solid fa-users" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-bold color-text-primary">{members.length}</div>
-            <div className="text-xs color-text-muted">Colaboradores Mapeados</div>
+            <div className="stat-card-value">{members.length}</div>
+            <div className="stat-card-label">Colaboradores Mapeados</div>
           </div>
         </div>
-        <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-surface-subtle color-text-secondary text-base border border-border">
+        <div className="stat-card">
+          <div className="stat-card-icon" style={{ backgroundColor: 'var(--color-surface-subtle)', color: 'var(--color-text-secondary)' }}>
             <i className="fa-solid fa-layer-group" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-bold color-text-primary">{groups.length}</div>
-            <div className="text-xs color-text-muted">Setores / Grupos de Risco</div>
+            <div className="stat-card-value">{groups.length}</div>
+            <div className="stat-card-label">Setores / Grupos de Risco</div>
           </div>
         </div>
-        <div className="card p-4 bg-surface flex items-center gap-4 border border-border">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-success-subtle text-success text-base border border-success-border">
+        <div className="stat-card">
+          <div className="stat-card-icon" style={{ backgroundColor: 'var(--color-success-bg)', color: 'var(--color-success)', borderColor: 'var(--color-success-border)' }}>
             <i className="fa-solid fa-shield-halved" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-success">
+            <div className="stat-card-value" style={{ color: 'var(--color-success)' }}>
               {groups.filter((g) => (g.memberIds?.length || 0) >= 5).length}
             </div>
-            <div className="text-xs color-text-muted">Setores com quórum mínimo (≥ 5)</div>
+            <div className="stat-card-label">Setores com quórum mínimo (≥ 5)</div>
           </div>
         </div>
       </div>
@@ -222,10 +222,11 @@ export const OrganizationView: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="toolbar-search">
+        <div className="toolbar-search relative">
+          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs color-text-muted pointer-events-none" aria-hidden="true" style={{ transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            className="input text-xs"
+            className="input text-xs w-full pl-8"
             placeholder={tab === 'people' ? 'Buscar colaborador ou setor...' : 'Buscar setor...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

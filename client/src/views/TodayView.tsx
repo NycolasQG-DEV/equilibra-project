@@ -236,7 +236,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
         <div className="card-warning-edge p-3 rounded-lg flex items-center gap-3 bg-surface border border-warning">
           <i className="fa-solid fa-clock text-warning text-lg" aria-hidden="true" />
           <div className="text-sm">
-            <strong className="font-semibold text-warning">Atenção ao cronograma NR-1: </strong>
+            <strong className="font-semibold text-warning">Atenção ao cronograma: </strong>
             <span>
               {overdueActions.length} {overdueActions.length === 1 ? 'medida preventiva está atrasada' : 'medidas preventivas estão atrasadas'} no plano de ação.
             </span>
@@ -252,12 +252,20 @@ export const TodayView: React.FC<TodayViewProps> = ({
             </span>
           </div>
         </div>
-      ) : (
+      ) : surveys.length > 0 ? (
         <div className="p-3 rounded-lg flex items-center gap-3 bg-surface border border-success">
           <i className="fa-solid fa-circle-check text-success text-lg" aria-hidden="true" />
           <div className="text-sm">
             <strong className="font-semibold text-success">Monitoramento ativo: </strong>
-            <span>Todas as coletas ativas estão recebendo respostas e o plano de ação segue o cronograma estabelecido.</span>
+            <span>As coletas ativas estão recebendo respostas e o plano de ação segue o cronograma estabelecido.</span>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg flex items-center gap-3 bg-surface border border-border">
+          <i className="fa-solid fa-circle-info text-primary text-lg" aria-hidden="true" />
+          <div className="text-sm">
+            <strong className="font-semibold text-primary">Pronto para iniciar: </strong>
+            <span>Nenhum ciclo de escuta aberto no momento. Crie uma pesquisa para avaliar os fatores psicossociais da equipe.</span>
           </div>
         </div>
       )}
@@ -579,11 +587,11 @@ export const TodayView: React.FC<TodayViewProps> = ({
           <div className="card bg-surface overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface-subtle">
               <div className="flex items-center gap-2">
-                <i className="fa-solid fa-clipboard-question color-text-muted" aria-hidden="true" />
+                <i className="fa-solid fa-clipboard-list text-primary" aria-hidden="true" />
                 <h2 className="text-sm font-semibold color-text-primary m-0">
                   Coletas em Andamento
                 </h2>
-                <span className="badge badge-neutral">{surveys.length} ativas</span>
+                <span className="badge badge-neutral">{surveys.length > 0 ? `${surveys.length} ativas` : 'Nenhuma ativa'}</span>
               </div>
               <button
                 type="button"
@@ -596,8 +604,14 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
             <div className="p-0">
               {surveys.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-xs color-text-secondary mb-3">Nenhuma coleta ativa neste ciclo.</p>
+                <div className="text-center py-10 px-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-surface-subtle text-primary text-xl mb-3 border border-border">
+                    <i className="fa-solid fa-clipboard-list" aria-hidden="true" />
+                  </div>
+                  <h3 className="font-semibold text-sm color-text-primary mb-1">Nenhuma coleta ativa neste ciclo</h3>
+                  <p className="text-xs color-text-secondary max-w-sm mx-auto mb-4">
+                    Abra um novo ciclo de escuta para começar a receber colaborações anônimas dos colaboradores.
+                  </p>
                   <button type="button" className="btn btn-primary btn-sm" onClick={onOpenNewSurvey}>
                     <i className="fa-solid fa-plus mr-1" aria-hidden="true" /> Abrir Nova Coleta
                   </button>

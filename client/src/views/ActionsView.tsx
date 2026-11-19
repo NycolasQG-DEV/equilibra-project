@@ -491,17 +491,17 @@ export const ActionsView: React.FC<ActionsViewProps> = () => {
             <form onSubmit={handleRecordEfficacy} className="dialog-body space-y-3 pt-3">
               <div>
                 <label className="label text-xs font-semibold block mb-1">Resultado da Aferição *</label>
-                <div className="flex gap-2">
+                <div className="efficacy-toggle-group">
                   <button
                     type="button"
-                    className={`btn btn-xs flex-1 ${efficacyResult === 'effective' ? 'btn-success' : 'btn-secondary'}`}
+                    className={`efficacy-option-btn ${efficacyResult === 'effective' ? 'selected-effective' : ''}`}
                     onClick={() => setEfficacyResult('effective')}
                   >
                     <i className="fa-solid fa-circle-check mr-1" aria-hidden="true" /> Eficaz
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-xs flex-1 ${efficacyResult === 'ineffective' ? 'btn-danger' : 'btn-secondary'}`}
+                    className={`efficacy-option-btn ${efficacyResult === 'ineffective' ? 'selected-ineffective' : ''}`}
                     onClick={() => setEfficacyResult('ineffective')}
                   >
                     <i className="fa-solid fa-circle-xmark mr-1" aria-hidden="true" /> Ineficaz / Ajustar

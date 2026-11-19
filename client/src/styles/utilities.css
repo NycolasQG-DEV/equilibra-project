@@ -149,6 +149,7 @@
 .w-96   { width: 384px; }
 
 .h-2    { height: 8px; }
+.h-full { height: 100%; }
 .h-4    { height: 16px; }
 .h-6    { height: 24px; }
 .h-7    { height: 28px; }
@@ -232,9 +233,12 @@
 .bg-primary-subtle  { background-color: var(--color-primary-subtle); }
 .bg-primary\/10     { background-color: rgba(124, 58, 237, 0.1); }
 .bg-primary-subtle\/10 { background-color: rgba(245, 243, 255, 0.5); }
+.bg-success         { background-color: var(--color-success); }
 .bg-success\/10     { background-color: rgba(16, 185, 129, 0.1); }
 .bg-success-subtle  { background-color: var(--color-success-bg); }
+.bg-warning         { background-color: var(--color-warning); }
 .bg-warning-subtle  { background-color: var(--color-warning-bg); }
+.bg-danger          { background-color: var(--color-danger); }
 .bg-danger\/10      { background-color: rgba(239, 68, 68, 0.1); }
 .bg-danger-subtle   { background-color: var(--color-danger-bg); }
 .bg-surface         { background-color: var(--color-surface); }
