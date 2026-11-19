@@ -41,3 +41,5 @@ __pycache__/
 public/screenshots/
 public/*.png
 public/screenshot*
+
+scripts/screenshots/
